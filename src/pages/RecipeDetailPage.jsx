@@ -26,6 +26,7 @@ import { Switch } from '../components/ui/switch'
 import { useToast } from '../components/ui/toast'
 import { cn, formatNumber } from '../lib/utils'
 import { uploadRecipeFile } from '../services/storage'
+import { compressImage } from '../utils/imageUtils'
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 function formatDate(ts) {
@@ -848,19 +849,27 @@ export default function RecipeDetailPage() {
     reader.readAsDataURL(file)
 
     const restId = currentRestaurant?.id
-    if (!restId) { console.error('No hay restaurantId'); return }
+    if (!restId) return
 
-    if (isMountedRef.current) setPhotoUploading(true)
-    if (isMountedRef.current) setPhotoProgress(0)
+    if (isMountedRef.current) {
+      setPhotoUploading(true)
+      setPhotoProgress(0)
+    }
 
     try {
-      const recId = !isNew ? id : `new_${Date.now()}`
-      console.log('Subiendo foto. restId:', restId, 'recId:', recId)
+      const compressed = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.75,
+        outputFormat: 'image/webp',
+      })
+
+      const recId = !isNew ? id : `temp_${Date.now()}`
 
       const url = await uploadRecipeFile(
         restId,
         recId,
-        file,
+        compressed,
         'photo',
         (pct) => { if (isMountedRef.current) setPhotoProgress(pct) }
       )
@@ -868,12 +877,11 @@ export default function RecipeDetailPage() {
       if (isMountedRef.current) {
         setPhotoURL(url)
         setPhotoPreview(url)
-        console.log('Foto guardada exitosamente:', url)
       }
     } catch (err) {
-      console.error('Error completo:', err)
+      console.error('Error subiendo foto:', err)
       if (isMountedRef.current) {
-        error('Error al subir foto: ' + (err?.message || 'Error desconocido'))
+        error('Error al subir foto: ' + (err?.message || err))
       }
     } finally {
       if (isMountedRef.current) {
@@ -1433,7 +1441,7 @@ export default function RecipeDetailPage() {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           color: '#fff', fontSize: '0.8rem', fontWeight: 600,
                         }}>
-                          Subiendo...
+                          {photoProgress === 0 ? 'Optimizando imagen...' : `Subiendo ${photoProgress}%`}
                         </div>
                       )}
                     </div>
