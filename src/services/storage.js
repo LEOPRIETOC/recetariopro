@@ -8,13 +8,19 @@ export async function uploadRecipeFile(restaurantId, recipeId, file, type, onPro
   const path = `restaurants/${restaurantId}/recipes/${recipeId}/${folder}/${fileName}`
 
   const storageRef = ref(storage, path)
-  const task = uploadBytesResumable(storageRef, file)
+
+  const metadata = {
+    contentType: file.type || 'image/webp',
+    cacheControl: 'public, max-age=31536000',
+  }
+
+  const task = uploadBytesResumable(storageRef, file, metadata)
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       task.cancel()
       reject(new Error('Timeout al subir archivo'))
-    }, 60000)
+    }, 120000)
 
     task.on(
       'state_changed',

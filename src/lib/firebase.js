@@ -17,5 +17,5 @@ const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
 export const db = getFirestore(app)
-export const storage = getStorage(app)
+export const storage = getStorage(app, 'gs://inom-recetas.firebasestorage.app')
 export default app
