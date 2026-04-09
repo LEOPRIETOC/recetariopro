@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RecetarioPro — El recetario digital para tu restaurante</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0f0d0a;--ink2:#3a3530;--ink3:#7a7068;
+  --cream:#faf6ef;--cream2:#f3ede2;--cream3:#e8dfd0;
+  --gold:#b87820;--gold2:#d4943a;--gold3:#f0c060;
+  --goldBg:rgba(184,120,32,.08);
+  --green:#2a6e42;--green2:#3d9960;
+  --red:#c03030;
+  --sh:0 4px 32px rgba(15,13,10,.12);
+  --sh2:0 2px 12px rgba(15,13,10,.08);
+  --r:12px;
+}
+
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);overflow-x:hidden;}
+
+/* ── NOISE TEXTURE overlay ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.4;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 5vw;display:flex;align-items:center;justify-content:space-between;background:rgba(250,246,239,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(184,120,32,.15);}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--gold);letter-spacing:-.02em;}
+.nav-logo span{font-style:italic;color:var(--ink3);}
+.nav-cta{background:var(--gold);color:#fff;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.84rem;padding:10px 22px;border-radius:8px;text-decoration:none;transition:background .2s,transform .1s;letter-spacing:.02em;}
+.nav-cta:hover{background:var(--gold2);}
+.nav-cta:active{transform:scale(.97);}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;padding:100px 5vw 60px;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 40%,rgba(184,120,32,.07) 0%,transparent 70%),radial-gradient(ellipse 50% 50% at 20% 80%,rgba(42,110,66,.05) 0%,transparent 60%);pointer-events:none;}
+
+/* diagonal accent */
+.hero-bg::after{content:'';position:absolute;top:-20%;right:-5%;width:55%;height:140%;background:var(--cream2);transform:skewX(-8deg);z-index:0;border-left:2px solid rgba(184,120,32,.12);}
+
+.hero-content{position:relative;z-index:1;max-width:580px;}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;background:var(--goldBg);border:1px solid rgba(184,120,32,.25);border-radius:20px;padding:5px 14px;font-size:.76rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:28px;}
+.hero-tag::before{content:'✦';}
+
+h1{font-family:'Playfair Display',serif;font-size:clamp(2.4rem,5vw,3.8rem);line-height:1.1;letter-spacing:-.03em;color:var(--ink);margin-bottom:22px;}
+h1 em{font-style:italic;color:var(--gold);}
+h1 .line2{display:block;color:var(--ink2);}
+
+.hero-sub{font-size:1.05rem;color:var(--ink3);line-height:1.7;margin-bottom:36px;max-width:480px;font-weight:400;}
+.hero-sub strong{color:var(--ink);font-weight:600;}
+
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.btn-pri{background:var(--gold);color:#fff;font-family:inherit;font-weight:700;font-size:.95rem;padding:15px 32px;border-radius:10px;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px;letter-spacing:.01em;}
+.btn-pri:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(184,120,32,.35);}
+.btn-sec{color:var(--ink2);font-family:inherit;font-weight:500;font-size:.9rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;border-bottom:1px solid var(--cream3);padding-bottom:2px;transition:all .2s;}
+.btn-sec:hover{color:var(--gold);border-color:var(--gold);}
+
+/* HERO right panel */
+.hero-visual{position:absolute;right:0;top:50%;transform:translateY(-50%);width:46%;z-index:1;padding-right:4vw;}
+.app-preview{background:var(--ink);border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(15,13,10,.22),0 4px 16px rgba(15,13,10,.15);position:relative;overflow:hidden;}
+.app-preview::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold3),var(--gold));}
+.ap-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.ap-dots{display:flex;gap:5px;}
+.ap-dot{width:10px;height:10px;border-radius:50%;}
+.ap-dot:nth-child(1){background:#ff5f57;}
+.ap-dot:nth-child(2){background:#febc2e;}
+.ap-dot:nth-child(3){background:#28c840;}
+.ap-title{font-size:.72rem;color:rgba(255,255,255,.3);flex:1;text-align:center;font-family:'DM Sans',sans-serif;}
+.ap-layout{display:grid;grid-template-columns:110px 1fr;gap:10px;height:260px;}
+.ap-sb{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 8px;display:flex;flex-direction:column;gap:6px;}
+.ap-sbitem{background:rgba(255,255,255,.06);border-radius:6px;padding:7px 8px;display:flex;align-items:center;gap:6px;font-size:.65rem;color:rgba(255,255,255,.5);}
+.ap-sbitem.act{background:rgba(184,120,32,.2);color:var(--gold3);}
+.ap-sbitem span:first-child{font-size:.85rem;}
+.ap-main{display:flex;flex-direction:column;gap:8px;}
+.ap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;flex:1;}
+.ap-card{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:background .2s;}
+.ap-card:hover{background:rgba(184,120,32,.15);}
+.ap-card .em{font-size:1.4rem;}
+.ap-card .nm{font-size:.58rem;color:rgba(255,255,255,.6);text-align:center;line-height:1.3;}
+.ap-card .cd{font-size:.52rem;color:rgba(255,255,255,.3);}
+.ap-pill{background:rgba(184,120,32,.15);border:1px solid rgba(184,120,32,.3);border-radius:6px;padding:5px 10px;font-size:.62rem;color:var(--gold3);text-align:center;}
+
+/* ── PAIN SECTION ── */
+.pain{padding:80px 5vw;background:var(--ink);position:relative;overflow:hidden;}
+.pain::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,120,32,.4),transparent);}
+.pain-inner{max-width:1100px;margin:0 auto;}
+.section-eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);margin-bottom:14px;}
+.pain h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.8rem);color:#fff;line-height:1.15;letter-spacing:-.02em;margin-bottom:16px;}
+.pain h2 em{font-style:italic;color:var(--gold3);}
+.pain-sub{color:rgba(255,255,255,.5);font-size:.95rem;max-width:520px;line-height:1.7;margin-bottom:52px;}
+.pain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;}
+.pain-card{background:rgba(255,255,255,.03);padding:32px 28px;border:1px solid rgba(255,255,255,.06);position:relative;transition:background .3s;}
+.pain-card:hover{background:rgba(255,255,255,.06);}
+.pain-card:first-child{border-radius:var(--r) 0 0 var(--r);}
+.pain-card:last-child{border-radius:0 var(--r) var(--r) 0;}
+.pain-ico{font-size:1.6rem;margin-bottom:16px;display:block;}
+.pain-card h3{font-family:'Playfair Display',serif;font-size:1.05rem;color:#fff;margin-bottom:10px;}
+.pain-card p{font-size:.84rem;color:rgba(255,255,255,.45);line-height:1.65;}
+.pain-vs{display:flex;align-items:center;justify-content:center;gap:24px;margin-top:52px;padding-top:40px;border-top:1px solid rgba(255,255,255,.07);flex-wrap:wrap;}
+.vs-item{text-align:center;}
+.vs-num{font-family:'Playfair Display',serif;font-size:2.8rem;color:var(--gold3);line-height:1;}
+.vs-label{font-size:.76rem;color:rgba(255,255,255,.4);margin-top:4px;}
+.vs-sep{font-size:1.5rem;color:rgba(255,255,255,.1);}
+
+/* ── FEATURES ── */
+.features{padding:90px 5vw;background:var(--cream);}
+.features-inner{max-width:1100px;margin:0 auto;}
+.feat-header{text-align:center;margin-bottom:64px;}
+.feat-header h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.6rem);letter-spacing:-.02em;color:var(--ink);margin-bottom:12px;}
+.feat-header h2 em{font-style:italic;color:var(--gold);}
+.feat-header p{color:var(--ink3);font-size:.95rem;max-width:480px;margin:0 auto;line-height:1.7;}
+
+.feat-list{display:flex;flex-direction:column;gap:0;}
+.feat-row{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--cream3);border-radius:var(--r);overflow:hidden;margin-bottom:16px;transition:box-shadow .3s;}
+.feat-row:hover{box-shadow:var(--sh);}
+.feat-row.rev{direction:rtl;}
+.feat-row.rev>*{direction:ltr;}
+.feat-text{padding:44px 48px;display:flex;flex-direction:column;justify-content:center;background:var(--cream2);}
+.feat-num{font-family:'Playfair Display',serif;font-size:.75rem;color:var(--gold);font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;}
+.feat-text h3{font-family:'Playfair Display',serif;font-size:1.45rem;line-height:1.2;color:var(--ink);margin-bottom:14px;letter-spacing:-.02em;}
+.feat-text p{font-size:.9rem;color:var(--ink3);line-height:1.7;margin-bottom:18px;}
+.feat-tags{display:flex;gap:7px;flex-wrap:wrap;}
+.ftag{background:var(--goldBg);border:1px solid rgba(184,120,32,.2);border-radius:20px;padding:3px 11px;font-size:.72rem;color:var(--gold);font-weight:500;}
+.feat-visual{padding:32px;background:var(--cream);display:flex;align-items:center;justify-content:center;min-height:260px;}
+
+/* mini UI mockups */
+.mock-recipe{background:var(--ink);border-radius:10px;width:100%;max-width:320px;padding:16px;box-shadow:var(--sh);}
+.mock-recipe::before{content:'';display:block;width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,rgba(184,120,32,.3),rgba(42,110,66,.2));border-radius:7px;margin-bottom:12px;}
+.mock-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.mock-pill{background:rgba(255,255,255,.08);border-radius:20px;padding:3px 10px;font-size:.6rem;color:rgba(255,255,255,.6);}
+.mock-pill.g{background:rgba(184,120,32,.2);color:var(--gold3);}
+.mock-ing{background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden;}
+.mock-ing-row{display:grid;grid-template-columns:1fr 2fr 1fr;padding:6px 9px;font-size:.58rem;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.04);}
+.mock-ing-row:last-child{border-bottom:none;}
+.mock-ing-row:first-child{color:rgba(255,255,255,.3);font-size:.52rem;text-transform:uppercase;}
+
+.mock-roles{display:flex;flex-direction:column;gap:8px;width:100%;max-width:280px;}
+.mock-role{background:var(--cream2);border:1px solid var(--cream3);border-radius:9px;padding:11px 14px;display:flex;align-items:center;gap:10px;}
+.mock-role-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.mock-role-av.sa{background:rgba(184,120,32,.15);color:var(--gold);}
+.mock-role-av.ad{background:rgba(42,110,66,.15);color:var(--green);}
+.mock-role-av.ch{background:rgba(90,110,160,.15);color:#5a6ea0;}
+.mock-role-info .name{font-size:.73rem;font-weight:600;color:var(--ink);}
+.mock-role-info .role{font-size:.64rem;color:var(--ink3);}
+.mock-role-badge{margin-left:auto;font-size:.6rem;padding:2px 8px;border-radius:20px;font-weight:700;}
+.mock-role-badge.sa{background:rgba(184,120,32,.1);color:var(--gold);}
+.mock-role-badge.ad{background:rgba(42,110,66,.1);color:var(--green);}
+.mock-role-badge.ch{background:rgba(90,110,160,.1);color:#5a6ea0;}
+
+.mock-video{background:var(--ink);border-radius:10px;width:100%;max-width:280px;overflow:hidden;box-shadow:var(--sh);}
+.mock-video-thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#1a1a1e,#2a2a30);display:flex;align-items:center;justify-content:center;position:relative;}
+.mock-play{width:44px;height:44px;background:rgba(184,120,32,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;}
+.mock-video-bar{padding:10px 12px;}
+.mock-vb-label{font-size:.62rem;color:rgba(255,255,255,.5);margin-bottom:6px;}
+.mock-vb-track{background:rgba(255,255,255,.1);border-radius:20px;height:4px;margin-bottom:5px;overflow:hidden;}
+.mock-vb-fill{height:100%;background:var(--gold2);border-radius:20px;width:35%;}
+.mock-vb-nums{display:flex;justify-content:space-between;font-size:.58rem;color:rgba(255,255,255,.3);}
+
+/* ── PRICING ── */
+.pricing{padding:90px 5vw;background:var(--cream2);}
+.pricing-inner{max-width:900px;margin:0 auto;}
+.pricing-header{text-align:center;margin-bottom:52px;}
+.pricing-header h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.6rem);letter-spacing:-.02em;color:var(--ink);margin-bottom:10px;}
+.pricing-header p{color:var(--ink3);font-size:.93rem;line-height:1.6;}
+
+.plan-toggle{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px;}
+.toggle-label{font-size:.85rem;color:var(--ink3);}
+.toggle-label.active{color:var(--ink);font-weight:600;}
+.toggle-track{width:44px;height:24px;background:var(--gold);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;}
+.toggle-thumb{position:absolute;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;left:23px;}
+.save-badge{background:rgba(42,110,66,.12);color:var(--green);font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:10px;border:1px solid rgba(42,110,66,.2);}
+
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.plan{background:var(--cream);border:2px solid var(--cream3);border-radius:16px;padding:36px 32px;position:relative;transition:all .3s;}
+.plan:hover{box-shadow:var(--sh);}
+.plan.featured{background:var(--ink);border-color:var(--gold);box-shadow:0 12px 48px rgba(184,120,32,.2);}
+.plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold);color:#fff;font-size:.7rem;font-weight:700;padding:4px 16px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+.plan-name{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:16px;}
+.plan.featured .plan-name{color:rgba(255,255,255,.5);}
+.plan-price{font-family:'Playfair Display',serif;font-size:2.8rem;color:var(--ink);line-height:1;margin-bottom:4px;letter-spacing:-.02em;}
+.plan.featured .plan-price{color:#fff;}
+.plan-price sup{font-size:1.1rem;vertical-align:top;margin-top:8px;font-family:'DM Sans',sans-serif;font-weight:500;}
+.plan-price sub{font-size:.8rem;font-family:'DM Sans',sans-serif;font-weight:400;}
+.plan-period{font-size:.78rem;color:var(--ink3);margin-bottom:28px;}
+.plan.featured .plan-period{color:rgba(255,255,255,.4);}
+.plan-feats{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:32px;}
+.plan-feats li{display:flex;align-items:flex-start;gap:9px;font-size:.86rem;color:var(--ink2);}
+.plan.featured .plan-feats li{color:rgba(255,255,255,.75);}
+.plan-feats li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px;}
+.plan.featured .plan-feats li::before{color:var(--gold3);}
+.plan-cta{display:block;text-align:center;padding:14px;border-radius:9px;font-weight:700;font-size:.9rem;text-decoration:none;transition:all .2s;}
+.plan-cta.light{background:var(--goldBg);color:var(--gold);border:1px solid rgba(184,120,32,.25);}
+.plan-cta.light:hover{background:var(--gold);color:#fff;}
+.plan-cta.dark{background:var(--gold);color:#fff;}
+.plan-cta.dark:hover{background:var(--gold2);transform:translateY(-1px);}
+
+/* ── HOW IT WORKS ── */
+.how{padding:80px 5vw;background:var(--cream);}
+.how-inner{max-width:900px;margin:0 auto;text-align:center;}
+.how h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3vw,2.4rem);letter-spacing:-.02em;margin-bottom:14px;}
+.how h2 em{font-style:italic;color:var(--gold);}
+.how-sub{color:var(--ink3);font-size:.93rem;margin-bottom:56px;line-height:1.6;}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;position:relative;}
+.steps::before{content:'';position:absolute;top:36px;left:16%;right:16%;height:2px;background:linear-gradient(90deg,var(--cream3),rgba(184,120,32,.3),var(--cream3));z-index:0;}
+.step{position:relative;z-index:1;padding:0 20px;}
+.step-num{width:72px;height:72px;border-radius:50%;background:var(--cream2);border:2px solid var(--cream3);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold);position:relative;transition:all .3s;}
+.step:hover .step-num{background:var(--gold);color:#fff;border-color:var(--gold);box-shadow:0 8px 24px rgba(184,120,32,.3);}
+.step h3{font-family:'Playfair Display',serif;font-size:1.05rem;margin-bottom:8px;color:var(--ink);}
+.step p{font-size:.82rem;color:var(--ink3);line-height:1.6;}
+
+/* ── FAQ ── */
+.faq{padding:80px 5vw;background:var(--cream2);}
+.faq-inner{max-width:700px;margin:0 auto;}
+.faq h2{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);letter-spacing:-.02em;margin-bottom:40px;text-align:center;}
+.faq-item{border-bottom:1px solid var(--cream3);padding:20px 0;}
+.faq-q{display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:16px;}
+.faq-q h3{font-size:.95rem;font-weight:600;color:var(--ink);line-height:1.4;}
+.faq-ico{width:24px;height:24px;border-radius:50%;background:var(--goldBg);border:1px solid rgba(184,120,32,.2);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:.8rem;flex-shrink:0;transition:transform .3s;}
+.faq-item.open .faq-ico{transform:rotate(45deg);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .3s;}
+.faq-item.open .faq-a{max-height:200px;padding-top:12px;}
+.faq-a p{font-size:.87rem;color:var(--ink3);line-height:1.7;}
+
+/* ── CTA FINAL ── */
+.cta-final{padding:90px 5vw;background:var(--cream);text-align:center;}
+.cta-box{max-width:620px;margin:0 auto;background:var(--ink);border-radius:20px;padding:60px 48px;position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(15,13,10,.18);}
+.cta-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold3),var(--gold));}
+.cta-box::after{content:'✦';position:absolute;bottom:-20px;right:20px;font-size:8rem;color:rgba(184,120,32,.05);line-height:1;}
+.cta-box h2{font-family:'Playfair Display',serif;font-size:clamp(1.6rem,3vw,2.2rem);color:#fff;margin-bottom:14px;letter-spacing:-.02em;}
+.cta-box h2 em{font-style:italic;color:var(--gold3);}
+.cta-box p{color:rgba(255,255,255,.5);font-size:.92rem;line-height:1.7;margin-bottom:32px;}
+.cta-btn-large{display:inline-block;background:var(--gold);color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:1rem;padding:16px 40px;border-radius:10px;text-decoration:none;transition:all .2s;letter-spacing:.02em;}
+.cta-btn-large:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(184,120,32,.4);}
+.cta-note{margin-top:14px;font-size:.76rem;color:rgba(255,255,255,.3);}
+
+/* ── FOOTER ── */
+footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;border-top:1px solid rgba(255,255,255,.06);}
+.foot-logo{font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);}
+.foot-note{font-size:.78rem;color:rgba(255,255,255,.3);}
+.foot-links{display:flex;gap:20px;}
+.foot-links a{font-size:.78rem;color:rgba(255,255,255,.35);text-decoration:none;transition:color .2s;}
+.foot-links a:hover{color:var(--gold);}
+
+/* ── ANIMATIONS ── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+.reveal-delay-1{transition-delay:.1s;}
+.reveal-delay-2{transition-delay:.2s;}
+.reveal-delay-3{transition-delay:.3s;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .hero-visual{display:none;}
+  .hero-content{max-width:100%;}
+  .feat-row{grid-template-columns:1fr;}
+  .feat-row.rev{direction:ltr;}
+  .plans{grid-template-columns:1fr;}
+  .steps{grid-template-columns:1fr;gap:32px;}
+  .steps::before{display:none;}
+  .pain-card:first-child,.pain-card:last-child{border-radius:0;}
+  .cta-box{padding:40px 28px;}
+}
+@media(max-width:600px){
+  .feat-text{padding:28px 24px;}
+  .hero{padding:90px 5vw 40px;}
+  footer{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Recetario<span>Pro</span></div>
+  <a href="https://recetariopro-app.vercel.app" class="nav-cta">Ingresar →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content reveal">
+    <div class="hero-tag">Nuevo en Colombia</div>
+    <h1>
+      Tus recetas,<br>
+      <em>organizadas y</em>
+      <span class="line2">protegidas.</span>
+    </h1>
+    <p class="hero-sub">
+      El recetario digital para restaurantes medianos. Tus chefs acceden a las recetas exactas desde cualquier celular — <strong>sin Excel, sin cuadernos, sin desorden.</strong>
+    </p>
+    <div class="hero-actions">
+      <a href="https://recetariopro-app.vercel.app" class="btn-pri">Ingresar →</a>
+      <a href="#pricing" class="btn-sec">Ver precios →</a>
+    </div>
+  </div>
+
+  <!-- App Preview -->
+  <div class="hero-visual reveal reveal-delay-2">
+    <div class="app-preview">
+      <div class="ap-bar">
+        <div class="ap-dots"><div class="ap-dot"></div><div class="ap-dot"></div><div class="ap-dot"></div></div>
+        <div class="ap-title">RecetarioPro — El Fogón</div>
+      </div>
+      <div class="ap-layout">
+        <div class="ap-sb">
+          <div class="ap-sbitem act"><span>🥗</span> Entradas</div>
+          <div class="ap-sbitem"><span>🍲</span> Sopas</div>
+          <div class="ap-sbitem"><span>🍖</span> Principales</div>
+          <div class="ap-sbitem"><span>🍝</span> Pastas</div>
+          <div class="ap-sbitem"><span>🍮</span> Postres</div>
+          <div class="ap-sbitem"><span>🍹</span> Bebidas</div>
+        </div>
+        <div class="ap-main">
+          <div class="ap-pill">Entradas — 4 recetas</div>
+          <div class="ap-grid">
+            <div class="ap-card"><div class="em">🍤</div><div class="nm">Ceviche de Camarón</div><div class="cd">ENT-001</div></div>
+            <div class="ap-card"><div class="em">🧀</div><div class="nm">Tabla de Quesos</div><div class="cd">ENT-002</div></div>
+            <div class="ap-card"><div class="em">🥑</div><div class="nm">Guacamole Artesanal</div><div class="cd">ENT-003</div></div>
+            <div class="ap-card"><div class="em">🍢</div><div class="nm">Anticuchos</div><div class="cd">ENT-004</div></div>
+            <div class="ap-card" style="opacity:.3"><div class="em">＋</div><div class="nm">Nueva receta</div></div>
+            <div class="ap-card" style="opacity:.15"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAIN -->
+<section class="pain">
+  <div class="pain-inner">
+    <div class="section-eyebrow reveal">El problema que todos ignoramos</div>
+    <h2 class="reveal reveal-delay-1">¿Cuánto dinero pierdes por <em>inconsistencia</em> en la cocina?</h2>
+    <p class="pain-sub reveal reveal-delay-2">Cada vez que un chef nuevo llega, cada vez que alguien improvisa un ingrediente, cada vez que una receta se pierde — tu restaurante pierde dinero y reputación.</p>
+    <div class="pain-grid">
+      <div class="pain-card reveal">
+        <span class="pain-ico">📒</span>
+        <h3>Recetas en cuadernos y WhatsApp</h3>
+        <p>El chef estrella se va y se lleva todo el conocimiento. Tu restaurante queda expuesto a la improvisación.</p>
+      </div>
+      <div class="pain-card reveal reveal-delay-1">
+        <span class="pain-ico">📉</span>
+        <h3>Costos que no cuadran</h3>
+        <p>Sin saber el costo real de cada plato, no sabes qué te deja ganancia y qué te está hundiendo mes a mes.</p>
+      </div>
+      <div class="pain-card reveal reveal-delay-2">
+        <span class="pain-ico">🤯</span>
+        <h3>Entrenar a nuevos chefs toma semanas</h3>
+        <p>Sin un sistema claro, el conocimiento vive en la cabeza de una sola persona. Eso es un riesgo enorme.</p>
+      </div>
+      <div class="pain-card reveal reveal-delay-3">
+        <span class="pain-ico">😤</span>
+        <h3>El mismo plato sabe diferente cada vez</h3>
+        <p>Tus clientes notan cuando algo cambia. La inconsistencia erosiona la confianza y las reseñas en Google.</p>
+      </div>
+    </div>
+    <div class="pain-vs reveal">
+      <div class="vs-item"><div class="vs-num">68%</div><div class="vs-label">de restaurantes en Col.<br>no tienen recetario digital</div></div>
+      <div class="vs-sep">—</div>
+      <div class="vs-item"><div class="vs-num">3x</div><div class="vs-label">más lenta la capacitación<br>sin recetas estandarizadas</div></div>
+      <div class="vs-sep">—</div>
+      <div class="vs-item"><div class="vs-num">30%</div><div class="vs-label">del desperdicio se reduce<br>con recetas exactas</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="feat-header reveal">
+      <div class="section-eyebrow" style="color:var(--gold)">Lo que incluye</div>
+      <h2>Todo lo que necesitas,<br><em>nada de lo que no.</em></h2>
+      <p>Diseñado específicamente para restaurantes medianos colombianos. Sin curva de aprendizaje enorme, sin contratos largos.</p>
+    </div>
+
+    <!-- F1 -->
+    <div class="feat-row reveal">
+      <div class="feat-text">
+        <div class="feat-num">01 — Recetario digital</div>
+        <h3>Todas tus recetas en un solo lugar, siempre actualizadas</h3>
+        <p>Ingredientes exactos, cantidades, preparación paso a paso y foto del plato. Tu equipo accede desde cualquier celular o computador, en tiempo real.</p>
+        <div class="feat-tags">
+          <span class="ftag">Fotos</span>
+          <span class="ftag">Costo vs. precio venta</span>
+          <span class="ftag">Importar desde Excel</span>
+          <span class="ftag">Drag & drop</span>
+        </div>
+      </div>
+      <div class="feat-visual">
+        <div class="mock-recipe">
+          <div class="mock-meta">
+            <div class="mock-pill">ENT-001</div>
+            <div class="mock-pill">4 porciones</div>
+            <div class="mock-pill">Costo: $28.500</div>
+            <div class="mock-pill g">Venta: $52.000</div>
+          </div>
+          <div class="mock-ing">
+            <div class="mock-ing-row"><span>Cód.</span><span>Ítem</span><span>Cant.</span></div>
+            <div class="mock-ing-row"><span>001</span><span>Camarón tigre</span><span>500 gr</span></div>
+            <div class="mock-ing-row"><span>002</span><span>Limón Tahití</span><span>150 ml</span></div>
+            <div class="mock-ing-row"><span>003</span><span>Cebolla morada</span><span>100 gr</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F2 -->
+    <div class="feat-row rev reveal">
+      <div class="feat-text">
+        <div class="feat-num">02 — Roles de usuario</div>
+        <h3>Cada persona ve lo que le corresponde, nada más</h3>
+        <p>El super administrador controla todo. El administrador gestiona recetas y categorías. El chef solo consulta y deja notas — nunca puede modificar ni eliminar nada.</p>
+        <div class="feat-tags">
+          <span class="ftag">Super Admin</span>
+          <span class="ftag">Administrador</span>
+          <span class="ftag">Chef (solo lectura)</span>
+        </div>
+      </div>
+      <div class="feat-visual">
+        <div class="mock-roles">
+          <div class="mock-role">
+            <div class="mock-role-av sa">CR</div>
+            <div class="mock-role-info"><div class="name">Carlos Restrepo</div><div class="role">Acceso total</div></div>
+            <div class="mock-role-badge sa">Super Admin</div>
+          </div>
+          <div class="mock-role">
+            <div class="mock-role-av ad">AG</div>
+            <div class="mock-role-info"><div class="name">Alejandra Gómez</div><div class="role">Gestiona recetas</div></div>
+            <div class="mock-role-badge ad">Administrador</div>
+          </div>
+          <div class="mock-role">
+            <div class="mock-role-av ch">MT</div>
+            <div class="mock-role-info"><div class="name">Chef Miguel Torres</div><div class="role">Consulta + notas</div></div>
+            <div class="mock-role-badge ch">Chef</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F3 -->
+    <div class="feat-row reveal">
+      <div class="feat-text">
+        <div class="feat-num">03 — Videos de preparación</div>
+        <h3>Muéstrale al chef exactamente cómo se hace el plato</h3>
+        <p>Sube videos directamente a cada receta. Tu equipo los ve desde la cocina. Control de reproducciones incluido para que manejes el consumo según tu plan.</p>
+        <div class="feat-tags">
+          <span class="ftag">Control de vistas/mes</span>
+          <span class="ftag">Se reproduce en la app</span>
+        </div>
+      </div>
+      <div class="feat-visual">
+        <div class="mock-video">
+          <div class="mock-video-thumb">
+            <div class="mock-play">▶</div>
+          </div>
+          <div class="mock-video-bar">
+            <div class="mock-vb-label" style="color:rgba(255,255,255,.5);font-size:.62rem">Reproducciones este mes</div>
+            <div class="mock-vb-track"><div class="mock-vb-fill"></div></div>
+            <div class="mock-vb-nums"><span>18 / 50 usadas</span><span>32 restantes</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="demo">
+  <div class="how-inner">
+    <div class="section-eyebrow reveal" style="color:var(--gold)">¿Cómo funciona?</div>
+    <h2 class="reveal reveal-delay-1">En menos de <em>una hora</em><br>tu restaurante está listo</h2>
+    <p class="how-sub reveal reveal-delay-2">Sin instalaciones, sin configuraciones complicadas. Abre el navegador y listo.</p>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <h3>Te registras</h3>
+        <p>Creas tu cuenta, agregas el nombre de tu restaurante y configuras los usuarios en 5 minutos.</p>
+      </div>
+      <div class="step reveal reveal-delay-1">
+        <div class="step-num">2</div>
+        <h3>Subes tus recetas</h3>
+        <p>Puedes crearlas una a una o importarlas masivamente desde un archivo Excel con nuestra plantilla.</p>
+      </div>
+      <div class="step reveal reveal-delay-2">
+        <div class="step-num">3</div>
+        <h3>Tu equipo empieza a usarlo</h3>
+        <p>Compartes el enlace. Chefs y administradores acceden desde el celular o computador. Sin apps que instalar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="pricing-inner">
+    <div class="pricing-header reveal">
+      <div class="section-eyebrow" style="color:var(--gold);text-align:center">Precios</div>
+      <h2>Simple. Sin sorpresas.<br>En pesos colombianos.</h2>
+      <p>Sin contratos de permanencia. Cancela cuando quieras. Precios pensados para el restaurante colombiano real.</p>
+    </div>
+
+    <div class="plan-toggle reveal">
+      <span class="toggle-label">Mensual</span>
+      <div class="toggle-track" onclick="toggleBilling(this)"><div class="toggle-thumb"></div></div>
+      <span class="toggle-label active">Anual</span>
+      <span class="save-badge">Ahorra 20%</span>
+    </div>
+
+    <div class="plans reveal reveal-delay-1">
+      <div class="plan">
+        <div class="plan-name">Plan Mensual</div>
+        <div class="plan-price" id="price-m"><sup>$</sup>49.900<sub>/mes</sub></div>
+        <div class="plan-period" id="period-m">Facturado mes a mes · COP</div>
+        <ul class="plan-feats">
+          <li>Hasta 3 usuarios</li>
+          <li>Hasta 30 recetas</li>
+          <li>Fotos</li>
+          <li>Importación por Excel</li>
+          <li>Roles de usuario</li>
+          <li>Soporte por WhatsApp</li>
+        </ul>
+        <a href="https://recetariopro-app.vercel.app" class="plan-cta light">Ingresar</a>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">⭐ Más popular</div>
+        <div class="plan-name">Plan Anual</div>
+        <div class="plan-price" id="price-a"><sup>$</sup>39.900<sub>/mes</sub></div>
+        <div class="plan-period" id="period-a">Facturado anual · $478.800 COP/año</div>
+        <ul class="plan-feats">
+          <li>Hasta 10 usuarios</li>
+          <li>Hasta 200 recetas</li>
+          <li>Fotos</li>
+          <li>Importación por Excel</li>
+          <li>Roles de usuario</li>
+          <li>Soporte prioritario WhatsApp</li>
+          <li>Capacitación inicial incluida</li>
+        </ul>
+        <a href="https://recetariopro-app.vercel.app" class="plan-cta dark">Ingresar</a>
+      </div>
+    </div>
+
+    <p class="reveal" style="text-align:center;margin-top:20px;font-size:.8rem;color:var(--ink3)">
+      ✓ Cancela cuando quieras &nbsp;·&nbsp; ✓ Soporte en español
+    </p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="faq-inner">
+    <h2 class="reveal">Preguntas frecuentes</h2>
+
+    <div class="faq-item reveal" onclick="toggleFaq(this)">
+      <div class="faq-q"><h3>¿Necesito instalar algo?</h3><div class="faq-ico">+</div></div>
+      <div class="faq-a"><p>No. RecetarioPro funciona completamente desde el navegador, en cualquier dispositivo. Tus chefs lo abren desde el celular sin descargar ninguna app.</p></div>
+    </div>
+    <div class="faq-item reveal reveal-delay-1" onclick="toggleFaq(this)">
+      <div class="faq-q"><h3>¿Puedo importar recetas que ya tengo en Excel?</h3><div class="faq-ico">+</div></div>
+      <div class="faq-a"><p>Sí. Descarga nuestra plantilla, llénala con tus recetas e importa el archivo. En minutos tienes todo cargado sin escribir nada de nuevo.</p></div>
+    </div>
+    <div class="faq-item reveal reveal-delay-2" onclick="toggleFaq(this)">
+      <div class="faq-q"><h3>¿Los chefs pueden modificar las recetas?</h3><div class="faq-ico">+</div></div>
+      <div class="faq-a"><p>No. El rol de Chef es solo lectura. Pueden consultar recetas y dejar notas o sugerencias, pero nunca modificar ni eliminar. Solo el Administrador y el Super Admin pueden editar.</p></div>
+    </div>
+    <div class="faq-item reveal reveal-delay-3" onclick="toggleFaq(this)">
+      <div class="faq-q"><h3>¿Qué pasa con mis datos si cancelo?</h3><div class="faq-ico">+</div></div>
+      <div class="faq-a"><p>Puedes exportar todas tus recetas en cualquier momento. Tus datos son tuyos. Si cancelas, recibes un archivo con todo tu recetario antes de que se elimine la cuenta.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <div class="cta-box reveal">
+    <h2>¿Listo para proteger<br><em>el alma de tu cocina?</em></h2>
+    <p>En menos de una hora tienes tu recetario funcionando.<br>Tu equipo accede desde cualquier celular, sin instalar nada.</p>
+    <a href="https://recetariopro-app.vercel.app" class="cta-btn-large">Ingresar a RecetarioPro →</a>
+    <p class="cta-note">Medellín, Colombia · Soporte en español</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo">RecetarioPro</div>
+  <div class="foot-links">
+    <a href="#features">Funciones</a>
+    <a href="#pricing">Precios</a>
+    <a href="mailto:hola@recetariopro.co">Contacto</a>
+  </div>
+  <div class="foot-note">© 2025 RecetarioPro · Medellín, Colombia</div>
+</footer>
+
+<script>
+// ── Scroll reveal ──
+const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+
+// ── FAQ ──
+function toggleFaq(item){
+  const wasOpen=item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i=>i.classList.remove('open'));
+  if(!wasOpen)item.classList.add('open');
+}
+
+// ── Billing toggle ──
+let isAnnual=true;
+function toggleBilling(track){
+  isAnnual=!isAnnual;
+  const thumb=track.querySelector('.toggle-thumb');
+  thumb.style.left=isAnnual?'23px':'3px';
+  track.style.background=isAnnual?'var(--gold)':'var(--cream3)';
+  document.querySelectorAll('.toggle-label').forEach((l,i)=>{
+    l.classList.toggle('active',(isAnnual&&i===1)||(!isAnnual&&i===0));
+  });
+  if(isAnnual){
+    document.getElementById('price-m').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
+    document.getElementById('price-a').innerHTML='<sup>$</sup>39.900<sub>/mes</sub>';
+    document.getElementById('period-a').textContent='Facturado anual · $478.800 COP/año';
+  } else {
+    document.getElementById('price-m').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
+    document.getElementById('price-a').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
+    document.getElementById('period-a').textContent='Facturado mes a mes · COP';
+  }
+}
+
+// ── Smooth nav ──
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
+</script>
+</body>
+</html>
