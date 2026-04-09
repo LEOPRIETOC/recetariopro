@@ -71,9 +71,9 @@ export function POSLayout() {
   const isDark = theme === 'night'
 
   const [localCategories, setLocalCategories] = useState([])
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const handleLogout = async () => {
+    if (!window.confirm('¿Cerrar sesión?')) return
     try {
       await logoutUser()
       setUser(null)
@@ -176,14 +176,16 @@ export function POSLayout() {
           </button>
           {/* Logout */}
           <button
-            onClick={() => setShowLogoutModal(true)}
+            onClick={handleLogout}
             className={cn(
-              'h-8 w-8 rounded-lg flex items-center justify-center transition-colors',
-              isDark ? 'text-gray-500 hover:bg-gray-800 hover:text-red-400' : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'
+              'flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
+              isDark
+                ? 'border-gray-700 text-gray-400 hover:border-red-500 hover:text-red-400'
+                : 'border-gray-300 text-gray-500 hover:border-red-400 hover:text-red-500'
             )}
-            title="Cerrar sesión"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
+            Salir
           </button>
         </div>
       </header>
@@ -242,47 +244,6 @@ export function POSLayout() {
       <Toaster />
       <ConfigModal />
 
-      {/* ── Logout confirmation modal ── */}
-      {showLogoutModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: isDark ? '#1f2937' : '#ffffff',
-            borderRadius: 14, padding: '28px 32px',
-            width: 'min(360px, 90vw)',
-            display: 'flex', flexDirection: 'column', gap: 16,
-            boxShadow: '0 20px 48px rgba(0,0,0,0.3)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <LogOut style={{ width: 16, height: 16, color: '#ef4444' }} />
-              </div>
-              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.1rem', fontWeight: 700, margin: 0, color: isDark ? '#f9fafb' : '#111827' }}>
-                ¿Cerrar sesión?
-              </h3>
-            </div>
-            <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '.88rem', margin: 0 }}>
-              Se cerrará tu sesión en este dispositivo.
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, background: 'transparent', color: isDark ? '#d1d5db' : '#374151', fontSize: '.85rem', cursor: 'pointer', fontWeight: 500 }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleLogout}
-                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontSize: '.85rem', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -960,10 +960,10 @@ export default function RecipeDetailPage() {
       const restaurantId = currentRestaurant?.id
       if (!restaurantId) { error('No hay restaurante seleccionado'); return }
 
-      console.log('restaurantId:', restaurantId)
-      console.log('recipeId:', id)
-      console.log('payload keys:', Object.keys(payload))
-      console.log('payload:', JSON.stringify(payload, null, 2))
+      console.log('[SAVE] restaurantId:', restaurantId, '| recipeId:', id)
+      console.log('[SAVE] data.photoURL:', data.photoURL)
+      console.log('[SAVE] photoURL state:', photoURL)
+      console.log('[SAVE] payload.photoURL:', payload.photoURL)
 
       const safePayload = JSON.parse(JSON.stringify(payload, (key, value) => {
         if (value === undefined) return null
