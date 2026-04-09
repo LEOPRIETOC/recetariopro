@@ -49,7 +49,7 @@ export function AuthLayout({ children }) {
         </div>
 
         <p className={`text-center text-xs mt-6 ${theme === 'night' ? 'text-gray-600' : 'text-gray-400'}`}>
-          © 2024 RecetarioPro. Todos los derechos reservados.
+          © 2026 RecetarioPro. Todos los derechos reservados.
         </p>
       </div>
     </div>

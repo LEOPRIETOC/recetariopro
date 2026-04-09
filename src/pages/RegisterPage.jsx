@@ -15,7 +15,6 @@ import { useToast } from '../components/ui/toast'
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
-  restaurantName: z.string().min(2, 'Mínimo 2 caracteres'),
   email: z.string().email(),
   password: z.string().min(6),
   confirmPassword: z.string().min(6),
@@ -57,32 +56,20 @@ export default function RegisterPage() {
             {t('auth.register')}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Crea tu cuenta y comienza gratis
+            Crea tu cuenta para acceder
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('auth.name')}</Label>
-              <Input
-                id="name"
-                placeholder="Juan García"
-                {...register('name')}
-                className={errors.name ? 'border-red-400' : ''}
-              />
-              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="restaurantName">{t('auth.restaurantName')}</Label>
-              <Input
-                id="restaurantName"
-                placeholder="La Buena Mesa"
-                {...register('restaurantName')}
-                className={errors.restaurantName ? 'border-red-400' : ''}
-              />
-              {errors.restaurantName && <p className="text-xs text-red-500">{errors.restaurantName.message}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">{t('auth.name')}</Label>
+            <Input
+              id="name"
+              placeholder="Juan García"
+              {...register('name')}
+              className={errors.name ? 'border-red-400' : ''}
+            />
+            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">

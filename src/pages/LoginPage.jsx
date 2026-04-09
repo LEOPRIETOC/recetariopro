@@ -24,6 +24,7 @@ export default function LoginPage() {
   const { success, error } = useToast()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -31,13 +32,14 @@ export default function LoginPage() {
 
   const onSubmit = async (data) => {
     setLoading(true)
+    setAuthError('')
     try {
       await loginUser(data)
       success(t('auth.loginSuccess'))
       navigate('/')
     } catch (err) {
       const msgKey = mapFirebaseError(err.code)
-      error(t('common.error'), t(msgKey))
+      setAuthError(t(msgKey))
     } finally {
       setLoading(false)
     }
@@ -100,6 +102,12 @@ export default function LoginPage() {
               <p className="text-xs text-red-500">{t('auth.errors.weakPassword')}</p>
             )}
           </div>
+
+          {authError && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '10px 14px', color: '#dc2626', fontSize: '0.84rem' }}>
+              {authError}
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (

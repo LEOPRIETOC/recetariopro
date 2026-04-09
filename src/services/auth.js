@@ -84,6 +84,8 @@ export function mapFirebaseError(code) {
     'auth/wrong-password': 'auth.errors.wrongPassword',
     'auth/invalid-credential': 'auth.errors.wrongPassword',
     'auth/too-many-requests': 'auth.errors.tooManyRequests',
+    'auth/user-disabled': 'auth.errors.generic',
+    'auth/network-request-failed': 'auth.errors.networkError',
   }
   return map[code] || 'auth.errors.generic'
 }
