@@ -649,6 +649,8 @@ const schema = z.object({
   notes: z.string().optional(),
   isSubRecipe: z.boolean().default(false),
   pin: z.string().max(4).optional(),
+  photoURL: z.string().optional(),
+  videoURL: z.string().optional(),
   yieldAmount: z.coerce.number().min(0).optional(),
   yieldUnit: z.string().optional(),
   ingredients: z.array(z.object({
@@ -789,6 +791,8 @@ export default function RecipeDetailPage() {
         isSubRecipe: r.isSubRecipe || false, pin: r.pin || '',
         yieldAmount: r.yieldAmount || 0, yieldUnit: r.yieldUnit || '',
         ingredients: r.ingredients || [],
+        photoURL: r.photoURL || '',
+        videoURL: r.videoURL || '',
       })
     })
   }, [id, currentRestaurant?.id, isNew])
@@ -877,6 +881,7 @@ export default function RecipeDetailPage() {
       if (isMountedRef.current) {
         setPhotoURL(url)
         setPhotoPreview(url)
+        setValue('photoURL', url)
       }
     } catch (err) {
       console.error('Error subiendo foto:', err)
@@ -938,8 +943,8 @@ export default function RecipeDetailPage() {
         notes: data.notes || null,
         preparation: data.preparation || null,
         pin: data.pin || null,
-        photoURL: photoURL || null,
-        videoURL: videoURL || null,
+        photoURL: data.photoURL || photoURL || null,
+        videoURL: data.videoURL || videoURL || null,
         yieldAmount: data.yieldAmount || null,
         yieldUnit: data.yieldUnit || null,
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
@@ -1041,8 +1046,8 @@ export default function RecipeDetailPage() {
             <Printer className="h-4 w-4" /> Imprimir
           </Button>
         )}
-        <Button onClick={handleSubmit(onSubmit)} disabled={saving || hasErrors}>
-          <Save className="h-4 w-4" /> {saving ? 'Guardando...' : 'Guardar'}
+        <Button onClick={handleSubmit(onSubmit)} disabled={saving || hasErrors || photoUploading}>
+          <Save className="h-4 w-4" /> {saving ? 'Guardando...' : photoUploading ? 'Subiendo foto...' : 'Guardar'}
         </Button>
       </div>
 
