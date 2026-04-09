@@ -1,4 +1,4 @@
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../lib/firebase'
 
 export async function uploadRecipeFile(restaurantId, recipeId, file, type, onProgress) {
@@ -7,36 +7,37 @@ export async function uploadRecipeFile(restaurantId, recipeId, file, type, onPro
   const fileName = `${Date.now()}.${ext}`
   const path = `restaurants/${restaurantId}/recipes/${recipeId}/${folder}/${fileName}`
 
-  const storageRef = ref(storage, path)
+  console.log('Iniciando upload:', path)
+  console.log('Bucket:', storage.app.options.storageBucket)
+  console.log('File size:', file.size)
 
-  const metadata = {
-    contentType: file.type || 'image/webp',
-    cacheControl: 'public, max-age=31536000',
+  try {
+    const storageRef = ref(storage, path)
+
+    const metadata = {
+      contentType: file.type || 'image/webp',
+      cacheControl: 'public, max-age=31536000',
+    }
+
+    if (onProgress) onProgress(10)
+
+    const snapshot = await uploadBytes(storageRef, file, metadata)
+
+    if (onProgress) onProgress(90)
+
+    const url = await getDownloadURL(snapshot.ref)
+
+    if (onProgress) onProgress(100)
+
+    console.log('Upload exitoso:', url)
+    return url
+
+  } catch (err) {
+    console.error('Error detallado:', {
+      code: err.code,
+      message: err.message,
+      serverResponse: err.serverResponse,
+    })
+    throw err
   }
-
-  const task = uploadBytesResumable(storageRef, file, metadata)
-
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      task.cancel()
-      reject(new Error('Timeout al subir archivo'))
-    }, 120000)
-
-    task.on(
-      'state_changed',
-      (snap) => {
-        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
-        if (onProgress) onProgress(pct)
-      },
-      (err) => {
-        clearTimeout(timeout)
-        reject(err)
-      },
-      async () => {
-        clearTimeout(timeout)
-        const url = await getDownloadURL(task.snapshot.ref)
-        resolve(url)
-      }
-    )
-  })
 }
