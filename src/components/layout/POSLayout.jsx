@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Settings, ChefHat, GripVertical } from 'lucide-react'
+import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
+import { logoutUser } from '../../services/auth'
 import {
   DndContext, PointerSensor, useSensor, useSensors, closestCenter,
 } from '@dnd-kit/core'
@@ -60,14 +61,30 @@ function SortableCategoryButton({ cat, isActive, isDark, onClick }) {
 
 export function POSLayout() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const {
     theme, globalSearch, setGlobalSearch,
     selectedCategory, setSelectedCategory,
     currentRestaurant, openConfig, accentColor,
+    setUser, setUserProfile, setCurrentRestaurant,
   } = useAppStore()
   const isDark = theme === 'night'
 
   const [localCategories, setLocalCategories] = useState([])
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser()
+      setUser(null)
+      setUserProfile(null)
+      setCurrentRestaurant(null)
+      localStorage.removeItem('app-storage')
+      navigate('/login')
+    } catch (err) {
+      console.error('Error al cerrar sesión:', err)
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -157,6 +174,17 @@ export function POSLayout() {
           >
             <Settings className="h-5 w-5" />
           </button>
+          {/* Logout */}
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className={cn(
+              'h-8 w-8 rounded-lg flex items-center justify-center transition-colors',
+              isDark ? 'text-gray-500 hover:bg-gray-800 hover:text-red-400' : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'
+            )}
+            title="Cerrar sesión"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
@@ -213,6 +241,48 @@ export function POSLayout() {
 
       <Toaster />
       <ConfigModal />
+
+      {/* ── Logout confirmation modal ── */}
+      {showLogoutModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: isDark ? '#1f2937' : '#ffffff',
+            borderRadius: 14, padding: '28px 32px',
+            width: 'min(360px, 90vw)',
+            display: 'flex', flexDirection: 'column', gap: 16,
+            boxShadow: '0 20px 48px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <LogOut style={{ width: 16, height: 16, color: '#ef4444' }} />
+              </div>
+              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.1rem', fontWeight: 700, margin: 0, color: isDark ? '#f9fafb' : '#111827' }}>
+                ¿Cerrar sesión?
+              </h3>
+            </div>
+            <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '.88rem', margin: 0 }}>
+              Se cerrará tu sesión en este dispositivo.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, background: 'transparent', color: isDark ? '#d1d5db' : '#374151', fontSize: '.85rem', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontSize: '.85rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
