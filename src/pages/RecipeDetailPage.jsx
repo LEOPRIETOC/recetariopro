@@ -642,6 +642,7 @@ const schema = z.object({
   item: z.string().optional(),
   reference: z.string().optional(),
   categoryId: z.string().optional(),
+  menuCode: z.string().optional(),
   recipeType: z.enum(['recipe', 'subrecipe']).default('recipe'),
   manualCost: z.coerce.number().min(0).optional(),
   useManualCost: z.boolean().default(false),
@@ -714,7 +715,7 @@ export default function RecipeDetailPage() {
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: '', code: '', categoryId: '', item: '', reference: '',
+      name: '', code: '', categoryId: '', menuCode: '', item: '', reference: '',
       isSubRecipe: typeFromUrl === 'subrecipe',
       useManualCost: false, manualCost: 0, recipeType: typeFromUrl, ingredients: [],
       preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '',
@@ -784,6 +785,7 @@ export default function RecipeDetailPage() {
       setTipRate(r.costSettings?.tipRate ?? 10)
       reset({
         name: r.name, code: r.code, categoryId: r.categoryId || '',
+        menuCode: r.menuCode || '',
         item: r.item || '', reference: r.reference || '',
         recipeType: r.recipeType || 'recipe',
         manualCost: r.manualCost || 0, useManualCost: r.useManualCost || false,
@@ -940,6 +942,7 @@ export default function RecipeDetailPage() {
         ingredients: cleanIngredients,
         name: (data.name || '').toUpperCase(),
         categoryId: isSubRecipe ? null : (data.categoryId || null),
+        menuCode: data.menuCode || null,
         notes: data.notes || null,
         preparation: data.preparation || null,
         pin: data.pin || null,
@@ -1153,11 +1156,26 @@ export default function RecipeDetailPage() {
                     <CategoryCombobox
                       categories={categories}
                       value={watch('categoryId') || ''}
-                      onChange={(v) => setValue('categoryId', v, { shouldValidate: true })}
+                      onChange={(v) => {
+                        setValue('categoryId', v, { shouldValidate: true })
+                        const cat = categories.find((c) => c.id === v)
+                        if (cat?.code) setValue('menuCode', cat.code)
+                      }}
                       restaurantId={currentRestaurant?.id}
                       isDark={isDark}
                     />
                     {errors.categoryId && <p className="text-xs text-red-500">{errors.categoryId.message || 'Selecciona un menú'}</p>}
+                  </div>
+                )}
+
+                {/* menuCode — shown for all recipes */}
+                {!isSubRecipe && (
+                  <div className="space-y-1.5">
+                    <Label>Código Menú</Label>
+                    <Input
+                      {...register('menuCode')}
+                      placeholder="Ej: BAR01, ONI01, COMP01"
+                    />
                   </div>
                 )}
 

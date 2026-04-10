@@ -286,19 +286,22 @@ function IngredientsTab({ restaurantId, isDark }) {
 
   const handleExport = () => {
     const ws = XLSX.utils.json_to_sheet(ingredients.map((i) => ({
-      codigo: i.code,
-      item: i.item,
-      referencia: i.reference,
-      nombre: i.name || i.description,
-      unidad: i.unit,
-      cantidad_presentacion: i.quantityPerPresentation,
-      valor: i.value,
-      precio_unidad: i.pricePerUnit,
-      categoria: i.category,
-      proveedor: i.supplier,
+      CODIGO: i.code || '',
+      ITEM: i.item || '',
+      REFERENCIA: i.reference || '',
+      NOMBRE: i.name || i.description || '',
+      UNIDAD: i.unit || '',
+      UNIDAD_COMPRA: i.purchaseUnit || '',
+      CANT_PRESENTACION: i.quantityPerPresentation || '',
+      VALOR: i.value || '',
+      PRECIO_POR_UNIDAD: i.pricePerUnit || '',
+      CATEGORIA: i.category || '',
+      CODIGO_PROVEEDOR: i.supplierCode || '',
+      PROVEEDOR: i.supplier || '',
     })))
+    ws['!cols'] = Array(12).fill({ wch: 18 })
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Materias')
-    XLSX.writeFile(wb, 'materias_primas.xlsx')
+    XLSX.writeFile(wb, 'materias_primas_recetariopro.xlsx')
   }
 
   const filtered = sorted.filter((i) => {
@@ -659,12 +662,25 @@ function UnitsTab({ restaurantId, isDark }) {
 
   const openEdit = (u) => { setEditing(u); reset({ name: u.name, abbreviation: u.abbreviation, type: u.type }); setShowForm(true) }
 
+  const handleExport = () => {
+    const ws = XLSX.utils.json_to_sheet(units.map((u) => ({
+      CODIGO: u.code || '',
+      MEDIDA: u.abbreviation || '',
+      DESCRIPCION: u.name || '',
+      EQUIVALENCIA: u.equivalence || 1,
+    })))
+    ws['!cols'] = Array(4).fill({ wch: 18 })
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Unidades')
+    XLSX.writeFile(wb, 'unidades_recetariopro.xlsx')
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>{units.length} unidades registradas</p>
         <div className="flex gap-2">
           {units.length === 0 && <Button variant="outline" size="sm" onClick={seedDefaults}>Cargar predeterminadas</Button>}
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>
           <Button size="sm" onClick={() => { setEditing(null); reset({ name: '', abbreviation: '', type: 'Peso' }); setShowForm(true) }}><Plus className="h-4 w-4" /> Nueva</Button>
         </div>
       </div>
@@ -938,6 +954,17 @@ function CategoriesTab({ restaurantId, isDark }) {
 
   const setView = (v) => { localStorage.setItem('cfg_cat_view', v); setViewMode(v) }
 
+  const handleExportCats = () => {
+    const ws = XLSX.utils.json_to_sheet(categories.map((c) => ({
+      CODIGO_MENU: c.code || '',
+      NOMBRE_MENU: c.name || '',
+      ORDEN: c.order ?? '',
+    })))
+    ws['!cols'] = Array(3).fill({ wch: 20 })
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Menús')
+    XLSX.writeFile(wb, 'menus_recetariopro.xlsx')
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -949,7 +976,10 @@ function CategoriesTab({ restaurantId, isDark }) {
             <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
         </div>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo menú</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCats}><Download className="h-4 w-4" /> Exportar</Button>
+          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo menú</Button>
+        </div>
       </div>
 
       {showForm && (
@@ -1132,6 +1162,19 @@ function SuppliersTab({ restaurantId, isDark }) {
 
   const setView = (v) => { localStorage.setItem('cfg_sup_view', v); setViewMode(v) }
 
+  const handleExportSup = () => {
+    const ws = XLSX.utils.json_to_sheet(suppliers.map((s) => ({
+      CODIGO_PROVEEDOR: s.code || '',
+      NOMBRE_PROVEEDOR: s.name || '',
+      CONTACTO: s.contact || '',
+      CELULAR: s.phone || '',
+      DIRECCION: s.address || '',
+    })))
+    ws['!cols'] = Array(5).fill({ wch: 20 })
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Proveedores')
+    XLSX.writeFile(wb, 'proveedores_recetariopro.xlsx')
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -1143,7 +1186,10 @@ function SuppliersTab({ restaurantId, isDark }) {
             <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
         </div>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo proveedor</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportSup}><Download className="h-4 w-4" /> Exportar</Button>
+          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo proveedor</Button>
+        </div>
       </div>
 
       {showForm && (

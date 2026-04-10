@@ -4,7 +4,7 @@ import { ImportModule } from './ImportModule'
 import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
-  fixRecipeCategoryIds,
+  fixRecipeCategoryIds, exportRecipes,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -99,6 +99,14 @@ export function ImportTab({ restaurantId, isDark }) {
   const subText = isDark ? 'text-gray-400' : 'text-gray-500'
   const [fixing, setFixing] = useState(false)
   const [fixReport, setFixReport] = useState(null)
+  const [exporting, setExporting] = useState(null) // 'recipe' | 'subrecipe' | null
+
+  const handleExport = async (type) => {
+    setExporting(type)
+    try { await exportRecipes(restaurantId, type) }
+    catch (err) { alert('Error al exportar: ' + err.message) }
+    finally { setExporting(null) }
+  }
 
   const handleFixCategories = async () => {
     setFixing(true)
@@ -133,6 +141,32 @@ export function ImportTab({ restaurantId, isDark }) {
         <p className={cn('text-xs mt-2', isDark ? 'text-amber-500' : 'text-amber-600')}>
           Importa en este orden para que las referencias queden correctamente vinculadas.
         </p>
+      </div>
+
+      {/* Recipe export */}
+      <div className={cn('rounded-xl border p-4 space-y-3', isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+        <div>
+          <h3 className={cn('font-semibold text-sm', isDark ? 'text-white' : 'text-gray-900')}>
+            Exportar a Excel
+          </h3>
+          <p className={cn('text-xs mt-0.5', subText)}>Descarga tus recetas y sub-recetas en formato Excel compatible con el importador.</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => handleExport('recipe')}
+            disabled={exporting === 'recipe'}
+            className={cn('text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors disabled:opacity-60', isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-white')}
+          >
+            {exporting === 'recipe' ? 'Exportando...' : '⬇ Exportar Recetas'}
+          </button>
+          <button
+            onClick={() => handleExport('subrecipe')}
+            disabled={exporting === 'subrecipe'}
+            className={cn('text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors disabled:opacity-60', isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-white')}
+          >
+            {exporting === 'subrecipe' ? 'Exportando...' : '⬇ Exportar Sub-recetas'}
+          </button>
+        </div>
       </div>
 
       {/* Migration tool */}

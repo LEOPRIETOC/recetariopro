@@ -2,8 +2,70 @@ import {
   collection, doc, getDocs, addDoc, updateDoc,
   writeBatch, serverTimestamp, query, orderBy,
 } from 'firebase/firestore'
+import * as XLSX from 'xlsx'
 import { db } from '../lib/firebase'
 import { toTitleCase } from '../lib/utils'
+
+// ── Generic Excel export ──────────────────────────────────────────────────────
+export function exportToExcel(data, columns, filename) {
+  const rows = data.map((item) => {
+    const row = {}
+    columns.forEach((col) => { row[col.header] = item[col.field] ?? '' })
+    return row
+  })
+  const ws = XLSX.utils.json_to_sheet(rows)
+  ws['!cols'] = columns.map((col) => ({ wch: Math.max(col.header.length, 15) }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos')
+  XLSX.writeFile(wb, filename + '.xlsx')
+}
+
+// ── Recipe / Sub-recipe export ────────────────────────────────────────────────
+export async function exportRecipes(restaurantId, type = 'recipe') {
+  const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+  const catById = {}
+  catsSnap.docs.forEach((d) => { catById[d.id] = d.data() })
+
+  const recipesSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  const recipes = recipesSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.type === type || (type === 'recipe' && !r.type))
+
+  const rows = []
+  recipes.forEach((recipe) => {
+    const cat = catById[recipe.categoryId] || {}
+    const base = {
+      ITEM: recipe.item || '',
+      REFERENCIA: recipe.reference || '',
+      NOMBRE_RECETA: recipe.name || '',
+      CODIGO_MENU: recipe.menuCode || cat.code || '',
+      MENU: cat.name || '',
+      PRECIO_VENTA: recipe.sellingPrice || 0,
+    }
+    if (!recipe.ingredients?.length) {
+      rows.push(base)
+    } else {
+      recipe.ingredients.forEach((ing) => {
+        rows.push({
+          ...base,
+          ITEM_MP: ing.item || '',
+          REFERENCIA_MP: ing.reference || '',
+          NOMBRE_MP: ing.ingredientName || '',
+          CANTIDAD: ing.quantity || 0,
+          UNIDAD: ing.unit || '',
+        })
+      })
+    }
+  })
+
+  const sheetName = type === 'subrecipe' ? 'Sub-recetas' : 'Recetas'
+  const fileName = (type === 'subrecipe' ? 'subrecetas' : 'recetas') + '_recetariopro.xlsx'
+  const ws = XLSX.utils.json_to_sheet(rows)
+  ws['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 20 }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  XLSX.writeFile(wb, fileName)
+}
 
 const BATCH_SIZE = 50
 
