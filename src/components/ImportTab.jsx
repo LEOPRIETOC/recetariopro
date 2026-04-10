@@ -4,7 +4,7 @@ import { ImportModule } from './ImportModule'
 import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
-  fixRecipeCategoryIds, exportRecipes,
+  fixRecipeCategoryIds, exportRecipes, fixSubrecipeTypes,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -99,6 +99,21 @@ export function ImportTab({ restaurantId, isDark }) {
   const subText = isDark ? 'text-gray-400' : 'text-gray-500'
   const [fixing, setFixing] = useState(false)
   const [fixReport, setFixReport] = useState(null)
+  const [fixingTypes, setFixingTypes] = useState(false)
+  const [fixTypesReport, setFixTypesReport] = useState(null)
+
+  const handleFixTypes = async () => {
+    setFixingTypes(true)
+    setFixTypesReport(null)
+    try {
+      const result = await fixSubrecipeTypes(restaurantId)
+      setFixTypesReport(result)
+    } catch (err) {
+      setFixTypesReport({ fixed: 0, skipped: 0, errors: [err.message || 'Error inesperado'] })
+    } finally {
+      setFixingTypes(false)
+    }
+  }
   const [exporting, setExporting] = useState(null) // 'recipe' | 'subrecipe' | null
 
   const handleExport = async (type) => {
@@ -189,6 +204,26 @@ export function ImportTab({ restaurantId, isDark }) {
         >
           {fixing ? 'Procesando...' : '🔧 Corregir vínculos de categorías'}
         </button>
+        <button
+          onClick={handleFixTypes}
+          disabled={fixingTypes}
+          className={cn(
+            'text-xs px-4 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-60',
+          )}
+          style={{ backgroundColor: '#6366f1' }}
+        >
+          {fixingTypes ? 'Procesando...' : '🔧 Corregir tipos de sub-recetas'}
+        </button>
+        {fixTypesReport && (
+          <div className={cn('rounded-lg p-3 text-xs space-y-1 border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}>
+            <div className="flex gap-4">
+              <span className="text-green-500 font-medium">✅ Corregidas: {fixTypesReport.fixed}</span>
+              <span className="text-blue-500 font-medium">⏭ Omitidas: {fixTypesReport.skipped}</span>
+            </div>
+            <button onClick={() => setFixTypesReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>Cerrar</button>
+          </div>
+        )}
+
         {fixReport && (
           <div className={cn('rounded-lg p-3 text-xs space-y-1 border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}>
             <div className="flex gap-4">

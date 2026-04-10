@@ -463,3 +463,42 @@ export async function fixRecipeCategoryIds(restaurantId) {
 
   return { fixed, skipped, notFound, errors }
 }
+
+// ── MIGRACIÓN: marcar sub-recetas importadas con type='subrecipe' ─────────────
+export async function fixSubrecipeTypes(restaurantId) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  let fixed = 0
+  let skipped = 0
+  const FIX_BATCH = 500
+
+  for (let i = 0; i < snap.docs.length; i += FIX_BATCH) {
+    const batch = writeBatch(db)
+    let batchHasOps = false
+
+    snap.docs.slice(i, i + FIX_BATCH).forEach((d) => {
+      const data = d.data()
+      // Already correct
+      if (data.type === 'subrecipe') { skipped++; return }
+
+      const isSub =
+        data.isSubRecipe === true ||
+        data.code?.startsWith('SUB') ||
+        data.reference?.toUpperCase?.().includes('SUB')
+
+      if (isSub) {
+        batch.update(doc(db, 'restaurants', restaurantId, 'recipes', d.id), {
+          type: 'subrecipe',
+          isSubRecipe: true,
+        })
+        fixed++
+        batchHasOps = true
+      } else {
+        skipped++
+      }
+    })
+
+    if (batchHasOps) await batch.commit()
+  }
+
+  return { fixed, skipped }
+}

@@ -160,10 +160,11 @@ export default function POSMainPage() {
   const isSubSection = selectedCategory === SUBRECIPES_CATEGORY_ID
 
   const filtered = useMemo(() => {
+    const isSub = (r) => r.isSubRecipe === true || r.type === 'subrecipe'
     return (sortedRecipes || []).filter((r) => {
       // Sub-recetas section: only sub-recipes; other sections: no sub-recipes
-      if (isSubSection && !r.isSubRecipe) return false
-      if (!isSubSection && r.isSubRecipe) return false
+      if (isSubSection && !isSub(r)) return false
+      if (!isSubSection && isSub(r)) return false
       // Only show active recipes in main view
       if (r.active === false) return false
       // Category filter
