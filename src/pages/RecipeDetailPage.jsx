@@ -223,7 +223,7 @@ function toTitleCase(str) {
 }
 
 function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, nameInputRef, isAdmin }) {
-  const [query, setQuery] = useState(field.description ? toTitleCase(field.description) : '')
+  const [query, setQuery] = useState(toTitleCase(field.description || field.ingredientName || ''))
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [dropRect, setDropRect] = useState(null)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
@@ -792,7 +792,10 @@ export default function RecipeDetailPage() {
         preparation: r.preparation || '', notes: r.notes || '',
         isSubRecipe: r.isSubRecipe || false, pin: r.pin || '',
         yieldAmount: r.yieldAmount || 0, yieldUnit: r.yieldUnit || '',
-        ingredients: r.ingredients || [],
+        ingredients: (r.ingredients || []).map((ing) => ({
+          ...ing,
+          description: ing.description || ing.ingredientName || '',
+        })),
         photoURL: r.photoURL || '',
         videoURL: r.videoURL || '',
       })
