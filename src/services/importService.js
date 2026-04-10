@@ -209,10 +209,37 @@ export async function importMaterias(restaurantId, rows, onProgress) {
   return result
 }
 
+// ── Category helper: find by name or code (case-insensitive), create if missing ──
+async function findOrCreateCategory(restaurantId, menuName, catById) {
+  if (!menuName) return null
+  const normalized = menuName.toUpperCase().trim()
+
+  // Search in the in-memory map (keyed by docId)
+  for (const [catId, catData] of Object.entries(catById)) {
+    if (catData.name?.toUpperCase().trim() === normalized) return catId
+    if (catData.code?.toUpperCase().trim() === normalized) return catId
+  }
+
+  // Not found — create new category and add to in-memory map
+  const displayName = menuName.charAt(0).toUpperCase() + menuName.slice(1).toLowerCase()
+  const newRef = await addDoc(collection(db, 'restaurants', restaurantId, 'categories'), {
+    name: displayName,
+    code: `CAT${Date.now()}`,
+    order: Object.keys(catById).length,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  catById[newRef.id] = { name: displayName, code: `CAT${Date.now()}` }
+  return newRef.id
+}
+
 // ── 5 & 6. RECETAS / SUB-RECETAS ────────────────────────────────────────────
 async function importRecipeOrSub(restaurantId, rows, type, onProgress) {
-  // Pre-load categories and materias primas for lookups
-  const catMap = await fetchMap(restaurantId, 'categories', 'code')
+  // Pre-load categories keyed by docId for findOrCreateCategory
+  const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+  const catById = {}
+  catsSnap.docs.forEach((d) => { catById[d.id] = d.data() })
+
   const mpMap = await fetchMap(restaurantId, 'materias_primas', 'reference')
   const existingRecipes = await fetchMap(restaurantId, 'recipes', 'reference')
   const allRecSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
@@ -249,12 +276,9 @@ async function importRecipeOrSub(restaurantId, rows, type, onProgress) {
       continue
     }
 
-    // Resolve category
-    const menuCode = String(first.MENU_CODIGO || first.MENU || '').trim()
-    let categoryId = null
-    if (menuCode && catMap.has(menuCode)) {
-      categoryId = catMap.get(menuCode).id
-    }
+    // Resolve category — try MENU_CODIGO first, then MENU (which may be a name)
+    const menuValue = String(first.MENU_CODIGO || first.MENU || '').trim()
+    const categoryId = await findOrCreateCategory(restaurantId, menuValue || null, catById)
 
     // Build ingredients
     const ingredients = group
