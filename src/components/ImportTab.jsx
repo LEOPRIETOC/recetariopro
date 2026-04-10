@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { cn } from '../lib/utils'
 import { ImportModule } from './ImportModule'
 import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
+  fixRecipeCategoryIds,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -95,6 +97,21 @@ const MODULES = [
 
 export function ImportTab({ restaurantId, isDark }) {
   const subText = isDark ? 'text-gray-400' : 'text-gray-500'
+  const [fixing, setFixing] = useState(false)
+  const [fixReport, setFixReport] = useState(null)
+
+  const handleFixCategories = async () => {
+    setFixing(true)
+    setFixReport(null)
+    try {
+      const result = await fixRecipeCategoryIds(restaurantId)
+      setFixReport(result)
+    } catch (err) {
+      setFixReport({ fixed: 0, skipped: 0, notFound: 0, errors: [err.message || 'Error inesperado'] })
+    } finally {
+      setFixing(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -116,6 +133,45 @@ export function ImportTab({ restaurantId, isDark }) {
         <p className={cn('text-xs mt-2', isDark ? 'text-amber-500' : 'text-amber-600')}>
           Importa en este orden para que las referencias queden correctamente vinculadas.
         </p>
+      </div>
+
+      {/* Migration tool */}
+      <div className={cn('rounded-xl border p-4 space-y-3', isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+        <div>
+          <h3 className={cn('font-semibold text-sm', isDark ? 'text-white' : 'text-gray-900')}>
+            🔧 Corregir vínculos de categorías
+          </h3>
+          <p className={cn('text-xs mt-0.5', subText)}>
+            Si las recetas importadas no aparecen en sus menús, usa esta herramienta para vincular correctamente los categoryId.
+          </p>
+        </div>
+        <button
+          onClick={handleFixCategories}
+          disabled={fixing}
+          className={cn(
+            'text-xs px-4 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-60',
+          )}
+          style={{ backgroundColor: '#10b981' }}
+        >
+          {fixing ? 'Procesando...' : '🔧 Corregir vínculos de categorías'}
+        </button>
+        {fixReport && (
+          <div className={cn('rounded-lg p-3 text-xs space-y-1 border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}>
+            <div className="flex gap-4">
+              <span className="text-green-500 font-medium">✅ Corregidas: {fixReport.fixed}</span>
+              <span className="text-blue-500 font-medium">⏭ Omitidas: {fixReport.skipped}</span>
+              {fixReport.notFound > 0 && <span className="text-red-500 font-medium">❌ Sin categoría: {fixReport.notFound}</span>}
+            </div>
+            {fixReport.errors?.length > 0 && (
+              <div className="max-h-24 overflow-y-auto space-y-0.5 mt-1">
+                {fixReport.errors.map((e, i) => <p key={i} className="text-red-400">{e}</p>)}
+              </div>
+            )}
+            <button onClick={() => setFixReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>
+              Cerrar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modules */}

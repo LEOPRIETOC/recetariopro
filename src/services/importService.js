@@ -319,3 +319,61 @@ export async function importRecipes(restaurantId, rows, onProgress) {
 export async function importSubrecipes(restaurantId, rows, onProgress) {
   return importRecipeOrSub(restaurantId, rows, 'subrecipe', onProgress)
 }
+
+// ── MIGRACIÓN: corregir categoryId de recetas importadas ─────────────────────
+export async function fixRecipeCategoryIds(restaurantId) {
+  // Build lookup maps: code -> docId and name -> docId
+  const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+  const catByCode = {}
+  const catByName = {}
+  catsSnap.docs.forEach((d) => {
+    const data = d.data()
+    if (data.code) catByCode[data.code.toUpperCase().trim()] = d.id
+    if (data.name) catByName[data.name.toUpperCase().trim()] = d.id
+  })
+
+  const allCatIds = new Set(Object.values(catByCode))
+
+  const recipesSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  let fixed = 0
+  let skipped = 0
+  let notFound = 0
+  const errors = []
+
+  const FIX_BATCH = 500
+  const docs = recipesSnap.docs
+
+  for (let i = 0; i < docs.length; i += FIX_BATCH) {
+    const batch = writeBatch(db)
+    let batchHasOps = false
+
+    docs.slice(i, i + FIX_BATCH).forEach((recipeDoc) => {
+      const data = recipeDoc.data()
+      const current = data.categoryId
+
+      // Already a valid Firestore doc ID that exists in categories — skip
+      if (current && allCatIds.has(current)) { skipped++; return }
+
+      // Try to resolve: by code, then by name, then by menuCode/menuName fields
+      const newId =
+        catByCode[current?.toUpperCase()?.trim()] ||
+        catByName[current?.toUpperCase()?.trim()] ||
+        catByCode[data.menuCode?.toUpperCase()?.trim()] ||
+        catByName[data.menuName?.toUpperCase()?.trim()] ||
+        null
+
+      if (newId) {
+        batch.update(doc(db, 'restaurants', restaurantId, 'recipes', recipeDoc.id), { categoryId: newId })
+        fixed++
+        batchHasOps = true
+      } else {
+        notFound++
+        if (errors.length < 50) errors.push(`Sin categoría: ${data.name} (${current || 'vacío'})`)
+      }
+    })
+
+    if (batchHasOps) await batch.commit()
+  }
+
+  return { fixed, skipped, notFound, errors }
+}
