@@ -531,7 +531,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 // ── Print Component ───────────────────────────────────────────────────────────
 const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwardRef }) => {
   const cat = categories.find((c) => c.id === recipe?.categoryId)
-  const ingList = (recipe?.ingredients || []).filter((i) => i.description || i.ingredientId)
+  const ingList = (recipe?.ingredients || []).filter((i) => i.description || i.ingredientName || i.ingredientId)
 
   const createdDate = recipe?.createdAt?.toDate
     ? recipe.createdAt.toDate().toLocaleDateString('es-ES')
@@ -598,7 +598,7 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
                   <span className="print-ing-bullet" />
                   <span className="print-ing-qty">{ing.quantity}</span>
                   <span className="print-ing-unit">{ing.unit}</span>
-                  <span className="print-ing-name">{ing.description}</span>
+                  <span className="print-ing-name">{ing.description || ing.ingredientName || '—'}</span>
                 </li>
               ))}
             </ul>
@@ -921,10 +921,28 @@ export default function RecipeDetailPage() {
     if (!currentRestaurant?.id) { error('No hay restaurante configurado'); return }
     setSaving(true)
     try {
+      // Build ingredient lookup maps for cost resolution
+      const ingById = {}
+      const ingByRef = {}
+      ;(allIngredients || []).forEach((i) => {
+        if (i.id) ingById[i.id] = i
+        if (i.reference) ingByRef[i.reference] = i
+        if (i.item) ingByRef[String(i.item)] = i
+      })
+
       const cleanIngredients = (data.ingredients || [])
-        .filter((ing) => ing?.description && ing.description.trim() !== '')
+        .filter((ing) => {
+          const name = ing?.description?.trim() || ing?.ingredientName?.trim()
+          return !!name
+        })
         .map((ing) => {
-          const eff = getConvertedPrice(parseFloat(ing.pricePerUnit || 0), ing.purchaseUnit || '', ing.unit || '')
+          // Resolve materia prima by id → reference → item for cost lookup
+          const mp = ingById[ing.ingredientId] || ingByRef[ing.reference] || ingByRef[String(ing.item || '')] || null
+          const resolvedPrice = parseFloat(ing.pricePerUnit || mp?.pricePerUnit || 0)
+          const resolvedPurchaseUnit = ing.purchaseUnit || mp?.purchaseUnit || ''
+          const resolvedDescription = ing.description || ing.ingredientName || ''
+
+          const eff = getConvertedPrice(resolvedPrice, resolvedPurchaseUnit, ing.unit || '')
           const base = parseFloat(ing.quantity || 0) * eff
           const waste = base * (parseFloat(ing.wasteMargin || 0) / 100)
           const clean = {}
@@ -933,6 +951,11 @@ export default function RecipeDetailPage() {
             if (typeof v === 'number' && isNaN(v)) { clean[k] = 0; continue }
             clean[k] = v
           }
+          clean.description = resolvedDescription
+          clean.ingredientName = resolvedDescription
+          if (mp?.id && !clean.ingredientId) clean.ingredientId = mp.id
+          if (resolvedPrice && !ing.pricePerUnit) clean.pricePerUnit = resolvedPrice
+          if (resolvedPurchaseUnit && !ing.purchaseUnit) clean.purchaseUnit = resolvedPurchaseUnit
           clean.baseCost = isNaN(base) ? 0 : base
           clean.wasteCost = isNaN(waste) ? 0 : waste
           clean.totalCost = isNaN(base + waste) ? 0 : base + waste
