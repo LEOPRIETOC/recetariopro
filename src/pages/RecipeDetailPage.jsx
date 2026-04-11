@@ -807,8 +807,8 @@ export default function RecipeDetailPage() {
         recipeType: r.recipeType || 'recipe',
         manualCost: r.manualCost || 0, useManualCost: r.useManualCost || false,
         preparation: r.preparation || '', notes: r.notes || '',
-        isSubRecipe: r.isSubRecipe || false, pin: r.pin || '',
-        yieldAmount: r.yieldAmount || 0, yieldUnit: r.yieldUnit || '',
+        isSubRecipe: r.isSubRecipe || r.type === 'subrecipe' || false, pin: r.pin || '',
+        yieldAmount: r.yieldAmount || r.yield || 0, yieldUnit: r.yieldUnit || '',
         ingredients: (r.ingredients || []).map((ing) => ({
           ...ing,
           description: ing.description || ing.ingredientName || '',

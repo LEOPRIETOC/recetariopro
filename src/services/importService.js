@@ -434,11 +434,13 @@ export async function importSubrecipes(restaurantId, rows, onProgress) {
       reference,
       name: name.toUpperCase(),
       type,
+      isSubRecipe: true,
       active: true,
       categoryId: null,
       menuCode: 'SUBRECETA',
       menuName: 'Sub-recetas',
       sellingPrice: 0,
+      yield: yieldAmount,
       yieldAmount,
       yieldUnit,
       costPerYieldUnit: 0,
@@ -882,4 +884,24 @@ export async function fixSubrecipeTypes(restaurantId) {
   }
 
   return { fixed, skipped }
+}
+
+export async function fixSubrecipeYields(restaurantId) {
+  const snap = await getDocs(query(
+    collection(db, 'restaurants', restaurantId, 'recipes'),
+    where('type', '==', 'subrecipe')
+  ))
+
+  const withoutYield = snap.docs
+    .filter((d) => {
+      const data = d.data()
+      return !data.yieldAmount && !data.yield
+    })
+    .map((d) => d.data().reference || d.id)
+
+  return {
+    total: snap.docs.length,
+    withoutYield: withoutYield.length,
+    list: withoutYield,
+  }
 }

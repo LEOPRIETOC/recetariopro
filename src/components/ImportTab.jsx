@@ -7,7 +7,7 @@ import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
   fixRecipeCategoryIds, exportRecipes, fixSubrecipeTypes,
-  generateMateriaTemplate,
+  fixSubrecipeYields, generateMateriaTemplate,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -113,6 +113,21 @@ export function ImportTab({ restaurantId, isDark }) {
   const [fixReport, setFixReport] = useState(null)
   const [fixingTypes, setFixingTypes] = useState(false)
   const [fixTypesReport, setFixTypesReport] = useState(null)
+  const [checkingYields, setCheckingYields] = useState(false)
+  const [yieldsReport, setYieldsReport] = useState(null)
+
+  const handleCheckYields = async () => {
+    setCheckingYields(true)
+    setYieldsReport(null)
+    try {
+      const result = await fixSubrecipeYields(restaurantId)
+      setYieldsReport(result)
+    } catch (err) {
+      setYieldsReport({ total: 0, withoutYield: 0, list: [], error: err.message })
+    } finally {
+      setCheckingYields(false)
+    }
+  }
 
   const handleFixTypes = async () => {
     setFixingTypes(true)
@@ -233,6 +248,41 @@ export function ImportTab({ restaurantId, isDark }) {
               <span className="text-blue-500 font-medium">⏭ Omitidas: {fixTypesReport.skipped}</span>
             </div>
             <button onClick={() => setFixTypesReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>Cerrar</button>
+          </div>
+        )}
+        <button
+          onClick={handleCheckYields}
+          disabled={checkingYields}
+          className={cn(
+            'text-xs px-4 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-60',
+          )}
+          style={{ backgroundColor: '#f59e0b' }}
+        >
+          {checkingYields ? 'Verificando...' : '📋 Verificar rendimientos'}
+        </button>
+        {yieldsReport && (
+          <div className={cn('rounded-lg p-3 text-xs space-y-1 border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}>
+            {yieldsReport.error ? (
+              <span className="text-red-500">{yieldsReport.error}</span>
+            ) : (
+              <>
+                <div className="flex gap-4">
+                  <span className={isDark ? 'text-gray-300' : 'text-gray-700'} >Total sub-recetas: {yieldsReport.total}</span>
+                  <span className={yieldsReport.withoutYield > 0 ? 'text-amber-500 font-medium' : 'text-green-500 font-medium'}>
+                    {yieldsReport.withoutYield > 0 ? `⚠️ Sin rendimiento: ${yieldsReport.withoutYield}` : '✅ Todas tienen rendimiento'}
+                  </span>
+                </div>
+                {yieldsReport.list?.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    <p className={cn('font-medium', isDark ? 'text-gray-400' : 'text-gray-500')}>Re-importa estas sub-recetas con RENDIMIENTO:</p>
+                    <div className="max-h-28 overflow-y-auto space-y-0.5">
+                      {yieldsReport.list.map((ref, i) => <p key={i} className="font-mono text-amber-500">{ref}</p>)}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            <button onClick={() => setYieldsReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>Cerrar</button>
           </div>
         )}
 
