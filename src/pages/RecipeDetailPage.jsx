@@ -808,7 +808,14 @@ export default function RecipeDetailPage() {
         manualCost: r.manualCost || 0, useManualCost: r.useManualCost || false,
         preparation: r.preparation || '', notes: r.notes || '',
         isSubRecipe: r.isSubRecipe || r.type === 'subrecipe' || false, pin: r.pin || '',
-        yieldAmount: r.yieldAmount || r.yield || 0, yieldUnit: r.yieldUnit || '',
+        yieldAmount: r.yieldAmount || r.yield || 0,
+        yieldUnit: (() => {
+          const raw = r.yieldUnit || ''
+          const matched = (allUnits || []).find(
+            (u) => u.abbreviation?.toUpperCase().trim() === raw.toUpperCase().trim()
+          )
+          return matched?.abbreviation || raw
+        })(),
         ingredients: (r.ingredients || []).map((ing) => ({
           ...ing,
           description: ing.description || ing.ingredientName || '',
@@ -1241,13 +1248,25 @@ export default function RecipeDetailPage() {
                       <div className="space-y-1.5">
                         <Label>Unidad de rendimiento *</Label>
                         <select
-                          value={watch('yieldUnit') || ''}
+                          value={(() => {
+                            const raw = watch('yieldUnit') || ''
+                            const matched = allUnits.find(
+                              (u) => u.abbreviation?.toUpperCase().trim() === raw.toUpperCase().trim()
+                            )
+                            return matched?.abbreviation || raw
+                          })()}
                           onChange={(e) => setValue('yieldUnit', e.target.value)}
                           className={cn('w-full px-2 h-9 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-gold-500',
                             isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
                         >
                           <option value="">--</option>
                           {allUnits.map((u) => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
+                          {(() => {
+                            const raw = watch('yieldUnit') || ''
+                            return raw && !allUnits.find(
+                              (u) => u.abbreviation?.toUpperCase() === raw.toUpperCase()
+                            ) ? <option value={raw}>{raw}</option> : null
+                          })()}
                         </select>
                       </div>
                     </div>
