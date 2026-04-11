@@ -1,12 +1,687 @@
 import {
   collection, doc, getDocs, addDoc, updateDoc,
-  writeBatch, serverTimestamp, query, orderBy,
+  writeBatch, serverTimestamp, query, where,
 } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
 import { db } from '../lib/firebase'
 import { toTitleCase } from '../lib/utils'
 
-// ── Generic Excel export ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function commitBatch(ops, onProgress) {
+  let done = 0
+  for (let i = 0; i < ops.length; i += 50) {
+    const batch = writeBatch(db)
+    const chunk = ops.slice(i, i + 50)
+    for (const op of chunk) {
+      if (op.type === 'set') batch.set(op.ref, op.data)
+      else batch.update(op.ref, op.data)
+    }
+    await batch.commit()
+    done += chunk.length
+    if (onProgress) onProgress(Math.round((done / ops.length) * 100))
+  }
+}
+
+// Detect recipe type from reference prefix
+function detectType(reference, fallback) {
+  const r = (reference || '').toUpperCase()
+  if (r.startsWith('ONIREC') || r.startsWith('BARREC')) return 'recipe'
+  if (r.startsWith('ONISUB') || r.startsWith('BARSB')) return 'subrecipe'
+  return fallback
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CACHE LOADERS  (load once, reuse across all rows)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadCategories(restaurantId) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+  const byCode = {}
+  const byName = {}
+  const byId = {}
+  snap.docs.forEach((d) => {
+    const data = d.data()
+    byId[d.id] = { id: d.id, ...data }
+    if (data.code) byCode[data.code.toUpperCase().trim()] = { id: d.id, ...data }
+    if (data.name) byName[data.name.toUpperCase().trim()] = { id: d.id, ...data }
+  })
+  return { byCode, byName, byId }
+}
+
+async function loadMPs(restaurantId) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
+  const byRef = {}
+  snap.docs.forEach((d) => {
+    const ref = (d.data().reference || '').toUpperCase().trim()
+    if (ref) byRef[ref] = { id: d.id, ...d.data() }
+  })
+  return byRef
+}
+
+async function loadSubrecipes(restaurantId) {
+  const snap = await getDocs(
+    query(collection(db, 'restaurants', restaurantId, 'recipes'), where('type', '==', 'subrecipe'))
+  )
+  const byRef = {}
+  snap.docs.forEach((d) => {
+    const ref = (d.data().reference || '').toUpperCase().trim()
+    if (ref) byRef[ref] = { id: d.id, ...d.data() }
+  })
+  return byRef
+}
+
+async function loadSuppliers(restaurantId) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'suppliers'))
+  const byCode = {}
+  snap.docs.forEach((d) => {
+    const code = (d.data().code || '').toUpperCase().trim()
+    if (code) byCode[code] = { id: d.id, ...d.data() }
+  })
+  return byCode
+}
+
+async function getNextAutoCode(restaurantId, colName, prefix, pad) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, colName))
+  const nums = snap.docs
+    .map((d) => d.data().code || '')
+    .filter((c) => new RegExp(`^${prefix}\\d+$`).test(c))
+    .map((c) => parseInt(c.replace(prefix, ''), 10))
+  return `${prefix}${String((nums.length ? Math.max(...nums) : 0) + 1).padStart(pad, '0')}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORY LOOKUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+function findCategoryId(menuCode, menuName, cats) {
+  if (menuCode) {
+    const hit = cats.byCode[menuCode.toUpperCase().trim()]
+    if (hit) return { id: hit.id, code: hit.code, name: hit.name }
+  }
+  if (menuName) {
+    const hit = cats.byName[menuName.toUpperCase().trim()]
+    if (hit) return { id: hit.id, code: hit.code, name: hit.name }
+  }
+  return null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INGREDIENT LOOKUP  (MP first, then sub-recipe)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function findIngredient(referenceMP, mpByRef, subByRef) {
+  if (!referenceMP) return null
+  const key = referenceMP.toUpperCase().trim()
+  const mp = mpByRef[key]
+  if (mp) return { ...mp, ingredientType: 'materia' }
+  const sub = subByRef[key]
+  if (sub) return { ...sub, ingredientType: 'subrecipe' }
+  return null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUP ROWS BY REFERENCIA (for recipe / subrecipe import)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function groupRowsByReference(rows) {
+  const groups = {}
+  const order = []
+  rows.forEach((row) => {
+    const ref = row.REFERENCIA?.toString().trim()
+    if (!ref) return
+    if (!groups[ref]) { groups[ref] = { header: row, ingredients: [] }; order.push(ref) }
+    if (row.REFERENCIA_MP?.toString().trim()) groups[ref].ingredients.push(row)
+  })
+  return order.map((r) => groups[r])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD INGREDIENT OBJECT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildIngredient(row, mpByRef, subByRef, warnings, rowLabel) {
+  const refMP = row.REFERENCIA_MP?.toString().trim() || ''
+  const nameMP = toTitleCase(row.NOMBRE_MP?.toString().trim() || '')
+  const quantity = parseFloat(String(row.CANTIDAD || '0').replace(',', '.')) || 0
+  const unit = row.UNIDAD?.toString().trim() || ''
+  const waste = parseFloat(String(row.DESPERDICIO || '0').replace(',', '.')) || 0
+
+  const found = refMP ? findIngredient(refMP, mpByRef, subByRef) : null
+  if (refMP && !found) warnings.push(`${rowLabel}: REFERENCIA_MP '${refMP}' no encontrada — se vinculará si se importa después`)
+
+  return {
+    ingredientId: found?.id || null,
+    ingredientType: found?.ingredientType || 'materia',
+    ingredientName: nameMP || found?.name || '',
+    reference: refMP || null,
+    quantity,
+    unit,
+    wasteMargin: waste,
+    pricePerUnit: found?.pricePerUnit || 0,
+    baseCost: 0,
+    wasteCost: 0,
+    totalCost: 0,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. MENÚS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importMenus(restaurantId, rows, onProgress) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+  const existing = {}
+  snap.docs.forEach((d) => {
+    const code = (d.data().code || '').toUpperCase().trim()
+    if (code) existing[code] = { id: d.id, ...d.data() }
+  })
+
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: rows.length }
+  const ops = []
+
+  rows.forEach((row, idx) => {
+    const n = idx + 2
+    const code = row.CODIGO_MENU?.toString().trim()
+    const name = row.NOMBRE_MENU?.toString().trim()
+    if (!code) { result.errors.push(`Fila ${n}: CODIGO_MENU es requerido`); return }
+    if (!name) { result.errors.push(`Fila ${n}: NOMBRE_MENU es requerido`); return }
+
+    const displayName = toTitleCase(name)
+    const key = code.toUpperCase()
+
+    if (existing[key]) {
+      ops.push({
+        type: 'update', ref: doc(db, 'restaurants', restaurantId, 'categories', existing[key].id),
+        data: { name: displayName, code, updatedAt: serverTimestamp() },
+      })
+      result.updated++
+    } else {
+      ops.push({
+        type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'categories')),
+        data: { code, name: displayName, order: snap.docs.length + ops.length, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+      })
+      result.created++
+    }
+  })
+
+  await commitBatch(ops, onProgress)
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. PROVEEDORES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importSuppliers(restaurantId, rows, onProgress) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'suppliers'))
+  const existing = {}
+  snap.docs.forEach((d) => {
+    const code = (d.data().code || '').toUpperCase().trim()
+    if (code) existing[code] = { id: d.id }
+  })
+
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: rows.length }
+  const ops = []
+
+  rows.forEach((row, idx) => {
+    const n = idx + 2
+    const code = row.CODIGO_PROVEEDOR?.toString().trim()
+    const name = row.NOMBRE_PROVEEDOR?.toString().trim()
+    if (!code) { result.errors.push(`Fila ${n}: CODIGO_PROVEEDOR es requerido`); return }
+    if (!name) { result.errors.push(`Fila ${n}: NOMBRE_PROVEEDOR es requerido`); return }
+
+    const data = {
+      code,
+      name: toTitleCase(name),
+      contact: row.CONTACTO?.toString().trim() || null,
+      phone: row.CELULAR?.toString().trim() || null,
+      address: row.DIRECCION?.toString().trim() || null,
+      updatedAt: serverTimestamp(),
+    }
+    const key = code.toUpperCase()
+
+    if (existing[key]) {
+      ops.push({ type: 'update', ref: doc(db, 'restaurants', restaurantId, 'suppliers', existing[key].id), data })
+      result.updated++
+    } else {
+      ops.push({ type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'suppliers')), data: { ...data, createdAt: serverTimestamp() } })
+      result.created++
+    }
+  })
+
+  await commitBatch(ops, onProgress)
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. UNIDADES DE MEDIDA
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importUnits(restaurantId, rows, onProgress) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'units'))
+  const existing = {}
+  snap.docs.forEach((d) => {
+    const code = (d.data().code || '').toUpperCase().trim()
+    if (code) existing[code] = { id: d.id }
+  })
+
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: rows.length }
+  const ops = []
+
+  rows.forEach((row, idx) => {
+    const n = idx + 2
+    const code = row.CODIGO?.toString().trim()
+    const medida = row.MEDIDA?.toString().trim()
+    const desc = row.DESCRIPCION?.toString().trim()
+    const eqRaw = row.EQUIVALENCIA?.toString().trim()
+    if (!code) { result.errors.push(`Fila ${n}: CODIGO es requerido`); return }
+    if (!medida) { result.errors.push(`Fila ${n}: MEDIDA es requerida`); return }
+    if (!desc) { result.errors.push(`Fila ${n}: DESCRIPCION es requerida`); return }
+    const eq = parseFloat(eqRaw?.replace(',', '.'))
+    if (!eqRaw || isNaN(eq)) { result.errors.push(`Fila ${n}: EQUIVALENCIA debe ser un número`); return }
+
+    const data = { code, abbreviation: medida, name: toTitleCase(desc), equivalence: eq, updatedAt: serverTimestamp() }
+    const key = code.toUpperCase()
+
+    if (existing[key]) {
+      ops.push({ type: 'update', ref: doc(db, 'restaurants', restaurantId, 'units', existing[key].id), data })
+      result.updated++
+    } else {
+      ops.push({ type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'units')), data: { ...data, createdAt: serverTimestamp() } })
+      result.created++
+    }
+  })
+
+  await commitBatch(ops, onProgress)
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. MATERIAS PRIMAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importMaterias(restaurantId, rows, onProgress) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
+  const existingByRef = {}
+  const existingCodes = []
+  snap.docs.forEach((d) => {
+    const ref = (d.data().reference || '').toUpperCase().trim()
+    if (ref) existingByRef[ref] = { id: d.id }
+    if (d.data().code) existingCodes.push(d.data().code)
+  })
+
+  let nextNum = existingCodes
+    .filter((c) => /^MP\d+$/.test(c))
+    .map((c) => parseInt(c.replace('MP', ''), 10))
+    .reduce((a, b) => Math.max(a, b), 0)
+
+  const suppliers = await loadSuppliers(restaurantId)
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: rows.length }
+  const ops = []
+
+  rows.forEach((row, idx) => {
+    const n = idx + 2
+    const reference = row.REFERENCIA?.toString().trim()
+    const name = row.NOMBRE?.toString().trim()
+    const useUnit = row.UNIDAD_USO?.toString().trim()
+    const purchaseUnit = row.UNIDAD_COMPRA?.toString().trim()
+    if (!reference) { result.errors.push(`Fila ${n}: REFERENCIA es requerida`); return }
+    if (!name) { result.errors.push(`Fila ${n}: NOMBRE es requerido`); return }
+    if (!useUnit) { result.errors.push(`Fila ${n}: UNIDAD_USO es requerida`); return }
+    if (!purchaseUnit) { result.errors.push(`Fila ${n}: UNIDAD_COMPRA es requerida`); return }
+
+    const costRaw = row.COSTO?.toString().trim()
+    const cost = parseFloat(costRaw?.replace(',', '.')) || 0
+    if (!costRaw) result.warnings.push(`Fila ${n}: COSTO vacío, se importa en 0`)
+
+    const supplierCode = row.CODIGO_PROVEEDOR?.toString().trim() || null
+    let supplierName = null
+    if (supplierCode) {
+      const sup = suppliers[supplierCode.toUpperCase()]
+      if (sup) supplierName = sup.name
+      else result.warnings.push(`Fila ${n}: proveedor '${supplierCode}' no encontrado`)
+    }
+
+    const data = {
+      reference,
+      name: toTitleCase(name),
+      useUnit,
+      purchaseUnit,
+      cost,
+      pricePerUnit: cost,
+      supplierCode: supplierCode || null,
+      supplier: supplierName || row.PROVEEDOR?.toString().trim() || null,
+      category: row.CATEGORIA?.toString().trim() || 'General',
+      updatedAt: serverTimestamp(),
+    }
+    const key = reference.toUpperCase()
+
+    if (existingByRef[key]) {
+      ops.push({ type: 'update', ref: doc(db, 'restaurants', restaurantId, 'materias_primas', existingByRef[key].id), data })
+      result.updated++
+    } else {
+      nextNum++
+      const code = `MP${String(nextNum).padStart(4, '0')}`
+      ops.push({ type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'materias_primas')), data: { ...data, code, createdAt: serverTimestamp() } })
+      result.created++
+    }
+  })
+
+  await commitBatch(ops, onProgress)
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. SUB-RECETAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importSubrecipes(restaurantId, rows, onProgress) {
+  const cats = await loadCategories(restaurantId)
+  const mpByRef = await loadMPs(restaurantId)
+  const subByRef = await loadSubrecipes(restaurantId)
+
+  const existingSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  const existingByRef = {}
+  const existingCodes = []
+  existingSnap.docs.forEach((d) => {
+    const ref = (d.data().reference || '').toUpperCase().trim()
+    if (ref) existingByRef[ref] = { id: d.id }
+    if (d.data().code) existingCodes.push(d.data().code)
+  })
+
+  let nextNum = existingCodes
+    .filter((c) => /^SUB\d+$/.test(c))
+    .map((c) => parseInt(c.replace('SUB', ''), 10))
+    .reduce((a, b) => Math.max(a, b), 0)
+
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: 0 }
+  const groups = groupRowsByReference(rows)
+  result.total = groups.length
+  const ops = []
+
+  for (const [gIdx, group] of groups.entries()) {
+    if (onProgress) onProgress(Math.round((gIdx / groups.length) * 90))
+    const { header: h, ingredients: ingRows } = group
+    const reference = h.REFERENCIA?.toString().trim()
+    const name = h.NOMBRE_RECETA?.toString().trim()
+    const yieldAmount = parseFloat(String(h.RENDIMIENTO || '0').replace(',', '.'))
+    const yieldUnit = h.UNIDAD_RENDIMIENTO?.toString().trim()
+
+    if (!reference) { result.errors.push(`Grupo sin referencia — fila omitida`); continue }
+    if (!name) { result.errors.push(`Ref ${reference}: NOMBRE_RECETA es requerido`); continue }
+    if (!yieldAmount || yieldAmount <= 0) { result.errors.push(`Ref ${reference}: RENDIMIENTO debe ser mayor a 0`); continue }
+    if (!yieldUnit) { result.errors.push(`Ref ${reference}: UNIDAD_RENDIMIENTO es requerida`); continue }
+
+    const type = detectType(reference, 'subrecipe')
+    const preparation = ingRows.map((r) => r.PREPARACION?.toString().trim()).filter(Boolean).join('\n') || h.PREPARACION?.toString().trim() || ''
+
+    const ingredients = ingRows.map((row) =>
+      buildIngredient(row, mpByRef, subByRef, result.warnings, `Ref ${reference}`)
+    ).filter((i) => i.ingredientName || i.reference)
+
+    const docData = {
+      reference,
+      name: name.toUpperCase(),
+      type,
+      active: true,
+      categoryId: null,
+      menuCode: 'SUBRECETA',
+      menuName: 'Sub-recetas',
+      sellingPrice: 0,
+      yieldAmount,
+      yieldUnit,
+      costPerYieldUnit: 0,
+      preparation,
+      ingredients,
+      version: 1,
+      updatedAt: serverTimestamp(),
+    }
+
+    const key = reference.toUpperCase()
+    if (existingByRef[key]) {
+      ops.push({ type: 'update', ref: doc(db, 'restaurants', restaurantId, 'recipes', existingByRef[key].id), data: docData })
+      result.updated++
+    } else {
+      nextNum++
+      ops.push({
+        type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'recipes')),
+        data: { ...docData, code: `SUB${String(nextNum).padStart(3, '0')}`, order: Date.now() + nextNum, createdAt: serverTimestamp() },
+      })
+      result.created++
+    }
+  }
+
+  await commitBatch(ops, (p) => { if (onProgress) onProgress(90 + Math.round(p * 0.1)) })
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. RECETAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function importRecipes(restaurantId, rows, onProgress) {
+  const cats = await loadCategories(restaurantId)
+  const mpByRef = await loadMPs(restaurantId)
+  const subByRef = await loadSubrecipes(restaurantId)
+
+  const existingSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  const existingByRef = {}
+  const existingCodes = []
+  existingSnap.docs.forEach((d) => {
+    const ref = (d.data().reference || '').toUpperCase().trim()
+    if (ref) existingByRef[ref] = { id: d.id }
+    if (d.data().code) existingCodes.push(d.data().code)
+  })
+
+  let nextNum = existingCodes
+    .filter((c) => /^REC\d+$/.test(c))
+    .map((c) => parseInt(c.replace('REC', ''), 10))
+    .reduce((a, b) => Math.max(a, b), 0)
+
+  const result = { created: 0, updated: 0, warnings: [], errors: [], total: 0 }
+  const groups = groupRowsByReference(rows)
+  result.total = groups.length
+  const ops = []
+
+  for (const [gIdx, group] of groups.entries()) {
+    if (onProgress) onProgress(Math.round((gIdx / groups.length) * 90))
+    const { header: h, ingredients: ingRows } = group
+    const reference = h.REFERENCIA?.toString().trim()
+    const name = h.NOMBRE_RECETA?.toString().trim()
+    const menuCode = h.CODIGO_MENU?.toString().trim()
+
+    if (!reference) { result.errors.push(`Grupo sin referencia — fila omitida`); continue }
+    if (!name) { result.errors.push(`Ref ${reference}: NOMBRE_RECETA es requerido`); continue }
+    if (!menuCode) { result.errors.push(`Ref ${reference}: CODIGO_MENU es requerido`); continue }
+
+    const menuName = h.MENU?.toString().trim() || ''
+    const catMatch = findCategoryId(menuCode, menuName, cats)
+    if (!catMatch) { result.errors.push(`Ref ${reference}: menú '${menuCode}' no encontrado en Firestore — importa menús primero`); continue }
+
+    const sellingPrice = parseFloat(String(h.PRECIO_VENTA || '0').replace(',', '.')) || 0
+    if (!h.PRECIO_VENTA?.toString().trim()) result.warnings.push(`Ref ${reference}: PRECIO_VENTA vacío, se guarda en 0`)
+
+    const type = detectType(reference, 'recipe')
+    const preparation = ingRows.map((r) => r.PREPARACION?.toString().trim()).filter(Boolean).join('\n') || h.PREPARACION?.toString().trim() || ''
+
+    const ingredients = ingRows.map((row) =>
+      buildIngredient(row, mpByRef, subByRef, result.warnings, `Ref ${reference}`)
+    ).filter((i) => i.ingredientName || i.reference)
+
+    const docData = {
+      reference,
+      name: name.toUpperCase(),
+      type,
+      active: true,
+      categoryId: catMatch.id,
+      menuCode: catMatch.code || menuCode,
+      menuName: catMatch.name || menuName,
+      sellingPrice,
+      preparation,
+      ingredients,
+      version: 1,
+      updatedAt: serverTimestamp(),
+    }
+
+    const key = reference.toUpperCase()
+    if (existingByRef[key]) {
+      ops.push({ type: 'update', ref: doc(db, 'restaurants', restaurantId, 'recipes', existingByRef[key].id), data: docData })
+      result.updated++
+    } else {
+      nextNum++
+      ops.push({
+        type: 'set', ref: doc(collection(db, 'restaurants', restaurantId, 'recipes')),
+        data: { ...docData, code: `REC${String(nextNum).padStart(3, '0')}`, order: Date.now() + nextNum, createdAt: serverTimestamp() },
+      })
+      result.created++
+    }
+  }
+
+  await commitBatch(ops, (p) => { if (onProgress) onProgress(90 + Math.round(p * 0.1)) })
+  return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE GENERATORS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ORDER_NOTE = 'Orden de importación recomendado: 1. Unidades  2. Menús  3. Proveedores  4. Materias Primas  5. Sub-recetas  6. Recetas'
+
+function buildInstructionsSheet(fields) {
+  // fields: [{ col, required, note }]
+  const rows = [
+    { CAMPO: '=== INSTRUCCIONES ===' , REQUERIDO: '', DESCRIPCION: '' },
+    { CAMPO: ORDER_NOTE, REQUERIDO: '', DESCRIPCION: '' },
+    { CAMPO: '', REQUERIDO: '', DESCRIPCION: '' },
+    { CAMPO: 'CAMPO', REQUERIDO: 'REQUERIDO', DESCRIPCION: 'DESCRIPCION' },
+    ...fields.map((f) => ({
+      CAMPO: f.col,
+      REQUERIDO: f.required ? '* Requerido' : '(opcional)',
+      DESCRIPCION: f.note || '',
+    })),
+  ]
+  const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true })
+  ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 60 }]
+  return ws
+}
+
+function makeWorkbook(dataRows, dataSheetName, instructionsWs) {
+  const ws = XLSX.utils.json_to_sheet(dataRows)
+  ws['!cols'] = Object.keys(dataRows[0] || {}).map(() => ({ wch: 22 }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, dataSheetName)
+  XLSX.utils.book_append_sheet(wb, instructionsWs, 'INSTRUCCIONES')
+  return wb
+}
+
+export function generateMenuTemplate() {
+  const rows = [
+    { CODIGO_MENU: 'BAR01', NOMBRE_MENU: 'AD BEBIDAS' },
+    { CODIGO_MENU: 'ONI01', NOMBRE_MENU: 'Nigiris' },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'CODIGO_MENU',  required: true,  note: 'Código único del menú/categoría. Debe coincidir con CODIGO_MENU en el archivo de recetas.' },
+    { col: 'NOMBRE_MENU',  required: true,  note: 'Nombre visible del menú.' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Menús', inst), 'plantilla_menus.xlsx')
+}
+
+export function generateSupplierTemplate() {
+  const rows = [
+    { CODIGO_PROVEEDOR: '8355533', NOMBRE_PROVEEDOR: 'CARMONA OCHOA JUAN FELIPE', CONTACTO: '', CELULAR: '', DIRECCION: '' },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'CODIGO_PROVEEDOR',  required: true,  note: 'Código único del proveedor. Debe coincidir con CODIGO_PROVEEDOR en Materias Primas.' },
+    { col: 'NOMBRE_PROVEEDOR',  required: true,  note: 'Nombre o razón social del proveedor.' },
+    { col: 'CONTACTO',          required: false, note: 'Nombre de la persona de contacto.' },
+    { col: 'CELULAR',           required: false, note: 'Teléfono de contacto.' },
+    { col: 'DIRECCION',         required: false, note: 'Dirección del proveedor.' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Proveedores', inst), 'plantilla_proveedores.xlsx')
+}
+
+export function generateUnitTemplate() {
+  const rows = [
+    { CODIGO: 'UND001', MEDIDA: 'G',  DESCRIPCION: 'GRAMO',      EQUIVALENCIA: 1 },
+    { CODIGO: 'UND002', MEDIDA: 'KG', DESCRIPCION: 'KILOGRAMO',  EQUIVALENCIA: 1000 },
+    { CODIGO: 'UND003', MEDIDA: 'ML', DESCRIPCION: 'MILILITRO',  EQUIVALENCIA: 1 },
+    { CODIGO: 'UND004', MEDIDA: 'L',  DESCRIPCION: 'LITRO',      EQUIVALENCIA: 1000 },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'CODIGO',       required: true,  note: 'Código único de la unidad (ej: UND001).' },
+    { col: 'MEDIDA',       required: true,  note: 'Abreviación usada en recetas (ej: G, KG, ML).' },
+    { col: 'DESCRIPCION',  required: true,  note: 'Nombre completo de la unidad.' },
+    { col: 'EQUIVALENCIA', required: true,  note: 'Factor de conversión a la unidad base (ej: KG=1000 para convertir a gramos).' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Unidades', inst), 'plantilla_unidades.xlsx')
+}
+
+export function generateMateriaTemplate() {
+  const rows = [
+    { REFERENCIA: 'MP1000002', NOMBRE: 'ACEITE PARA FREIR', UNIDAD_USO: 'ML', UNIDAD_COMPRA: 'MILILITROS', COSTO: 0, CODIGO_PROVEEDOR: '', CATEGORIA: 'Aceites' },
+    { REFERENCIA: 'MP1000058', NOMBRE: 'ARROZ SUSHI',       UNIDAD_USO: 'G',  UNIDAD_COMPRA: 'KG',         COSTO: 5000, CODIGO_PROVEEDOR: '8355533', CATEGORIA: 'Granos' },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'REFERENCIA',       required: true,  note: 'Código único de la materia prima (ej: MP1000001). Se usa para vincular ingredientes en recetas.' },
+    { col: 'NOMBRE',           required: true,  note: 'Nombre de la materia prima.' },
+    { col: 'UNIDAD_USO',       required: true,  note: 'Unidad con la que se usa en recetas (ej: G, ML).' },
+    { col: 'UNIDAD_COMPRA',    required: true,  note: 'Unidad con la que se compra al proveedor (ej: KG, LITROS).' },
+    { col: 'COSTO',            required: false, note: 'Costo por unidad de compra. Si se deja vacío se importa en 0.' },
+    { col: 'CODIGO_PROVEEDOR', required: false, note: 'Código del proveedor (debe estar importado primero).' },
+    { col: 'CATEGORIA',        required: false, note: 'Categoría para agrupar materias primas (ej: Carnes, Granos, Lácteos).' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Materias Primas', inst), 'plantilla_materias_primas.xlsx')
+}
+
+export function generateSubrecipeTemplate() {
+  const rows = [
+    { REFERENCIA: 'ONISUB001', NOMBRE_RECETA: 'ARROZ SHARI', RENDIMIENTO: 1000, UNIDAD_RENDIMIENTO: 'G', REFERENCIA_MP: 'MP1000058', NOMBRE_MP: 'ARROZ SUSHI',  CANTIDAD: 508, UNIDAD: 'G',  DESPERDICIO: 0, PREPARACION: '' },
+    { REFERENCIA: 'ONISUB001', NOMBRE_RECETA: 'ARROZ SHARI', RENDIMIENTO: 1000, UNIDAD_RENDIMIENTO: 'G', REFERENCIA_MP: 'MP1000036', NOMBRE_MP: 'ALGA KOMBU',  CANTIDAD: 3,   UNIDAD: 'G',  DESPERDICIO: 0, PREPARACION: '' },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'REFERENCIA',         required: true,  note: 'Código único de la sub-receta. REPETIR en cada fila de ingrediente de la misma sub-receta.' },
+    { col: 'NOMBRE_RECETA',      required: true,  note: 'Nombre de la sub-receta. Repetir en cada fila.' },
+    { col: 'RENDIMIENTO',        required: true,  note: 'Cantidad que produce la sub-receta (ej: 1000). Repetir en cada fila.' },
+    { col: 'UNIDAD_RENDIMIENTO', required: true,  note: 'Unidad del rendimiento (ej: G, ML). Repetir en cada fila.' },
+    { col: 'REFERENCIA_MP',      required: true,  note: 'Referencia de la materia prima o sub-receta usada como ingrediente.' },
+    { col: 'NOMBRE_MP',          required: true,  note: 'Nombre del ingrediente (referencial, se prioriza el nombre registrado en Materias Primas).' },
+    { col: 'CANTIDAD',           required: true,  note: 'Cantidad del ingrediente.' },
+    { col: 'UNIDAD',             required: true,  note: 'Unidad del ingrediente.' },
+    { col: 'DESPERDICIO',        required: false, note: 'Porcentaje de desperdicio en número entero (ej: 5 = 5%). Dejar en 0 si no aplica.' },
+    { col: 'PREPARACION',        required: false, note: 'Instrucciones de preparación (puede dejarse vacío).' },
+    { col: '',                   required: false, note: 'NOTA: Una fila por ingrediente. Filas con la misma REFERENCIA se agrupan en una sub-receta.' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Sub-recetas', inst), 'plantilla_subrecetas.xlsx')
+}
+
+export function generateRecipeTemplate() {
+  const rows = [
+    { REFERENCIA: 'ONIREC001', NOMBRE_RECETA: 'AD ZUMO LIMON', CODIGO_MENU: 'BAR01', PRECIO_VENTA: 0, REFERENCIA_MP: 'ONISUB001',  NOMBRE_MP: 'ARROZ SHARI',   CANTIDAD: 45,  UNIDAD: 'ML', DESPERDICIO: 0, PREPARACION: '' },
+    { REFERENCIA: 'ONIREC001', NOMBRE_RECETA: 'AD ZUMO LIMON', CODIGO_MENU: 'BAR01', PRECIO_VENTA: 0, REFERENCIA_MP: 'MP2000082',  NOMBRE_MP: 'LIMON TAHITI',  CANTIDAD: 4.5, UNIDAD: 'G',  DESPERDICIO: 5, PREPARACION: '' },
+  ]
+  const inst = buildInstructionsSheet([
+    { col: 'REFERENCIA',    required: true,  note: 'Código único de la receta. REPETIR en cada fila de ingrediente de la misma receta.' },
+    { col: 'NOMBRE_RECETA', required: true,  note: 'Nombre de la receta. Repetir en cada fila.' },
+    { col: 'CODIGO_MENU',   required: true,  note: 'Código del menú/categoría (debe existir en Firestore — importar Menús primero).' },
+    { col: 'PRECIO_VENTA',  required: false, note: 'Precio de venta de la receta. Si se deja vacío se importa en 0.' },
+    { col: 'REFERENCIA_MP', required: true,  note: 'Referencia de la materia prima o sub-receta usada como ingrediente.' },
+    { col: 'NOMBRE_MP',     required: true,  note: 'Nombre del ingrediente (referencial).' },
+    { col: 'CANTIDAD',      required: true,  note: 'Cantidad del ingrediente.' },
+    { col: 'UNIDAD',        required: true,  note: 'Unidad del ingrediente.' },
+    { col: 'DESPERDICIO',   required: false, note: 'Porcentaje de desperdicio en número entero (ej: 5 = 5%). Dejar en 0 si no aplica.' },
+    { col: 'PREPARACION',   required: false, note: 'Instrucciones de preparación (puede dejarse vacío).' },
+    { col: '',              required: false, note: 'NOTA: Una fila por ingrediente. Filas con la misma REFERENCIA se agrupan en una receta.' },
+  ])
+  XLSX.writeFile(makeWorkbook(rows, 'Recetas', inst), 'plantilla_recetas.xlsx')
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXCEL EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function exportToExcel(data, columns, filename) {
   const rows = data.map((item) => {
     const row = {}
@@ -20,7 +695,6 @@ export function exportToExcel(data, columns, filename) {
   XLSX.writeFile(wb, filename + '.xlsx')
 }
 
-// ── Recipe / Sub-recipe export ────────────────────────────────────────────────
 export async function exportRecipes(restaurantId, type = 'recipe') {
   const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
   const catById = {}
@@ -35,25 +709,19 @@ export async function exportRecipes(restaurantId, type = 'recipe') {
   recipes.forEach((recipe) => {
     const cat = catById[recipe.categoryId] || {}
     const base = {
-      ITEM: recipe.item || '',
       REFERENCIA: recipe.reference || '',
       NOMBRE_RECETA: recipe.name || '',
       CODIGO_MENU: recipe.menuCode || cat.code || '',
-      MENU: cat.name || '',
+      MENU: recipe.menuName || cat.name || '',
       PRECIO_VENTA: recipe.sellingPrice || 0,
+      RENDIMIENTO: recipe.yieldAmount || '',
+      UNIDAD_RENDIMIENTO: recipe.yieldUnit || '',
     }
     if (!recipe.ingredients?.length) {
       rows.push(base)
     } else {
       recipe.ingredients.forEach((ing) => {
-        rows.push({
-          ...base,
-          ITEM_MP: ing.item || '',
-          REFERENCIA_MP: ing.reference || '',
-          NOMBRE_MP: ing.ingredientName || '',
-          CANTIDAD: ing.quantity || 0,
-          UNIDAD: ing.unit || '',
-        })
+        rows.push({ ...base, REFERENCIA_MP: ing.reference || '', NOMBRE_MP: ing.ingredientName || '', CANTIDAD: ing.quantity || 0, UNIDAD: ing.unit || '', DESPERDICIO: ing.wasteMargin || 0 })
       })
     }
   })
@@ -67,434 +735,103 @@ export async function exportRecipes(restaurantId, type = 'recipe') {
   XLSX.writeFile(wb, fileName)
 }
 
-const BATCH_SIZE = 50
+// ─────────────────────────────────────────────────────────────────────────────
+// FIX ALL IMPORTED DATA  (comprehensive migration)
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Helper: commit write operations in batches of 50
-async function batchWrite(operations, onProgress) {
-  let done = 0
-  for (let i = 0; i < operations.length; i += BATCH_SIZE) {
-    const batch = writeBatch(db)
-    const chunk = operations.slice(i, i + BATCH_SIZE)
-    for (const op of chunk) {
-      if (op.type === 'set') batch.set(op.ref, op.data)
-      else batch.update(op.ref, op.data)
-    }
-    await batch.commit()
-    done += chunk.length
-    if (onProgress) onProgress(Math.round((done / operations.length) * 100))
-  }
-}
-
-// Helper: get all docs from a subcollection as a Map keyed by a field
-async function fetchMap(restaurantId, colName, keyField) {
-  const snap = await getDocs(collection(db, 'restaurants', restaurantId, colName))
-  const map = new Map()
-  snap.docs.forEach((d) => {
-    const val = d.data()[keyField]
-    if (val !== undefined && val !== null && val !== '') {
-      map.set(String(val).trim(), { id: d.id, ...d.data() })
-    }
-  })
-  return map
-}
-
-// Helper: get next code for a collection
-function getNextCode(existingCodes, prefix, pad) {
-  const nums = existingCodes
-    .filter((c) => new RegExp(`^${prefix}\\d+$`).test(c))
-    .map((c) => parseInt(c.replace(prefix, ''), 10))
-  const next = nums.length ? Math.max(...nums) + 1 : 1
-  return `${prefix}${String(next).padStart(pad, '0')}`
-}
-
-// ── 1. MENÚS ─────────────────────────────────────────────────────────────────
-export async function importMenus(restaurantId, rows, onProgress) {
-  const existing = await fetchMap(restaurantId, 'categories', 'code')
-  const existingCodes = [...existing.values()].map((v) => v.code || '')
-  const result = { created: 0, updated: 0, errors: [] }
-  const ops = []
-
-  rows.forEach((row, idx) => {
-    const code = String(row.CODIGO_MENU || '').trim()
-    const name = String(row.NOMBRE_MENU || '').trim()
-    if (!code || !name) {
-      result.errors.push(`Fila ${idx + 2}: CODIGO_MENU o NOMBRE_MENU vacíos`)
-      return
-    }
-    if (existing.has(code)) {
-      const ref = doc(db, 'restaurants', restaurantId, 'categories', existing.get(code).id)
-      ops.push({ type: 'update', ref, data: { name: toTitleCase(name), updatedAt: serverTimestamp() } })
-      result.updated++
-    } else {
-      const newCode = existingCodes.length
-        ? getNextCode([...existingCodes, code], 'CAT', 3)
-        : `CAT${String(ops.filter((o) => o.type === 'set').length + 1).padStart(3, '0')}`
-      existingCodes.push(newCode)
-      const ref = doc(collection(db, 'restaurants', restaurantId, 'categories'))
-      ops.push({
-        type: 'set', ref, data: {
-          code, name: toTitleCase(name),
-          order: (existing.size || 0) + ops.filter((o) => o.type === 'set').length,
-          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-        },
-      })
-      result.created++
-    }
-  })
-
-  await batchWrite(ops, onProgress)
-  return result
-}
-
-// ── 2. PROVEEDORES ───────────────────────────────────────────────────────────
-export async function importSuppliers(restaurantId, rows, onProgress) {
-  const existing = await fetchMap(restaurantId, 'suppliers', 'code')
-  const existingCodes = [...existing.values()].map((v) => v.code || '')
-  const result = { created: 0, updated: 0, errors: [] }
-  const ops = []
-
-  rows.forEach((row, idx) => {
-    const code = String(row.CODIGO_PROVEEDOR || '').trim()
-    const name = String(row.NOMBRE_PROVEEDOR || '').trim()
-    if (!code || !name) {
-      result.errors.push(`Fila ${idx + 2}: CODIGO_PROVEEDOR o NOMBRE_PROVEEDOR vacíos`)
-      return
-    }
-    const data = {
-      code,
-      name: toTitleCase(name),
-      contact: row.CONTACTO || null,
-      phone: String(row.CELULAR || '').trim() || null,
-      address: row.DIRECCION || null,
-      updatedAt: serverTimestamp(),
-    }
-    if (existing.has(code)) {
-      const ref = doc(db, 'restaurants', restaurantId, 'suppliers', existing.get(code).id)
-      ops.push({ type: 'update', ref, data })
-      result.updated++
-    } else {
-      const ref = doc(collection(db, 'restaurants', restaurantId, 'suppliers'))
-      ops.push({ type: 'set', ref, data: { ...data, createdAt: serverTimestamp() } })
-      result.created++
-    }
-  })
-
-  await batchWrite(ops, onProgress)
-  return result
-}
-
-// ── 3. UNIDADES DE MEDIDA ────────────────────────────────────────────────────
-export async function importUnits(restaurantId, rows, onProgress) {
-  const existing = await fetchMap(restaurantId, 'units', 'code')
-  const result = { created: 0, updated: 0, errors: [] }
-  const ops = []
-
-  rows.forEach((row, idx) => {
-    const code = String(row.CODIGO || '').trim()
-    const medida = String(row.MEDIDA || '').trim()
-    const desc = String(row.DESCRIPCION || '').trim()
-    if (!code || !medida) {
-      result.errors.push(`Fila ${idx + 2}: CODIGO o MEDIDA vacíos`)
-      return
-    }
-    const data = {
-      code,
-      abbreviation: medida,
-      name: toTitleCase(desc || medida),
-      equivalence: Number(row.EQUIVALENCIA) || 1,
-      updatedAt: serverTimestamp(),
-    }
-    if (existing.has(code)) {
-      const ref = doc(db, 'restaurants', restaurantId, 'units', existing.get(code).id)
-      ops.push({ type: 'update', ref, data })
-      result.updated++
-    } else {
-      const ref = doc(collection(db, 'restaurants', restaurantId, 'units'))
-      ops.push({ type: 'set', ref, data: { ...data, createdAt: serverTimestamp() } })
-      result.created++
-    }
-  })
-
-  await batchWrite(ops, onProgress)
-  return result
-}
-
-// ── 4. MATERIAS PRIMAS ───────────────────────────────────────────────────────
-export async function importMaterias(restaurantId, rows, onProgress) {
-  const existing = await fetchMap(restaurantId, 'materias_primas', 'reference')
-  const allSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
-  const existingMpCodes = allSnap.docs.map((d) => d.data().code || '')
-  let nextNum = existingMpCodes
-    .filter((c) => /^MP\d+$/.test(c))
-    .map((c) => parseInt(c.replace('MP', ''), 10))
-    .reduce((a, b) => Math.max(a, b), 0)
-
-  const result = { created: 0, updated: 0, errors: [] }
-  const ops = []
-
-  rows.forEach((row, idx) => {
-    const name = String(row.NOMBRE || '').trim()
-    const reference = String(row.REFERENCIA || '').trim() || null
-    if (!name) {
-      result.errors.push(`Fila ${idx + 2}: NOMBRE vacío`)
-      return
-    }
-    const lookupKey = reference || null
-    const cost = parseFloat(String(row.COSTO || '0').replace(',', '.')) || 0
-    const data = {
-      item: row.ITEM?.toString() || null,
-      reference,
-      name: toTitleCase(name),
-      cost,
-      pricePerUnit: cost,
-      purchaseUnit: row.UNIDAD_COMPRA || null,
-      useUnit: row.UNIDAD_USO || null,
-      supplierCode: String(row.CODIGO_PROVEEDOR || '').trim() || null,
-      supplier: row.PROVEEDOR || null,
-      category: row.CATEGORIA || 'General',
-      updatedAt: serverTimestamp(),
-    }
-    if (lookupKey && existing.has(lookupKey)) {
-      const ref = doc(db, 'restaurants', restaurantId, 'materias_primas', existing.get(lookupKey).id)
-      ops.push({ type: 'update', ref, data })
-      result.updated++
-    } else {
-      nextNum++
-      const code = `MP${String(nextNum).padStart(4, '0')}`
-      const ref = doc(collection(db, 'restaurants', restaurantId, 'materias_primas'))
-      ops.push({ type: 'set', ref, data: { ...data, code, createdAt: serverTimestamp() } })
-      result.created++
-    }
-  })
-
-  await batchWrite(ops, onProgress)
-  return result
-}
-
-// ── Category helper: find by name or code (case-insensitive), create if missing ──
-async function findOrCreateCategory(restaurantId, menuName, catById) {
-  if (!menuName) return null
-  const normalized = menuName.toUpperCase().trim()
-
-  // Search in the in-memory map (keyed by docId)
-  for (const [catId, catData] of Object.entries(catById)) {
-    if (catData.name?.toUpperCase().trim() === normalized) return catId
-    if (catData.code?.toUpperCase().trim() === normalized) return catId
-  }
-
-  // Not found — create new category and add to in-memory map
-  const displayName = menuName.charAt(0).toUpperCase() + menuName.slice(1).toLowerCase()
-  const newRef = await addDoc(collection(db, 'restaurants', restaurantId, 'categories'), {
-    name: displayName,
-    code: `CAT${Date.now()}`,
-    order: Object.keys(catById).length,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-  catById[newRef.id] = { name: displayName, code: `CAT${Date.now()}` }
-  return newRef.id
-}
-
-// ── 5 & 6. RECETAS / SUB-RECETAS ────────────────────────────────────────────
-async function importRecipeOrSub(restaurantId, rows, type, onProgress) {
-  // Pre-load categories keyed by docId for findOrCreateCategory
-  const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
-  const catById = {}
-  catsSnap.docs.forEach((d) => { catById[d.id] = d.data() })
-
-  const mpMap = await fetchMap(restaurantId, 'materias_primas', 'reference')
-  const existingRecipes = await fetchMap(restaurantId, 'recipes', 'reference')
-  const allRecSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
-  const existingCodes = allRecSnap.docs.map((d) => d.data().code || '')
-
-  const prefix = type === 'subrecipe' ? 'SUB' : 'REC'
-  let nextNum = existingCodes
-    .filter((c) => new RegExp(`^${prefix}\\d+$`).test(c))
-    .map((c) => parseInt(c.replace(prefix, ''), 10))
-    .reduce((a, b) => Math.max(a, b), 0)
-
-  const result = { created: 0, updated: 0, errors: [] }
-
-  // Group rows by ITEM (key) — all rows with same ITEM = one recipe
-  const groups = new Map()
-  rows.forEach((row) => {
-    const key = String(row.ITEM || row.REFERENCIA || '').trim()
-    if (!key) return
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(row)
-  })
-
-  const recipeList = [...groups.values()]
-  const ops = []
-
-  for (const [gIdx, group] of recipeList.entries()) {
-    if (onProgress) onProgress(Math.round((gIdx / recipeList.length) * 90))
-
-    const first = group[0]
-    const reference = String(first.REFERENCIA || '').trim() || null
-    const name = String(first.NOMBRE_RECETA || first.NOMBRE || '').trim()
-    if (!name) {
-      result.errors.push(`Grupo ITEM=${first.ITEM}: NOMBRE_RECETA vacío`)
-      continue
-    }
-
-    // Resolve category — try MENU_CODIGO first, then MENU (which may be a name)
-    const menuValue = String(first.MENU_CODIGO || first.MENU || '').trim()
-    const categoryId = await findOrCreateCategory(restaurantId, menuValue || null, catById)
-
-    // Build ingredients
-    const ingredients = group
-      .filter((r) => r.REFERENCIA_MP || r.NOMBRE_MP)
-      .map((r) => {
-        const mpRef = String(r.REFERENCIA_MP || '').trim()
-        const mpDoc = mpRef ? mpMap.get(mpRef) : null
-        return {
-          ingredientId: mpDoc?.id || null,
-          ingredientName: toTitleCase(String(r.NOMBRE_MP || '').trim()),
-          reference: mpRef || null,
-          item: r.ITEM_MP?.toString() || null,
-          quantity: parseFloat(String(r.CANTIDAD || '0').replace(',', '.')) || 0,
-          unit: String(r.UNIDAD || r.MED || '').trim(),
-          wasteMargin: 0,
-          totalCost: 0,
-        }
-      })
-
-    const sellingPrice = parseFloat(String(first.PRECIO_VENTA || first.PRECIO || '0').replace(',', '.')) || 0
-
-    const docData = {
-      item: first.ITEM?.toString() || null,
-      reference,
-      name: name.toUpperCase(),
-      categoryId,
-      sellingPrice,
-      type,
-      active: true,
-      ingredients,
-      version: 1,
-      updatedAt: serverTimestamp(),
-    }
-
-    const lookupKey = reference
-    if (lookupKey && existingRecipes.has(lookupKey)) {
-      const ref = doc(db, 'restaurants', restaurantId, 'recipes', existingRecipes.get(lookupKey).id)
-      ops.push({ type: 'update', ref, data: docData })
-      result.updated++
-    } else {
-      nextNum++
-      const code = `${prefix}${String(nextNum).padStart(3, '0')}`
-      const ref = doc(collection(db, 'restaurants', restaurantId, 'recipes'))
-      ops.push({
-        type: 'set', ref, data: {
-          ...docData, code, order: Date.now() + nextNum,
-          createdAt: serverTimestamp(),
-        },
-      })
-      result.created++
-    }
-  }
-
-  await batchWrite(ops, (p) => { if (onProgress) onProgress(90 + Math.round(p * 0.1)) })
-  return result
-}
-
-export async function importRecipes(restaurantId, rows, onProgress) {
-  return importRecipeOrSub(restaurantId, rows, 'recipe', onProgress)
-}
-
-export async function importSubrecipes(restaurantId, rows, onProgress) {
-  return importRecipeOrSub(restaurantId, rows, 'subrecipe', onProgress)
-}
-
-// ── MIGRACIÓN: corregir categoryId de recetas importadas ─────────────────────
-export async function fixRecipeCategoryIds(restaurantId) {
-  // Build lookup maps: code -> docId and name -> docId
-  const catsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
-  const catByCode = {}
-  const catByName = {}
-  catsSnap.docs.forEach((d) => {
-    const data = d.data()
-    if (data.code) catByCode[data.code.toUpperCase().trim()] = d.id
-    if (data.name) catByName[data.name.toUpperCase().trim()] = d.id
-  })
-
-  const allCatIds = new Set(Object.values(catByCode))
-
-  const recipesSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+export async function fixAllImportedData(restaurantId) {
+  const cats = await loadCategories(restaurantId)
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
   let fixed = 0
-  let skipped = 0
-  let notFound = 0
   const errors = []
 
-  const FIX_BATCH = 500
-  const docs = recipesSnap.docs
-
-  for (let i = 0; i < docs.length; i += FIX_BATCH) {
+  for (let i = 0; i < snap.docs.length; i += 500) {
     const batch = writeBatch(db)
     let batchHasOps = false
 
-    docs.slice(i, i + FIX_BATCH).forEach((recipeDoc) => {
-      const data = recipeDoc.data()
-      const current = data.categoryId
+    for (const d of snap.docs.slice(i, i + 500)) {
+      const data = d.data()
+      const ref = data.reference || ''
+      const updates = {}
 
-      // Already a valid Firestore doc ID that exists in categories — skip
-      if (current && allCatIds.has(current)) { skipped++; return }
+      // 1. Fix type from reference prefix
+      const correctType = detectType(ref, null)
+      if (correctType && data.type !== correctType) updates.type = correctType
 
-      // Try to resolve: by code, then by name, then by menuCode/menuName fields
-      const newId =
-        catByCode[current?.toUpperCase()?.trim()] ||
-        catByName[current?.toUpperCase()?.trim()] ||
-        catByCode[data.menuCode?.toUpperCase()?.trim()] ||
-        catByName[data.menuName?.toUpperCase()?.trim()] ||
-        null
+      const effectiveType = updates.type || data.type
 
-      if (newId) {
-        batch.update(doc(db, 'restaurants', restaurantId, 'recipes', recipeDoc.id), { categoryId: newId })
+      // 2. Sub-recetas: clear categoryId, set fixed menu fields
+      if (effectiveType === 'subrecipe') {
+        if (data.categoryId !== null) updates.categoryId = null
+        if (!data.menuCode || data.menuCode !== 'SUBRECETA') updates.menuCode = 'SUBRECETA'
+        if (!data.menuName || data.menuName !== 'Sub-recetas') updates.menuName = 'Sub-recetas'
+      }
+
+      // 3. Recetas: fix empty categoryId using menuCode or menuName
+      if (effectiveType !== 'subrecipe' && !data.categoryId) {
+        const menuIdentifier = data.menuCode || data.menuName || data.menu
+        if (menuIdentifier) {
+          const catMatch = findCategoryId(menuIdentifier, menuIdentifier, cats)
+          if (catMatch) {
+            updates.categoryId = catMatch.id
+            if (!data.menuCode) updates.menuCode = catMatch.code
+            if (!data.menuName) updates.menuName = catMatch.name
+          }
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        batch.update(
+          doc(db, 'restaurants', restaurantId, 'recipes', d.id),
+          { ...updates, updatedAt: serverTimestamp() }
+        )
         fixed++
         batchHasOps = true
-      } else {
-        notFound++
-        if (errors.length < 50) errors.push(`Sin categoría: ${data.name} (${current || 'vacío'})`)
       }
-    })
+    }
 
     if (batchHasOps) await batch.commit()
   }
 
-  return { fixed, skipped, notFound, errors }
+  return { fixed, errors }
 }
 
-// ── MIGRACIÓN: marcar sub-recetas importadas con type='subrecipe' ─────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// LEGACY MIGRATION FUNCTIONS  (kept for ImportTab compatibility)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function fixRecipeCategoryIds(restaurantId) {
+  return fixAllImportedData(restaurantId)
+}
+
 export async function fixSubrecipeTypes(restaurantId) {
   const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
   let fixed = 0
   let skipped = 0
-  const FIX_BATCH = 500
 
-  for (let i = 0; i < snap.docs.length; i += FIX_BATCH) {
+  for (let i = 0; i < snap.docs.length; i += 500) {
     const batch = writeBatch(db)
     let batchHasOps = false
 
-    snap.docs.slice(i, i + FIX_BATCH).forEach((d) => {
+    snap.docs.slice(i, i + 500).forEach((d) => {
       const data = d.data()
-      // Already correct
       if (data.type === 'subrecipe') { skipped++; return }
 
       const isSub =
         data.isSubRecipe === true ||
         data.code?.startsWith('SUB') ||
-        data.reference?.toUpperCase?.().includes('SUB')
+        data.reference?.toUpperCase?.().startsWith('ONISUB') ||
+        data.reference?.toUpperCase?.().startsWith('BARSB')
 
       if (isSub) {
         batch.update(doc(db, 'restaurants', restaurantId, 'recipes', d.id), {
-          type: 'subrecipe',
-          isSubRecipe: true,
+          type: 'subrecipe', isSubRecipe: true,
+          menuCode: 'SUBRECETA', menuName: 'Sub-recetas', categoryId: null,
+          updatedAt: serverTimestamp(),
         })
         fixed++
         batchHasOps = true
-      } else {
-        skipped++
-      }
+      } else { skipped++ }
     })
 
     if (batchHasOps) await batch.commit()
