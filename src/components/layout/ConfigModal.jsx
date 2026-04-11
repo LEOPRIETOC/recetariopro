@@ -1753,15 +1753,19 @@ function AppearanceTab({ isDark }) {
 
       <Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</Button>
 
-      {/* Temporary: promote self to master (only for superadmin) */}
-      {userProfile?.role === 'superadmin' && (
-        <div className={cn('mt-4 p-4 rounded-xl border border-dashed', isDark ? 'border-gray-700' : 'border-gray-300')}>
-          <p className={cn('text-xs mb-3', isDark ? 'text-gray-500' : 'text-gray-400')}>
-            Migración de rol — solo visible para superadmin
-          </p>
-          <Button variant="outline" size="sm" onClick={handleSetMaster} disabled={masterBusy}>
+      {/* Temporary: promote self to master — visible until role is master */}
+      {userProfile?.role !== 'master' && (
+        <div style={{ marginTop: 20, padding: 16, background: isDark ? '#1f2937' : '#f9fafb', borderRadius: 10, border: isDark ? '1px solid #374151' : '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: '0.8rem', color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 8 }}>
+            🔑 Configuración inicial — solo aparece una vez
+          </div>
+          <button
+            onClick={handleSetMaster}
+            disabled={masterBusy}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', fontFamily: 'inherit', fontWeight: 600, cursor: 'pointer', width: '100%', opacity: masterBusy ? 0.7 : 1 }}
+          >
             {masterBusy ? '...' : '🔑 Establecerme como Master'}
-          </Button>
+          </button>
         </div>
       )}
     </div>
