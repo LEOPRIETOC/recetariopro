@@ -686,21 +686,21 @@ function UnitsTab({ restaurantId, isDark }) {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
           <div className="row g-3 mb-3">
-            <div className="col-auto" style={{ minWidth: '100px' }}>
+            <div className="col-md-3 col-6">
               <Label className="form-label">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
                 {unitCode || '—'}
               </div>
             </div>
-            <div className="col">
+            <div className="col-md-3 col-6">
               <Label className="form-label">Nombre *</Label>
               <Input {...register('name')} onBlur={(e) => { const v = toTitleCase(e.target.value); if (v) setValue('name', v) }} placeholder="Kilogramo" className={errors.name ? 'border-red-400' : ''} />
             </div>
-            <div className="col-md-2 col-6">
+            <div className="col-md-3 col-6">
               <Label className="form-label">Abreviatura *</Label>
               <Input {...register('abbreviation')} onChange={(e) => setValue('abbreviation', e.target.value.toUpperCase())} placeholder="KG" className={errors.abbreviation ? 'border-red-400' : ''} />
             </div>
-            <div className="col-md-2 col-6">
+            <div className="col-md-3 col-6">
               <Label className="form-label">Equivalencia</Label>
               <Input {...register('equivalence')} type="number" step="any" min="0.0001" placeholder="1" className={errors.equivalence ? 'border-red-400' : ''} />
             </div>
@@ -724,7 +724,7 @@ function UnitsTab({ restaurantId, isDark }) {
               <div className="h-1.5" style={{ background: 'var(--accent)' }} />
               <div className="p-3">
                 <div className="flex items-start justify-between gap-1 mb-1">
-                  <span className={cn('font-mono text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{u.code || '—'}</span>
+                  {u.code && <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{u.code}</span>}
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
                     <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -739,8 +739,8 @@ function UnitsTab({ restaurantId, isDark }) {
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          <div className={cn('flex items-center gap-3 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
-            <span className="w-20 flex-shrink-0">Código</span>
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#6b7280' : '#9ca3af' }}>
+            <span className="w-24 flex-shrink-0">Código</span>
             <span className="flex-1">Nombre</span>
             <span className="w-20 flex-shrink-0">Abreviatura</span>
             <span className="w-24 flex-shrink-0">Equivalencia</span>
@@ -748,7 +748,9 @@ function UnitsTab({ restaurantId, isDark }) {
           </div>
           {units.map((u) => (
             <div key={u.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className={cn('font-mono text-xs w-20 flex-shrink-0', isDark ? 'text-gray-500' : 'text-gray-400')}>{u.code || '—'}</span>
+              <span className="w-24 flex-shrink-0">
+                {u.code ? <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{u.code}</span> : <span className={cn('text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>—</span>}
+              </span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{u.name}</span>
               <span className="font-mono text-xs font-bold w-20 flex-shrink-0" style={{ color: 'var(--accent)' }}>{u.abbreviation}</span>
               <span className={cn('text-xs w-24 flex-shrink-0', isDark ? 'text-gray-400' : 'text-gray-600')}>{u.equivalence ?? 1}</span>
