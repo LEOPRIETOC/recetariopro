@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { onAuthChange, getUserProfile } from '../services/auth'
 import { collection, query, where, getDocs, addDoc, setDoc, doc, limit, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
+// Module-level flag — resets on every page reload, prevents duplicate navigation
+// from multiple simultaneous useAuth() instances
+let _navigatedToSelector = false
+
 export function useAuth() {
-  const { user, userProfile, setUser, setUserProfile, setCurrentRestaurant, currentRestaurant, setAccentColor } = useAppStore()
+  const {
+    user, userProfile,
+    setUser, setUserProfile,
+    setCurrentRestaurant, currentRestaurant,
+    setAccentColor,
+  } = useAppStore()
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
@@ -20,19 +31,18 @@ export function useAuth() {
         let profile = await getUserProfile(firebaseUser.uid)
         if (profile) setUserProfile(profile)
 
-        // Load the user's primary restaurant
+        // Load the user's primary restaurant (kept for backwards compat)
         if (!currentRestaurant) {
           let found = null
           try {
             const q = query(
               collection(db, 'restaurants'),
-              where(`members.${firebaseUser.uid}.role`, 'in', ['admin', 'chef', 'superadmin']),
+              where(`members.${firebaseUser.uid}.role`, 'in', ['admin', 'chef', 'superadmin', 'master', 'usuario']),
               limit(1)
             )
             const snap = await getDocs(q)
             if (!snap.empty) found = { id: snap.docs[0].id, ...snap.docs[0].data() }
           } catch {
-            // Firestore may not have composite index yet; fallback to owner
             try {
               const q2 = query(
                 collection(db, 'restaurants'),
@@ -65,31 +75,41 @@ export function useAuth() {
                 createdAt: serverTimestamp(),
               }, { merge: true })
               setCurrentRestaurant({ id: restRef.id, name, ownerId: firebaseUser.uid })
-              // Refresh profile now that it exists
               profile = await getUserProfile(firebaseUser.uid)
               if (profile) setUserProfile(profile)
             } catch { /* silent */ }
           }
         }
+
+        // Navigate to restaurant selector on every fresh page load / login
+        if (!_navigatedToSelector) {
+          _navigatedToSelector = true
+          navigate('/restaurants')
+        }
       } else {
+        // Logout — reset everything
+        _navigatedToSelector = false
         setUser(null)
         setUserProfile(null)
+        setCurrentRestaurant(null)
       }
       setLoading(false)
     })
     return unsubscribe
   }, [])
 
-  const isMaster     = userProfile?.role === 'master'
-  const isSuperAdmin = userProfile?.role === 'superadmin'
-  const isAdmin      = userProfile?.role === 'admin' ||
-                       userProfile?.role === 'superadmin' ||
-                       userProfile?.role === 'master'
-  const isChef       = userProfile?.role === 'chef'
-  const isUsuario    = userProfile?.role === 'usuario'
-  const canEdit      = isMaster || isSuperAdmin || isAdmin
-  const canSeeCosts  = isMaster || isSuperAdmin || isAdmin
-  const canManageUsers = isMaster || isSuperAdmin || isAdmin
+  const isMaster       = ['master'].includes(userProfile?.role)
+  const isSuperAdmin   = ['superadmin'].includes(userProfile?.role)
+  const isAdmin        = ['master', 'superadmin', 'admin'].includes(userProfile?.role)
+  const isChef         = ['chef'].includes(userProfile?.role)
+  const isUsuario      = ['usuario'].includes(userProfile?.role)
+  const canEdit        = isAdmin
+  const canSeeCosts    = isAdmin
+  const canManageUsers = isAdmin
 
-  return { user, userProfile, loading, isAdmin, isSuperAdmin, isMaster, isChef, isUsuario, canEdit, canSeeCosts, canManageUsers }
+  return {
+    user, userProfile, loading,
+    isAdmin, isSuperAdmin, isMaster, isChef, isUsuario,
+    canEdit, canSeeCosts, canManageUsers,
+  }
 }

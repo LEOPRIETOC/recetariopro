@@ -16,6 +16,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import POSMainPage from './pages/POSMainPage'
 import RecipeDetailPage from './pages/RecipeDetailPage'
 import RestaurantSelectorPage from './pages/RestaurantSelectorPage'
+import RestaurantsManagePage from './pages/RestaurantsManagePage'
 
 function ThemeProvider({ children }) {
   const theme = useAppStore((s) => s.theme)
@@ -42,6 +43,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/restaurants" element={<RestaurantSelectorPage />} />
+            <Route path="/restaurants/new" element={<RestaurantsManagePage />} />
             <Route element={<POSLayout />}>
               <Route path="/" element={<POSMainPage />} />
               <Route path="/recipes/new" element={<RecipeDetailPage />} />

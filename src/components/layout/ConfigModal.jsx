@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp } from 'lucide-react'
+import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink } from 'lucide-react'
 import { ImportTab } from '../ImportTab'
 import * as XLSX from 'xlsx'
 import {
@@ -56,6 +56,7 @@ const TABS = [
   { id: 'users', icon: Users, label: 'Usuarios' },
   { id: 'appearance', icon: Settings, label: 'Personalización' },
   { id: 'subscription', icon: CreditCard, label: 'Suscripción' },
+  { id: 'restaurants_link', icon: Store, label: 'Restaurantes', masterOnly: true },
 ]
 
 const ACCENT_PALETTE = [
@@ -1819,11 +1820,16 @@ function UsersAdminTab({ isDark }) {
 export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
   const { isAdmin, isMaster } = useAuth()
+  const navigate = useNavigate()
   const isDark = theme === 'night'
 
   if (!configOpen) return null
 
-  const tabs = (isAdmin || isMaster) ? TABS : TABS.filter((t) => !['users','subscription'].includes(t.id))
+  const tabs = TABS.filter((t) => {
+    if (t.masterOnly) return isMaster
+    if (['users', 'subscription'].includes(t.id)) return isAdmin || isMaster
+    return true
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1852,7 +1858,10 @@ export function ConfigModal() {
             </button>
           </div>
           {tabs.map(({ id, icon: Icon, label }) => (
-            <button key={id} onClick={() => setConfigTab(id)} className={cn(
+            <button key={id} onClick={() => {
+              if (id === 'restaurants_link') { closeConfig(); navigate('/restaurants') }
+              else setConfigTab(id)
+            }} className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all text-left',
               configTab === id
                 ? 'text-white shadow-sm'
@@ -1862,6 +1871,7 @@ export function ConfigModal() {
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
               {label}
+              {id === 'restaurants_link' && <ExternalLink className="h-3 w-3 ml-auto opacity-50" />}
             </button>
           ))}
         </div>
