@@ -17,6 +17,7 @@ import { z } from 'zod'
 
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
+import { useTableSort } from '../../hooks/useTableSort.jsx'
 import { cn, formatNumber, toTitleCase } from '../../lib/utils'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
@@ -63,35 +64,6 @@ const ACCENT_PALETTE = [
   '#78716c',
 ]
 
-// ── Sort hook ────────────────────────────────────────────────────────────────
-function useTableSort(data, defaultKey = null) {
-  const [sortKey, setSortKey] = useState(defaultKey)
-  const [sortDir, setSortDir] = useState('asc')
-
-  const requestSort = (key) => {
-    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('asc') }
-  }
-
-  const sorted = [...(data || [])].sort((a, b) => {
-    if (!sortKey) return 0
-    const aV = a[sortKey] ?? ''
-    const bV = b[sortKey] ?? ''
-    const cmp = typeof aV === 'number' && typeof bV === 'number'
-      ? aV - bV
-      : String(aV).localeCompare(String(bV))
-    return sortDir === 'asc' ? cmp : -cmp
-  })
-
-  const SortIcon = ({ k }) => {
-    if (sortKey !== k) return <span className="opacity-20 ml-1">↕</span>
-    return sortDir === 'asc'
-      ? <ChevronUp className="inline h-3 w-3 ml-1 text-gold-500" />
-      : <ChevronDown className="inline h-3 w-3 ml-1 text-gold-500" />
-  }
-
-  return { sorted, requestSort, sortKey, sortDir, SortIcon }
-}
 
 // ── Combobox input with autocomplete suggestions ─────────────────────────────
 function ComboInput({ value, onChange, suggestions, placeholder, isDark }) {
@@ -161,7 +133,7 @@ function IngredientsTab({ restaurantId, isDark }) {
   const [nextCode, setNextCode] = useState('')
   const [dupErrors, setDupErrors] = useState({})
   const scrollBodyRef = useRef(null)
-  const { sorted, requestSort, SortIcon } = useTableSort(ingredients, 'code')
+  const { sorted, toggleSort, SortIcon } = useTableSort(ingredients, 'code')
 
   const schema = z.object({
     item: z.string().optional(),
@@ -504,7 +476,7 @@ function IngredientsTab({ restaurantId, isDark }) {
               ].map(([k, label, stickyL]) => (
                 <th
                   key={k}
-                  onClick={() => requestSort(k)}
+                  onClick={() => toggleSort(k)}
                   style={{
                     textAlign: 'left',
                     padding: '8px 12px',
@@ -520,7 +492,7 @@ function IngredientsTab({ restaurantId, isDark }) {
                     ...(stickyL ? { position: 'sticky', left: 0, zIndex: 20, boxShadow: '2px 0 6px rgba(0,0,0,0.12)' } : {}),
                   }}
                 >
-                  {label}<SortIcon k={k} />
+                  {label}<SortIcon field={k} />
                 </th>
               ))}
               <th style={{
@@ -613,6 +585,7 @@ function UnitsTab({ restaurantId, isDark }) {
     equivalence: z.coerce.number().min(0.0001).optional(),
   })
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const { sorted: sortedUnits, toggleSort: toggleUnitSort, SortIcon: UnitSortIcon } = useTableSort(units, 'code')
 
   useEffect(() => {
     if (!restaurantId) return
@@ -740,13 +713,13 @@ function UnitsTab({ restaurantId, isDark }) {
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
           <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#6b7280' : '#9ca3af' }}>
-            <span className="w-24 flex-shrink-0">Código</span>
-            <span className="flex-1">Nombre</span>
-            <span className="w-20 flex-shrink-0">Abreviatura</span>
-            <span className="w-24 flex-shrink-0">Equivalencia</span>
+            <span className="w-24 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('code')}>Código<UnitSortIcon field="code" /></span>
+            <span className="flex-1 cursor-pointer select-none" onClick={() => toggleUnitSort('name')}>Nombre<UnitSortIcon field="name" /></span>
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('abbreviation')}>Abreviatura<UnitSortIcon field="abbreviation" /></span>
+            <span className="w-24 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('equivalence')}>Equivalencia<UnitSortIcon field="equivalence" /></span>
             <span className="w-12 flex-shrink-0" />
           </div>
-          {units.map((u) => (
+          {sortedUnits.map((u) => (
             <div key={u.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
               <span className="w-24 flex-shrink-0">
                 {u.code ? <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{u.code}</span> : <span className={cn('text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>—</span>}
@@ -779,6 +752,7 @@ function MpCategoriesTab({ restaurantId, isDark }) {
 
   const schema = z.object({ name: z.string().min(2, 'Mínimo 2 caracteres') })
   const { register, handleSubmit, reset, setValue, watch: watchForm, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const { sorted: sortedMpCats, toggleSort: toggleMpCatSort, SortIcon: MpCatSortIcon } = useTableSort(categories, 'code')
 
   useEffect(() => { if (!restaurantId) return; return subscribeMpCategories(restaurantId, setCategories) }, [restaurantId])
 
@@ -887,12 +861,12 @@ function MpCategoriesTab({ restaurantId, isDark }) {
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          <div className={cn('flex items-center gap-3 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
-            <span className="w-20 flex-shrink-0">Código</span>
-            <span className="flex-1">Nombre</span>
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleMpCatSort('code')}>Código<MpCatSortIcon field="code" /></span>
+            <span className="flex-1 cursor-pointer select-none" onClick={() => toggleMpCatSort('name')}>Nombre<MpCatSortIcon field="name" /></span>
             <span className="w-16 flex-shrink-0 text-right">Acciones</span>
           </div>
-          {categories.map((cat) => (
+          {sortedMpCats.map((cat) => (
             <div key={cat.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
               <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0 w-20" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code || '—'}</span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</span>
@@ -1168,6 +1142,7 @@ function SuppliersTab({ restaurantId, isDark }) {
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const { sorted: sortedSuppliers, toggleSort: toggleSupSort, SortIcon: SupSortIcon } = useTableSort(suppliers, 'code')
 
   useEffect(() => {
     if (!restaurantId) return
@@ -1305,14 +1280,23 @@ function SuppliersTab({ restaurantId, isDark }) {
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          {suppliers.map((s) => (
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#6b7280' : '#9ca3af' }}>
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleSupSort('code')}>Código<SupSortIcon field="code" /></span>
+            <span className="flex-1 cursor-pointer select-none" onClick={() => toggleSupSort('name')}>Nombre<SupSortIcon field="name" /></span>
+            <span className="hidden sm:block w-32 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleSupSort('contact')}>Contacto<SupSortIcon field="contact" /></span>
+            <span className="hidden md:block w-32 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleSupSort('phone')}>Teléfono<SupSortIcon field="phone" /></span>
+            <span className="w-12 flex-shrink-0" />
+          </div>
+          {sortedSuppliers.map((s) => (
             <div key={s.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>{s.code || '—'}</span>
+              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0 w-20" style={{ background: 'var(--accent)', color: '#fff' }}>{s.code || '—'}</span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{s.name}</span>
-              {s.contact && <span className={cn('text-xs hidden sm:block', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.contact}</span>}
-              {s.phone && <span className={cn('text-xs hidden md:block', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.phone}</span>}
-              <button onClick={() => openEdit(s)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-              <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              {s.contact && <span className={cn('text-xs hidden sm:block w-32 flex-shrink-0 truncate', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.contact}</span>}
+              {s.phone && <span className={cn('text-xs hidden md:block w-32 flex-shrink-0', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.phone}</span>}
+              <div className="flex gap-1 w-12 flex-shrink-0 justify-end">
+                <button onClick={() => openEdit(s)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+                <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
             </div>
           ))}
         </div>
