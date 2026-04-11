@@ -370,8 +370,8 @@ function IngredientsTab({ restaurantId, isDark }) {
           </div>
 
           {/* Row: Unidad · Cant./Presentación · Valor · Precio/Unidad */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'end' }}>
-            <div className="space-y-1">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <Label>Unidad *</Label>
               <Select value={watch('unit') || ''} onValueChange={(v) => {
                 const found = units.find((u) => u.abbreviation === v)
@@ -388,22 +388,33 @@ function IngredientsTab({ restaurantId, isDark }) {
               </Select>
               {errors.unit && <p className="text-xs text-red-500">{errors.unit.message}</p>}
             </div>
-            <div className="space-y-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <Label>Cant./Presentación *</Label>
               <Input type="number" step="0.001" min="0.001" {...register('quantityPerPresentation')} className={errors.quantityPerPresentation ? 'border-red-400' : ''} />
               {errors.quantityPerPresentation && <p className="text-xs text-red-500">{errors.quantityPerPresentation.message}</p>}
             </div>
-            <div className="space-y-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <Label>Valor presentación *</Label>
               <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
               {errors.value && <p className="text-xs text-red-500">{errors.value.message}</p>}
             </div>
-            <div className="space-y-1">
-              <Label className="truncate block">Precio por {watchedUnitName || 'unidad'}</Label>
-              <div className={cn('h-9 flex items-center px-3 rounded-lg border text-sm font-semibold', isDark ? 'bg-gray-700 border-gray-600 text-gold-400' : 'bg-white border-gray-200 text-gold-700')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <Label>Precio por {watchedUnitName || 'unidad'}</Label>
+              <div style={{
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                background: isDark ? '#374151' : '#f9fafb',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--accent)',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
                 {pricePerUnit > 0 ? formatNumber(pricePerUnit) : '—'}
               </div>
-              <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>Valor ÷ Cantidad</p>
             </div>
           </div>
 
