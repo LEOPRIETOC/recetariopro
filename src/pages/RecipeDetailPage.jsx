@@ -1150,24 +1150,26 @@ export default function RecipeDetailPage() {
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
               <CardHeader><CardTitle>Información básica</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* Code + Item + Reference — same row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 1fr', gap: '12px' }}>
+                {/* Code + (Item) + Reference — same row; Item hidden for sub-recipes */}
+                <div style={{ display: 'grid', gridTemplateColumns: isSubRecipe ? '140px 1fr' : '140px 1fr 1fr', gap: '12px' }}>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Código</Label>
                     <div className={cn('px-3 py-2 rounded-lg text-sm font-mono font-bold h-9 flex items-center', isDark ? 'bg-gray-800 text-gold-400' : 'bg-gold-50 text-gold-700')}>
                       {codeLoading ? '...' : (watch('code') || '—')}
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Item</Label>
-                    <Input
-                      {...register('item')}
-                      placeholder="SKU / cód. interno"
-                      className="h-9"
-                      onBlur={(e) => checkRecipeDup('item', e.target.value)}
-                    />
-                    {dupErrors.item && <p className="text-xs text-amber-500">{dupErrors.item}</p>}
-                  </div>
+                  {!isSubRecipe && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Item</Label>
+                      <Input
+                        {...register('item')}
+                        placeholder="SKU / cód. interno"
+                        className="h-9"
+                        onBlur={(e) => checkRecipeDup('item', e.target.value)}
+                      />
+                      {dupErrors.item && <p className="text-xs text-amber-500">{dupErrors.item}</p>}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label className="text-xs">Referencia</Label>
                     <Input
@@ -1224,20 +1226,20 @@ export default function RecipeDetailPage() {
 
                 {isSubRecipe && (
                   <>
-                    {/* Yield fields — only for sub-recipes */}
+                    {/* Yield fields — Rendimiento | Unidad de rendimiento */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label>Rendimiento *</Label>
                         <Input
-                          type="number" step="0.001" min="0.001"
+                          type="number" step="any" min="0.001"
                           {...register('yieldAmount')}
-                          placeholder="Ej: 1.5"
+                          placeholder="Ej: 1000"
                           className={errors.yieldAmount ? 'border-red-400' : ''}
                         />
                         {errors.yieldAmount && <p className="text-xs text-red-500">{errors.yieldAmount.message}</p>}
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Unidad de rendimiento</Label>
+                        <Label>Unidad de rendimiento *</Label>
                         <select
                           value={watch('yieldUnit') || ''}
                           onChange={(e) => setValue('yieldUnit', e.target.value)}
@@ -1245,7 +1247,7 @@ export default function RecipeDetailPage() {
                             isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
                         >
                           <option value="">--</option>
-                          {allUnits.map((u) => <option key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</option>)}
+                          {allUnits.map((u) => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1259,6 +1261,7 @@ export default function RecipeDetailPage() {
                         </span>
                       </div>
                     )}
+                    {/* PIN */}
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> PIN de acceso (4 dígitos, opcional)</Label>
                       <Input {...register('pin')} type="password" maxLength={4} placeholder="" className="max-w-28 text-center tracking-widest" />
