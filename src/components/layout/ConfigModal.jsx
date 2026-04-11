@@ -31,7 +31,7 @@ import {
 import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
 } from '../../services/suppliers'
-import { subscribeUnits, createUnit, updateUnit, deleteUnit, DEFAULT_UNITS } from '../../services/units'
+import { subscribeUnits, createUnit, updateUnit, deleteUnit, getNextUnitCode, DEFAULT_UNITS } from '../../services/units'
 import { useToast } from '../ui/toast'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -619,18 +619,21 @@ function UnitsTab({ restaurantId, isDark }) {
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [unitCode, setUnitCode] = useState('')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('units-view-mode') || 'grid')
 
   const schema = z.object({
     name: z.string().min(2),
     abbreviation: z.string().min(1).max(6),
-    type: z.string().min(1),
   })
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
 
   useEffect(() => {
     if (!restaurantId) return
     return subscribeUnits(restaurantId, setUnits)
   }, [restaurantId])
+
+  const setView = (v) => { localStorage.setItem('units-view-mode', v); setViewMode(v) }
 
   const seedDefaults = async () => {
     try {
@@ -639,30 +642,35 @@ function UnitsTab({ restaurantId, isDark }) {
     } catch { error('Error') }
   }
 
+  const openNew = async () => {
+    setEditing(null); reset({ name: '', abbreviation: '' })
+    const code = await getNextUnitCode(restaurantId).catch(() => '')
+    setUnitCode(code); setShowForm(true)
+  }
+
+  const openEdit = (u) => {
+    setEditing(u); setUnitCode(u.code || ''); reset({ name: u.name, abbreviation: u.abbreviation || '' }); setShowForm(true)
+  }
+
   const onSubmit = async (data) => {
     setSaving(true)
     try {
-      const payload = { ...data, name: toTitleCase(data.name) }
+      const payload = { name: toTitleCase(data.name), abbreviation: data.abbreviation.toUpperCase(), code: unitCode }
       if (editing) await updateUnit(restaurantId, editing.id, payload)
       else await createUnit(restaurantId, payload)
       success('Guardado')
-      setShowForm(false)
-      reset()
-      setEditing(null)
+      setShowForm(false); reset(); setEditing(null)
     } catch { error('Error') }
     finally { setSaving(false) }
   }
-
-  const openEdit = (u) => { setEditing(u); reset({ name: u.name, abbreviation: u.abbreviation, type: u.type }); setShowForm(true) }
 
   const handleExport = () => {
     const ws = XLSX.utils.json_to_sheet(units.map((u) => ({
       CODIGO: u.code || '',
       MEDIDA: u.abbreviation || '',
       DESCRIPCION: u.name || '',
-      EQUIVALENCIA: u.equivalence || 1,
     })))
-    ws['!cols'] = Array(4).fill({ wch: 18 })
+    ws['!cols'] = Array(3).fill({ wch: 18 })
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Unidades')
     XLSX.writeFile(wb, 'unidades_recetariopro.xlsx')
   }
@@ -670,33 +678,40 @@ function UnitsTab({ restaurantId, isDark }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>{units.length} unidades registradas</p>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
+          <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>{units.length} unidades</p>
+        </div>
         <div className="flex gap-2">
           {units.length === 0 && <Button variant="outline" size="sm" onClick={seedDefaults}>Cargar predeterminadas</Button>}
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>
-          <Button size="sm" onClick={() => { setEditing(null); reset({ name: '', abbreviation: '', type: 'Peso' }); setShowForm(true) }}><Plus className="h-4 w-4" /> Nueva</Button>
+          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nueva</Button>
         </div>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div className="grid grid-cols-3 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px', gap: '12px' }}>
+            <div className="space-y-1">
+              <Label className="text-xs">Código</Label>
+              <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
+                {unitCode || '—'}
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Nombre *</Label>
               <Input {...register('name')} onBlur={(e) => { const v = toTitleCase(e.target.value); if (v) setValue('name', v) }} placeholder="Kilogramo" className={errors.name ? 'border-red-400' : ''} />
             </div>
             <div className="space-y-1">
               <Label>Abreviatura *</Label>
-              <Input {...register('abbreviation')} placeholder="kg" className={errors.abbreviation ? 'border-red-400' : ''} />
-            </div>
-            <div className="space-y-1">
-              <Label>Tipo *</Label>
-              <Select value={watch('type') || 'Peso'} onValueChange={(v) => setValue('type', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['Peso','Volumen','Unidad','Otro'].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input {...register('abbreviation')} onChange={(e) => setValue('abbreviation', e.target.value.toUpperCase())} placeholder="KG" className={errors.abbreviation ? 'border-red-400' : ''} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -706,23 +721,45 @@ function UnitsTab({ restaurantId, isDark }) {
         </form>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {units.map((u) => (
-          <div key={u.id} className={cn('flex items-center justify-between p-3 rounded-xl border group', isDark ? 'border-gray-800 bg-gray-800/50' : 'border-gray-200 bg-gray-50')}>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className={cn('font-mono text-sm font-bold', isDark ? 'text-gold-400' : 'text-gold-700')}>{u.abbreviation}</span>
-                <Badge variant="secondary" className="text-xs">{u.type}</Badge>
+      {units.length === 0 && !showForm ? (
+        <div className={cn('text-center py-12 rounded-xl border-2 border-dashed', isDark ? 'border-gray-800 text-gray-600' : 'border-gray-200 text-gray-400')}>
+          <p className="text-sm font-medium mb-1">Sin unidades</p>
+          <p className="text-xs">Carga las predeterminadas o crea una nueva</p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {units.map((u) => (
+            <div key={u.id} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+              <div className="h-1.5" style={{ background: 'var(--accent)' }} />
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-lg font-bold leading-tight" style={{ color: 'var(--accent)' }}>{u.abbreviation}</p>
+                    <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-300' : 'text-gray-700')}>{u.name}</p>
+                    {u.code && <p className={cn('font-mono text-xs mt-1', isDark ? 'text-gray-600' : 'text-gray-400')}>{u.code}</p>}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
               </div>
-              <p className={cn('text-xs mt-0.5', isDark ? 'text-gray-400' : 'text-gray-600')}>{u.name}</p>
             </div>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => openEdit(u)} className="p-1 rounded hover:bg-gold-50 text-gray-400 hover:text-gold-600"><Pencil className="h-3.5 w-3.5" /></button>
-              <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id); } catch { } }} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+          ))}
+        </div>
+      ) : (
+        <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+          {units.map((u) => (
+            <div key={u.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
+              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>{u.abbreviation}</span>
+              <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{u.name}</span>
+              {u.code && <span className={cn('font-mono text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>{u.code}</span>}
+              <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+              <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import {
-  collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp,
+  collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, getDocs,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -30,6 +30,16 @@ export async function updateUnit(restaurantId, unitId, data) {
 
 export async function deleteUnit(restaurantId, unitId) {
   return deleteDoc(doc(db, 'restaurants', restaurantId, 'units', unitId))
+}
+
+export async function getNextUnitCode(restaurantId) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'units'))
+  const nums = snap.docs
+    .map((d) => d.data().code || '')
+    .filter((c) => /^UND\d+$/.test(c))
+    .map((c) => parseInt(c.replace('UND', ''), 10))
+  const next = nums.length ? Math.max(...nums) + 1 : 1
+  return `UND${String(next).padStart(3, '0')}`
 }
 
 // Default units to seed on first use
