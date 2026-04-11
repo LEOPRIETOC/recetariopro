@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -245,6 +245,20 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const qty = parseFloat(watch(`ingredients.${index}.quantity`)) || 0
   const rawPrice = parseFloat(watch(`ingredients.${index}.pricePerUnit`)) || 0
   const recipeUnit = watch(`ingredients.${index}.unit`) || ''
+  // Normalize case: find the unit in catalog by case-insensitive match
+  const normalizedUnit = useMemo(() => {
+    if (!recipeUnit) return ''
+    const found = (allUnits || []).find(
+      (u) => u.abbreviation?.toUpperCase().trim() === recipeUnit.toUpperCase().trim()
+    )
+    return found?.abbreviation || recipeUnit
+  }, [recipeUnit, allUnits])
+  // Sync normalized value back to form state so save is correct
+  useEffect(() => {
+    if (normalizedUnit && normalizedUnit !== recipeUnit) {
+      setValue(`ingredients.${index}.unit`, normalizedUnit)
+    }
+  }, [normalizedUnit]) // eslint-disable-line react-hooks/exhaustive-deps
   const purchaseUnit = watch(`ingredients.${index}.purchaseUnit`) || ''
   const wasteMargin = parseFloat(watch(`ingredients.${index}.wasteMargin`)) || 0
   const rowType = watch(`ingredients.${index}.type`) || 'ingredient'
@@ -275,7 +289,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const noMatch = query.length > 1 && ingMatches.length === 0 && subMatches.length === 0
 
   const handleSelectIngredient = (ing) => {
-    const ingUnitObj = (allUnits || []).find((u) => u.abbreviation === ing.unit)
+    const ingUnitObj = (allUnits || []).find((u) => u.abbreviation?.toUpperCase().trim() === ing.unit?.toUpperCase().trim())
     const filtered = ingUnitObj?.type
       ? (allUnits || []).filter((u) => u.type === ingUnitObj.type)
       : (allUnits || [])
@@ -406,7 +420,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
         {/* Unidad */}
         <td style={{ padding: '5px 8px' }}>
           <select
-            value={watch(`ingredients.${index}.unit`) || ''}
+            value={normalizedUnit}
             onChange={(e) => setValue(`ingredients.${index}.unit`, e.target.value)}
             onBlur={() => { if (quantityInputRef.current) quantityInputRef.current.focus() }}
             className={cn('w-full px-2 h-7 text-xs rounded-lg border outline-none focus:ring-1 focus:ring-gold-500',
@@ -414,6 +428,9 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           >
             <option value="">--</option>
             {(compatibleUnits.length > 0 ? compatibleUnits : allUnits).map((u) => <option key={u.id} value={u.abbreviation}>{u.abbreviation}</option>)}
+            {normalizedUnit && !(compatibleUnits.length > 0 ? compatibleUnits : allUnits).find(
+              (u) => u.abbreviation?.toUpperCase() === normalizedUnit.toUpperCase()
+            ) && <option value={normalizedUnit}>{normalizedUnit}</option>}
           </select>
         </td>
         {/* Cantidad */}
