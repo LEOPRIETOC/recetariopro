@@ -687,7 +687,7 @@ const schema = z.object({
 export default function RecipeDetailPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
-  const isNew = id === 'new'
+  const isNew = !id || id === 'new'
   // Determine type from URL param (change 16)
   const typeFromUrl = searchParams.get('type') === 'subrecipe' ? 'subrecipe' : 'recipe'
 

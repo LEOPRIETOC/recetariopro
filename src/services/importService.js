@@ -147,7 +147,7 @@ function buildIngredient(row, mpByRef, subByRef, warnings, rowLabel) {
   const nameMP = toTitleCase(row.NOMBRE_MP?.toString().trim() || '')
   const quantity = parseFloat(String(row.CANTIDAD || '0').replace(',', '.')) || 0
   const unit = row.UNIDAD?.toString().trim() || ''
-  const waste = parseFloat(String(row.DESPERDICIO || '0').replace(',', '.')) || 0
+  const waste = parseFloat(String(row.DESPERDICIO ?? row.DESP ?? '0').replace(',', '.')) || 0
 
   const found = refMP ? findIngredient(refMP, mpByRef, subByRef) : null
   if (refMP && !found) warnings.push(`${rowLabel}: REFERENCIA_MP '${refMP}' no encontrada — se vinculará si se importa después`)
