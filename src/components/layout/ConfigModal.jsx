@@ -937,6 +937,7 @@ function CategoriesTab({ restaurantId, isDark }) {
   const sensors = useSens(useSen(PtrSensor, { activationConstraint: { distance: 5 } }))
   const schema = z.object({ name: z.string().min(2) })
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const { sorted: sortedMenus, toggleSort: toggleMenuSort, SortIcon: MenuSortIcon } = useTableSort(categories, 'code')
 
   useEffect(() => { if (!restaurantId) return; return subscribeCategories(restaurantId, setCategories) }, [restaurantId])
 
@@ -959,11 +960,11 @@ function CategoriesTab({ restaurantId, isDark }) {
 
   const handleDragEnd = ({ active, over }) => {
     if (!over || active.id === over.id) return
-    const oldI = categories.findIndex((c) => c.id === active.id)
-    const newI = categories.findIndex((c) => c.id === over.id)
-    const next = arrMove(categories, oldI, newI)
-    setCategories(next)
-    updateCategoryOrder(restaurantId, next.map((c) => c.id))
+    const oldI = sortedMenus.findIndex((c) => c.id === active.id)
+    const newI = sortedMenus.findIndex((c) => c.id === over.id)
+    const newSorted = arrMove(sortedMenus, oldI, newI)
+    setCategories(newSorted)
+    updateCategoryOrder(restaurantId, newSorted.map((c) => c.id))
   }
 
   const setView = (v) => { localStorage.setItem('cfg_cat_view', v); setViewMode(v) }
@@ -1021,12 +1022,12 @@ function CategoriesTab({ restaurantId, isDark }) {
       )}
 
       <DndCtx sensors={sensors} collisionDetection={closestCtr} onDragEnd={handleDragEnd}>
-        <SortCtx items={categories.map((c) => c.id)} strategy={vList}>
+        <SortCtx items={sortedMenus.map((c) => c.id)} strategy={vList}>
           {viewMode === 'grid' ? (
             <>
               <p className={cn('text-sm font-medium mb-2', isDark ? 'text-gray-400' : 'text-gray-500')}>Menús registrados ({categories.length})</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {categories.map((cat) => (
+                {sortedMenus.map((cat) => (
                   <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="grid"
                     onEdit={() => openEdit(cat)}
                     onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id) } catch {} }} />
@@ -1035,13 +1036,13 @@ function CategoriesTab({ restaurantId, isDark }) {
             </>
           ) : (
             <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-              <div className={cn('flex items-center gap-2 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
+              <div className={cn('flex items-center gap-2 px-3 py-2 border-b', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <span className="w-5 flex-shrink-0" />
-                <span className="w-20 flex-shrink-0">Código</span>
-                <span className="flex-1">Nombre</span>
+                <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleMenuSort('code')}>Código<MenuSortIcon field="code" /></span>
+                <span className="flex-1 cursor-pointer select-none" onClick={() => toggleMenuSort('name')}>Nombre<MenuSortIcon field="name" /></span>
                 <span className="w-16 flex-shrink-0 text-right">Acciones</span>
               </div>
-              {categories.map((cat) => (
+              {sortedMenus.map((cat) => (
                 <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="list"
                   onEdit={() => openEdit(cat)}
                   onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id) } catch {} }} />
