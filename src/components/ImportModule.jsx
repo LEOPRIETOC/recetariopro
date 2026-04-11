@@ -36,6 +36,7 @@ export function ImportModule({
   templateExample,
   templateFileName,
   onImport,
+  onDownloadTemplate,
   isDark,
 }) {
   const inputRef = useRef(null)
@@ -112,7 +113,7 @@ export function ImportModule({
               Descarga la plantilla
             </p>
             <button
-              onClick={() => downloadTemplate(templateColumns, templateExample, templateFileName)}
+              onClick={() => onDownloadTemplate ? onDownloadTemplate() : downloadTemplate(templateColumns, templateExample, templateFileName)}
               className={cn(
                 'text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors',
                 isDark

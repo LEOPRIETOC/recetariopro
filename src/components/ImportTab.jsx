@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { cn } from '../lib/utils'
 import { ImportModule } from './ImportModule'
 import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
   fixRecipeCategoryIds, exportRecipes, fixSubrecipeTypes,
+  generateMateriaTemplate,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -97,6 +100,15 @@ const MODULES = [
 
 export function ImportTab({ restaurantId, isDark }) {
   const subText = isDark ? 'text-gray-400' : 'text-gray-500'
+  const [units, setUnits] = useState([])
+
+  useEffect(() => {
+    if (!restaurantId) return
+    getDocs(collection(db, 'restaurants', restaurantId, 'units'))
+      .then((snap) => setUnits(snap.docs.map((d) => d.data())))
+      .catch(() => {})
+  }, [restaurantId])
+
   const [fixing, setFixing] = useState(false)
   const [fixReport, setFixReport] = useState(null)
   const [fixingTypes, setFixingTypes] = useState(false)
@@ -254,6 +266,7 @@ export function ImportTab({ restaurantId, isDark }) {
             templateExample={mod.templateExample}
             templateFileName={mod.templateFileName}
             onImport={(rows, onProgress) => mod.importFn(restaurantId, rows, onProgress)}
+            onDownloadTemplate={mod.key === 'materias' ? () => generateMateriaTemplate(units) : undefined}
             isDark={isDark}
           />
         ))}

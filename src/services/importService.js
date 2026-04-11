@@ -627,28 +627,56 @@ export function generateUnitTemplate() {
   XLSX.writeFile(makeWorkbook(rows, 'Unidades', inst), 'plantilla_unidades.xlsx')
 }
 
-export function generateMateriaTemplate() {
+export function generateMateriaTemplate(units = []) {
   const cols = ['REFERENCIA', 'NOMBRE', 'UNIDAD_USO', 'UNIDAD_COMPRA', 'CANT_PRESENTACION', 'COSTO', 'CODIGO_PROVEEDOR', 'CATEGORIA']
+  const noteRow = ['** UNIDAD_USO y UNIDAD_COMPRA: usar abreviaturas de la hoja "UNIDADES VÁLIDAS" **']
   const aoa = [
     cols,
+    noteRow,
     ['MP1000002', 'ACEITE PARA FREIR', 'ML', 'MILILITROS', '1000', '0',    '',        'Aceites'],
     ['MP1000058', 'ARROZ SUSHI',       'G',  'KG',         '1000', '5000', '8355533', 'Granos'],
   ]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
   ws['!cols'] = cols.map(() => ({ wch: 22 }))
+
+  // INSTRUCCIONES sheet
   const inst = buildInstructionsSheet([
     { col: 'REFERENCIA',        required: true,  note: 'Código único de la materia prima (ej: MP1000001). Se usa para vincular ingredientes en recetas.' },
     { col: 'NOMBRE',            required: true,  note: 'Nombre de la materia prima.' },
-    { col: 'UNIDAD_USO',        required: true,  note: 'Unidad con la que se usa en recetas (ej: G, ML).' },
-    { col: 'UNIDAD_COMPRA',     required: false, note: 'Unidad con la que se compra al proveedor (ej: KG, LITROS, MILILITROS).' },
-    { col: 'CANT_PRESENTACION', required: false, note: 'Cantidad que trae la presentación en UNIDAD_USO (ej: botella de aceite 1000ml → 1000). Si vacío → 1.' },
+    { col: 'UNIDAD_USO',        required: true,  note: 'Unidad con la que se usa en recetas (ej: G, ML). Ver hoja UNIDADES VÁLIDAS.' },
+    { col: 'UNIDAD_COMPRA',     required: false, note: 'Unidad con la que se compra al proveedor. Ver hoja UNIDADES VÁLIDAS.' },
+    { col: 'CANT_PRESENTACION', required: false, note: 'Cantidad que trae la presentación en UNIDAD_USO (ej: botella 1000ml → 1000). Si vacío → 1.' },
     { col: 'COSTO',             required: false, note: 'Costo total de la presentación. Se divide entre CANT_PRESENTACION para obtener precio por unidad. Si vacío → 0.' },
     { col: 'CODIGO_PROVEEDOR',  required: false, note: 'Código del proveedor (debe estar importado primero).' },
-    { col: 'CATEGORIA',         required: false, note: 'Categoría para agrupar materias primas (ej: Carnes, Granos, Lácteos).' },
+    { col: 'CATEGORIA',         required: false, note: 'Categoría para agrupar. Ver hoja CATEGORÍAS SUGERIDAS.' },
   ])
+
+  // UNIDADES VÁLIDAS sheet
+  const defaultUnits = [
+    ['G',   'GRAMO',      1],
+    ['KG',  'KILOGRAMO',  1000],
+    ['ML',  'MILILITRO',  1],
+    ['LT',  'LITRO',      1000],
+    ['UND', 'UNIDAD',     1],
+    ['OZ',  'ONZA',       28.35],
+    ['LB',  'LIBRA',      453.59],
+  ]
+  const unitRows = units.length > 0
+    ? units.map((u) => [u.abbreviation || u.medida || '', u.name || u.descripcion || '', u.equivalence ?? u.equivalencia ?? ''])
+    : defaultUnits
+  const wsUnits = XLSX.utils.aoa_to_sheet([['ABREVIATURA', 'DESCRIPCION', 'EQUIVALENCIA'], ...unitRows])
+  wsUnits['!cols'] = [{ wch: 14 }, { wch: 20 }, { wch: 14 }]
+
+  // CATEGORÍAS SUGERIDAS sheet
+  const cats = ['Abarrotes','Fruver','Lácteos','Carnes','Mariscos','Licores','Bebidas','Especias','Salsas','Aceites','Otros']
+  const wsCats = XLSX.utils.aoa_to_sheet([['CATEGORIA'], ...cats.map((c) => [c])])
+  wsCats['!cols'] = [{ wch: 20 }]
+
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Materias Primas')
-  XLSX.utils.book_append_sheet(wb, inst, 'INSTRUCCIONES')
+  XLSX.utils.book_append_sheet(wb, ws,      'Materias Primas')
+  XLSX.utils.book_append_sheet(wb, inst,    'INSTRUCCIONES')
+  XLSX.utils.book_append_sheet(wb, wsUnits, 'UNIDADES VÁLIDAS')
+  XLSX.utils.book_append_sheet(wb, wsCats,  'CATEGORÍAS SUGERIDAS')
   XLSX.writeFile(wb, 'plantilla_materias_primas.xlsx')
 }
 
