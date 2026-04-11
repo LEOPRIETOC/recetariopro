@@ -256,12 +256,12 @@ export async function getNextMpCategoryCode(restaurantId) {
     const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'mp_categories'))
     const nums = snap.docs
       .map((d) => d.data().code || '')
-      .filter((c) => /^MP\d+$/.test(c))
-      .map((c) => parseInt(c.replace('MP', ''), 10))
+      .filter((c) => /^CAT\d+$/.test(c))
+      .map((c) => parseInt(c.replace('CAT', ''), 10))
     const next = nums.length ? Math.max(...nums) + 1 : 1
-    return `MP${String(next).padStart(3, '0')}`
+    return `CAT${String(next).padStart(3, '0')}`
   } catch {
-    return `MP${Date.now().toString().slice(-3)}`
+    return `CAT${Date.now().toString().slice(-3)}`
   }
 }
 
