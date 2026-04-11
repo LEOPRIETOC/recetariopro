@@ -370,53 +370,46 @@ function IngredientsTab({ restaurantId, isDark }) {
           </div>
 
           {/* Row: Unidad · Cant./Presentación · Valor · Precio/Unidad */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Label>Unidad *</Label>
-              <Select value={watch('unit') || ''} onValueChange={(v) => {
-                const found = units.find((u) => u.abbreviation === v)
-                setValue('unit', v)
-                setValue('unitName', found?.name || v)
-                setValue('useUnit', v)
-                setValue('purchaseUnit', v)
-              }}>
-                <SelectTrigger className={errors.unit ? 'border-red-400' : ''}><SelectValue placeholder="kg, lt..." /></SelectTrigger>
-                <SelectContent>
-                  {units.map((u) => <SelectItem key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</SelectItem>)}
-                  {units.length === 0 && <SelectItem value="und">und</SelectItem>}
-                </SelectContent>
-              </Select>
-              {errors.unit && <p className="text-xs text-red-500">{errors.unit.message}</p>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Label>Cant./Presentación *</Label>
-              <Input type="number" step="0.001" min="0.001" {...register('quantityPerPresentation')} className={errors.quantityPerPresentation ? 'border-red-400' : ''} />
-              {errors.quantityPerPresentation && <p className="text-xs text-red-500">{errors.quantityPerPresentation.message}</p>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Label>Valor presentación *</Label>
-              <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
-              {errors.value && <p className="text-xs text-red-500">{errors.value.message}</p>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <Label>Precio por {watchedUnitName || 'unidad'}</Label>
-              <div style={{
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 12px',
-                borderRadius: '8px',
-                border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                background: isDark ? '#374151' : '#f9fafb',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: 'var(--accent)',
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {pricePerUnit > 0 ? formatNumber(pricePerUnit) : '—'}
-              </div>
-            </div>
-          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {[['Unidad *', '0 8px 6px 0'], ['Cant./Presentación *', '0 8px 6px'], ['Valor presentación *', '0 8px 6px'], [`Precio por ${watchedUnitName || 'unidad'}`, '0 0 6px 8px']].map(([label, pad]) => (
+                  <th key={label} style={{ textAlign: 'left', padding: pad, fontSize: '0.7rem', color: 'var(--t3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', width: '25%' }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{ verticalAlign: 'top' }}>
+                <td style={{ padding: '0 8px 0 0' }}>
+                  <Select value={watch('unit') || ''} onValueChange={(v) => {
+                    const found = units.find((u) => u.abbreviation === v)
+                    setValue('unit', v); setValue('unitName', found?.name || v)
+                    setValue('useUnit', v); setValue('purchaseUnit', v)
+                  }}>
+                    <SelectTrigger className={errors.unit ? 'border-red-400' : ''}><SelectValue placeholder="kg, lt..." /></SelectTrigger>
+                    <SelectContent>
+                      {units.map((u) => <SelectItem key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</SelectItem>)}
+                      {units.length === 0 && <SelectItem value="und">und</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
+                </td>
+                <td style={{ padding: '0 8px' }}>
+                  <Input type="number" step="0.001" min="0.001" {...register('quantityPerPresentation')} className={errors.quantityPerPresentation ? 'border-red-400' : ''} />
+                  {errors.quantityPerPresentation && <p className="text-xs text-red-500 mt-1">{errors.quantityPerPresentation.message}</p>}
+                </td>
+                <td style={{ padding: '0 8px' }}>
+                  <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
+                  {errors.value && <p className="text-xs text-red-500 mt-1">{errors.value.message}</p>}
+                </td>
+                <td style={{ padding: '0 0 0 8px' }}>
+                  <div style={{ background: 'var(--bg3)', border: '1px solid var(--b1)', borderRadius: '8px', padding: '9px 12px', color: 'var(--accent)', fontWeight: 600, minHeight: '38px', display: 'flex', alignItems: 'center', fontSize: '0.875rem' }}>
+                    {pricePerUnit > 0 ? pricePerUnit.toFixed(2) : '—'}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           {/* Row: Categoría · Proveedor */}
           <div className="grid grid-cols-2 gap-3">
