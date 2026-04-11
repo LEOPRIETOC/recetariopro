@@ -166,7 +166,7 @@ export default function IngredientsPage() {
     const data = ingredients.map((i) => ({
       codigo: i.code,
       descripcion: i.description,
-      unidad: i.unit,
+      unidad: i.useUnit || i.unit || '',
       precio: i.pricePerUnit,
       categoria: i.category,
       proveedor: i.supplier,
@@ -271,7 +271,7 @@ export default function IngredientsPage() {
                         {ing.category && <Badge variant="secondary">{ing.category}</Badge>}
                       </td>
                       <td className={cn('px-6 py-3', isDark ? 'text-gray-300' : 'text-gray-600')}>
-                        {ing.unit}
+                        {ing.useUnit || ing.unit || '—'}
                       </td>
                       <td className={cn('px-6 py-3 text-right font-medium', isDark ? 'text-gold-400' : 'text-gold-700')}>
                         {formatCurrency(ing.pricePerUnit)}

@@ -218,7 +218,7 @@ function IngredientsTab({ restaurantId, isDark }) {
       item: ing.item || '',
       reference: ing.reference || '',
       name: ing.name || ing.description || '',
-      unit: ing.unit || '',
+      unit: ing.useUnit || ing.unit || '',
       unitName: ing.unitName || '',
       quantityPerPresentation: ing.quantityPerPresentation ?? 1,
       value: ing.value ?? ing.pricePerUnit ?? 0,
@@ -290,7 +290,7 @@ function IngredientsTab({ restaurantId, isDark }) {
       ITEM: i.item || '',
       REFERENCIA: i.reference || '',
       NOMBRE: i.name || i.description || '',
-      UNIDAD: i.unit || '',
+      UNIDAD: i.useUnit || i.unit || '',
       UNIDAD_COMPRA: i.purchaseUnit || '',
       CANT_PRESENTACION: i.quantityPerPresentation || '',
       VALOR: i.value || '',
@@ -590,7 +590,7 @@ function IngredientsTab({ restaurantId, isDark }) {
                 <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: '0.75rem', color: isDark ? '#d1d5db' : '#4b5563', whiteSpace: 'nowrap' }}>{ing.item || '—'}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.reference || '—'}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500, color: isDark ? '#f9fafb' : '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.name || ing.description}</td>
-                <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.unit}</td>
+                <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.useUnit || ing.unit || '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.quantityPerPresentation ?? '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#d1d5db' : '#374151', whiteSpace: 'nowrap' }}>{ing.value != null ? formatNumber(ing.value) : '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: isDark ? '#d97706' : '#92400e', whiteSpace: 'nowrap' }}>{formatNumber(ing.pricePerUnit)}</td>
