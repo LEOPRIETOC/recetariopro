@@ -625,6 +625,7 @@ function UnitsTab({ restaurantId, isDark }) {
   const schema = z.object({
     name: z.string().min(2),
     abbreviation: z.string().min(1).max(6),
+    equivalence: z.coerce.number().min(0.0001).optional(),
   })
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
 
@@ -643,19 +644,19 @@ function UnitsTab({ restaurantId, isDark }) {
   }
 
   const openNew = async () => {
-    setEditing(null); reset({ name: '', abbreviation: '' })
+    setEditing(null); reset({ name: '', abbreviation: '', equivalence: 1 })
     const code = await getNextUnitCode(restaurantId).catch(() => '')
     setUnitCode(code); setShowForm(true)
   }
 
   const openEdit = (u) => {
-    setEditing(u); setUnitCode(u.code || ''); reset({ name: u.name, abbreviation: u.abbreviation || '' }); setShowForm(true)
+    setEditing(u); setUnitCode(u.code || ''); reset({ name: u.name, abbreviation: u.abbreviation || '', equivalence: u.equivalence ?? 1 }); setShowForm(true)
   }
 
   const onSubmit = async (data) => {
     setSaving(true)
     try {
-      const payload = { name: toTitleCase(data.name), abbreviation: data.abbreviation.toUpperCase(), code: unitCode }
+      const payload = { name: toTitleCase(data.name), abbreviation: data.abbreviation.toUpperCase(), code: unitCode, equivalence: parseFloat(data.equivalence) || 1 }
       if (editing) await updateUnit(restaurantId, editing.id, payload)
       else await createUnit(restaurantId, payload)
       success('Guardado')
@@ -669,8 +670,9 @@ function UnitsTab({ restaurantId, isDark }) {
       CODIGO: u.code || '',
       MEDIDA: u.abbreviation || '',
       DESCRIPCION: u.name || '',
+      EQUIVALENCIA: u.equivalence ?? 1,
     })))
-    ws['!cols'] = Array(3).fill({ wch: 18 })
+    ws['!cols'] = Array(4).fill({ wch: 18 })
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Unidades')
     XLSX.writeFile(wb, 'unidades_recetariopro.xlsx')
   }
@@ -698,7 +700,7 @@ function UnitsTab({ restaurantId, isDark }) {
 
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px', gap: '12px' }}>
             <div className="space-y-1">
               <Label className="text-xs">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
@@ -712,6 +714,10 @@ function UnitsTab({ restaurantId, isDark }) {
             <div className="space-y-1">
               <Label>Abreviatura *</Label>
               <Input {...register('abbreviation')} onChange={(e) => setValue('abbreviation', e.target.value.toUpperCase())} placeholder="KG" className={errors.abbreviation ? 'border-red-400' : ''} />
+            </div>
+            <div className="space-y-1">
+              <Label>Equivalencia</Label>
+              <Input {...register('equivalence')} type="number" step="any" min="0.0001" placeholder="1" className={errors.equivalence ? 'border-red-400' : ''} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -732,30 +738,39 @@ function UnitsTab({ restaurantId, isDark }) {
             <div key={u.id} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
               <div className="h-1.5" style={{ background: 'var(--accent)' }} />
               <div className="p-3">
-                <div className="flex items-start justify-between gap-1">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono text-lg font-bold leading-tight" style={{ color: 'var(--accent)' }}>{u.abbreviation}</p>
-                    <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-300' : 'text-gray-700')}>{u.name}</p>
-                    {u.code && <p className={cn('font-mono text-xs mt-1', isDark ? 'text-gray-600' : 'text-gray-400')}>{u.code}</p>}
-                  </div>
+                <div className="flex items-start justify-between gap-1 mb-1">
+                  <span className={cn('font-mono text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{u.code || '—'}</span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
                     <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
+                <p className="font-mono text-2xl font-bold leading-tight text-center my-1" style={{ color: 'var(--accent)' }}>{u.abbreviation}</p>
+                <p className={cn('text-xs text-center truncate', isDark ? 'text-gray-300' : 'text-gray-700')}>{u.name}</p>
+                <p className={cn('text-xs text-center mt-1', isDark ? 'text-gray-600' : 'text-gray-400')}>Equiv: {u.equivalence ?? 1}</p>
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
+            <span className="w-20 flex-shrink-0">Código</span>
+            <span className="flex-1">Nombre</span>
+            <span className="w-20 flex-shrink-0">Abreviatura</span>
+            <span className="w-24 flex-shrink-0">Equivalencia</span>
+            <span className="w-12 flex-shrink-0" />
+          </div>
           {units.map((u) => (
             <div key={u.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>{u.abbreviation}</span>
+              <span className={cn('font-mono text-xs w-20 flex-shrink-0', isDark ? 'text-gray-500' : 'text-gray-400')}>{u.code || '—'}</span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{u.name}</span>
-              {u.code && <span className={cn('font-mono text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>{u.code}</span>}
-              <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-              <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              <span className="font-mono text-xs font-bold w-20 flex-shrink-0" style={{ color: 'var(--accent)' }}>{u.abbreviation}</span>
+              <span className={cn('text-xs w-24 flex-shrink-0', isDark ? 'text-gray-400' : 'text-gray-600')}>{u.equivalence ?? 1}</span>
+              <div className="flex gap-1 w-12 flex-shrink-0 justify-end">
+                <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+                <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
             </div>
           ))}
         </div>
