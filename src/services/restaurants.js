@@ -27,12 +27,12 @@ export async function getNextCategoryCode(restaurantId) {
     const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
     const nums = snap.docs
       .map((d) => d.data().code || '')
-      .filter((c) => /^CAT\d+$/.test(c))
-      .map((c) => parseInt(c.replace('CAT', ''), 10))
+      .filter((c) => /^MEN\d+$/.test(c))
+      .map((c) => parseInt(c.replace('MEN', ''), 10))
     const next = nums.length ? Math.max(...nums) + 1 : 1
-    return `CAT${String(next).padStart(3, '0')}`
+    return `MEN${String(next).padStart(3, '0')}`
   } catch {
-    return `CAT${Date.now().toString().slice(-3)}`
+    return `MEN${Date.now().toString().slice(-3)}`
   }
 }
 

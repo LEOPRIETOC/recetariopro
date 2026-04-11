@@ -929,7 +929,6 @@ function SortableCatItem({ cat, isDark, onEdit, onDelete, mode }) {
         {dragHandle}
         <span className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code || '—'}</span>
         <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</span>
-        {cat.description && <span className={cn('text-xs hidden sm:block', isDark ? 'text-gray-500' : 'text-gray-400')}>{cat.description}</span>}
         <button onClick={onEdit} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
         <button onClick={onDelete} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
@@ -943,8 +942,7 @@ function SortableCatItem({ cat, isDark, onEdit, onDelete, mode }) {
           {dragHandle}
           <div className="flex-1 min-w-0">
             {cat.code && <p className="font-mono text-xs mb-0.5" style={{ color: 'var(--accent)' }}>{cat.code}</p>}
-            <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
-            {cat.description && <p className={cn('text-xs truncate', isDark ? 'text-gray-500' : 'text-gray-400')}>{cat.description}</p>}
+            <p className={cn('text-sm font-medium truncate uppercase', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={onEdit} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
@@ -966,22 +964,22 @@ function CategoriesTab({ restaurantId, isDark }) {
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('cfg_cat_view') || 'grid')
 
   const sensors = useSens(useSen(PtrSensor, { activationConstraint: { distance: 5 } }))
-  const schema = z.object({ name: z.string().min(2), description: z.string().optional() })
+  const schema = z.object({ name: z.string().min(2) })
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
 
   useEffect(() => { if (!restaurantId) return; return subscribeCategories(restaurantId, setCategories) }, [restaurantId])
 
   const openNew = async () => {
-    setEditing(null); reset({ name: '', description: '' })
+    setEditing(null); reset({ name: '' })
     const code = await getNextCategoryCode(restaurantId).catch(() => '')
     setCatCode(code); setShowForm(true)
   }
-  const openEdit = (c) => { setEditing(c); setCatCode(c.code || ''); reset({ name: c.name, description: c.description || '' }); setShowForm(true) }
+  const openEdit = (c) => { setEditing(c); setCatCode(c.code || ''); reset({ name: c.name }); setShowForm(true) }
 
   const onSubmit = async (data) => {
     setSaving(true)
     try {
-      const payload = { ...data, code: catCode, name: data.name.charAt(0).toUpperCase() + data.name.slice(1).toLowerCase() }
+      const payload = { code: catCode, name: data.name.charAt(0).toUpperCase() + data.name.slice(1).toLowerCase() }
       if (editing) await updateCategory(restaurantId, editing.id, payload)
       else await createCategory(restaurantId, { ...payload, order: Date.now() })
       success('Guardado'); setShowForm(false); reset(); setEditing(null)
@@ -1029,7 +1027,7 @@ function CategoriesTab({ restaurantId, isDark }) {
 
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px' }}>
             <div className="space-y-1">
               <Label className="text-xs">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
@@ -1043,10 +1041,6 @@ function CategoriesTab({ restaurantId, isDark }) {
                 className={errors.name ? 'border-red-400' : ''} placeholder="Nombre del menú" />
               {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
             </div>
-            <div className="space-y-1">
-              <Label>Descripción</Label>
-              <Input {...register('description')} placeholder="Descripción opcional" />
-            </div>
           </div>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
@@ -1058,15 +1052,24 @@ function CategoriesTab({ restaurantId, isDark }) {
       <DndCtx sensors={sensors} collisionDetection={closestCtr} onDragEnd={handleDragEnd}>
         <SortCtx items={categories.map((c) => c.id)} strategy={vList}>
           {viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {categories.map((cat) => (
-                <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="grid"
-                  onEdit={() => openEdit(cat)}
-                  onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id) } catch {} }} />
-              ))}
-            </div>
+            <>
+              <p className={cn('text-sm font-medium mb-2', isDark ? 'text-gray-400' : 'text-gray-500')}>Menús registrados ({categories.length})</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {categories.map((cat) => (
+                  <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="grid"
+                    onEdit={() => openEdit(cat)}
+                    onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id) } catch {} }} />
+                ))}
+              </div>
+            </>
           ) : (
             <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+              <div className={cn('flex items-center gap-2 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
+                <span className="w-5 flex-shrink-0" />
+                <span className="w-20 flex-shrink-0">Código</span>
+                <span className="flex-1">Nombre</span>
+                <span className="w-16 flex-shrink-0 text-right">Acciones</span>
+              </div>
               {categories.map((cat) => (
                 <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="list"
                   onEdit={() => openEdit(cat)}
