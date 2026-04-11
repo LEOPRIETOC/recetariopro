@@ -412,7 +412,7 @@ function IngredientsTab({ restaurantId, isDark }) {
           </table>
 
           {/* Row: Categoría · Proveedor */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid-2">
             <div className="space-y-1">
               <Label>Categoría</Label>
               {mpCategories.length === 0 ? (
@@ -1253,7 +1253,7 @@ function SuppliersTab({ restaurantId, isDark }) {
               {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="grid-2">
             <div className="space-y-1">
               <Label>Contacto</Label>
               <Input {...register('contact')} placeholder="Nombre del contacto" />
@@ -1595,7 +1595,7 @@ function VersionsTab({ restaurantId, isDark }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid-2">
         {/* Recipe selector */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Seleccionar receta</Label>
@@ -1691,7 +1691,7 @@ function AppearanceTab({ isDark }) {
       {/* Theme */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">Tema</Label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid-2">
           {[{ v: 'day', icon: Sun, label: 'Día', preview: 'bg-white border-gray-300' }, { v: 'night', icon: Moon, label: 'Noche', preview: 'bg-gray-900 border-gray-600' }].map(({ v, icon: Icon, label, preview }) => (
             <button key={v} onClick={() => setTheme(v)} className={cn('flex items-center gap-3 p-4 rounded-xl border-2 transition-all', theme === v ? 'border-gold-500 shadow-sm' : isDark ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300')}>
               <div className={cn('w-10 h-10 rounded-lg border flex items-center justify-center', preview)}>
