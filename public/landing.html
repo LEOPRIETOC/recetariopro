@@ -82,6 +82,29 @@ h1 .line2{display:block;color:var(--ink2);}
 .ap-card .cd{font-size:.52rem;color:rgba(255,255,255,.3);}
 .ap-pill{background:rgba(184,120,32,.15);border:1px solid rgba(184,120,32,.3);border-radius:6px;padding:5px 10px;font-size:.62rem;color:var(--gold3);text-align:center;}
 
+/* ── HUB ── */
+.hub-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;background:var(--cream);}
+.hub-logo{text-align:center;margin-bottom:60px;}
+.hub-logo h1{font-family:'Playfair Display',serif;font-size:4rem;color:var(--gold);letter-spacing:-.02em;line-height:1;}
+.hub-logo p{color:var(--ink3);font-size:1rem;margin-top:8px;}
+.hub-apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;max-width:1000px;width:100%;}
+.hub-app-card{background:var(--cream2);border:1px solid var(--cream3);border-radius:20px;padding:32px 24px;text-align:center;transition:all .3s;display:flex;flex-direction:column;gap:12px;}
+.hub-app-card.featured{border-color:var(--gold);background:linear-gradient(135deg,var(--cream2),var(--goldBg));}
+.hub-app-card.soon{opacity:.6;}
+.hub-app-card:hover:not(.soon){transform:translateY(-4px);box-shadow:var(--sh);}
+.app-icon{font-size:3rem;}
+.hub-app-card h2{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--ink);}
+.hub-app-card p{color:var(--ink3);font-size:.88rem;line-height:1.6;}
+.app-status{font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;}
+.app-status.active{background:rgba(42,110,66,.12);color:var(--green);}
+.app-status.coming{background:rgba(59,130,246,.1);color:#3b82f6;}
+.app-btn{display:block;padding:12px 20px;border-radius:10px;font-weight:600;font-size:.9rem;text-decoration:none;transition:all .2s;border:none;cursor:pointer;font-family:inherit;}
+.app-btn.primary{background:var(--gold);color:#fff;}
+.app-btn.primary:hover{background:var(--gold2);}
+.app-btn.secondary{background:transparent;border:1px solid var(--cream3);color:var(--ink2);}
+.app-btn.secondary:hover{border-color:var(--gold);color:var(--gold);}
+.app-btn.disabled{background:var(--cream3);color:var(--ink3);cursor:not-allowed;}
+
 /* ── PAIN SECTION ── */
 .pain{padding:80px 5vw;background:var(--ink);position:relative;overflow:hidden;}
 .pain::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,120,32,.4),transparent);}
@@ -277,8 +300,40 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
   <a href="https://recetariopro-app.vercel.app" class="nav-cta">Ingresar →</a>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
+<!-- HUB -->
+<section class="hub-hero">
+  <div class="hub-logo">
+    <h1>inom</h1>
+    <p>Soluciones digitales para la industria gastronómica</p>
+  </div>
+  <div class="hub-apps">
+    <div class="hub-app-card featured">
+      <div class="app-icon">🍽</div>
+      <h2>RecetarioPro</h2>
+      <p>Gestión profesional de recetas, costos y materias primas</p>
+      <div class="app-status active">Disponible</div>
+      <a href="https://recetariopro-app.vercel.app" class="app-btn primary">Ingresar →</a>
+      <a href="#recetariopro" class="app-btn secondary">Conocer más</a>
+    </div>
+    <div class="hub-app-card soon">
+      <div class="app-icon">📅</div>
+      <h2>ItinerarioPro</h2>
+      <p>Gestión de eventos y planificación gastronómica</p>
+      <div class="app-status coming">Próximamente</div>
+      <button class="app-btn disabled" disabled>En desarrollo</button>
+    </div>
+    <div class="hub-app-card soon">
+      <div class="app-icon">📱</div>
+      <h2>FedvqrPro</h2>
+      <p>Menús digitales con QR para restaurantes</p>
+      <div class="app-status coming">Próximamente</div>
+      <button class="app-btn disabled" disabled>En desarrollo</button>
+    </div>
+  </div>
+</section>
+
+<!-- RECETARIOPRO -->
+<section id="recetariopro" class="hero">
   <div class="hero-bg"></div>
   <div class="hero-content reveal">
     <div class="hero-tag">Nuevo en Colombia</div>

@@ -49,7 +49,7 @@ function useSortableData(data) {
 }
 
 // ── Recipe Card (sortable) ────────────────────────────────────────────────────
-function RecipeCard({ recipe, categories, showCosts, isAdmin, isDark, onToggle }) {
+function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: recipe.id })
   const cat = categories?.find((c) => c.id === recipe?.categoryId)
@@ -108,7 +108,7 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, isDark, onToggle }
       </div>
 
       {/* Drag handle */}
-      {isAdmin && (
+      {canEdit && (
         <div {...attributes} {...listeners}
           className={cn('absolute top-2 left-2 p-1 rounded-lg cursor-grab opacity-0 group-hover:opacity-100 transition-opacity', isDark ? 'bg-gray-800 text-gray-500' : 'bg-white/80 text-gray-400')}>
           <GripVertical className="h-3.5 w-3.5" />
@@ -116,7 +116,7 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, isDark, onToggle }
       )}
 
       {/* Status toggle */}
-      {isAdmin && (
+      {canEdit && (
         <button
           onClick={(e) => { e.stopPropagation(); onToggle(recipe) }}
           className={cn('absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg', isDark ? 'bg-gray-800' : 'bg-white/80')}
@@ -134,7 +134,7 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, isDark, onToggle }
 export default function POSMainPage() {
   const navigate = useNavigate()
   const { currentRestaurant, theme, showCosts, selectedCategory, globalSearch } = useAppStore()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canEdit } = useAuth()
   const { error } = useToast()
   const isDark = theme === 'night'
 
@@ -235,7 +235,7 @@ export default function POSMainPage() {
           </div>
 
           {/* Single context-aware create button — admin only */}
-          {isAdmin && selectedCategory !== null && (
+          {canEdit && selectedCategory !== null && (
             <button
               onClick={() => navigate(isSubSection ? '/recipes/new?type=subrecipe' : '/recipes/new')}
               className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-white text-sm font-medium transition-all"
@@ -255,7 +255,7 @@ export default function POSMainPage() {
           <p className={cn('text-base font-medium', isDark ? 'text-gray-400' : 'text-gray-500')}>
             {globalSearch ? 'Sin resultados para tu búsqueda' : 'No hay recetas aún'}
           </p>
-          {isAdmin && (
+          {canEdit && (
             <button
               onClick={() => navigate(isSubSection ? '/recipes/new?type=subrecipe' : '/recipes/new')}
               className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium"
@@ -281,6 +281,7 @@ export default function POSMainPage() {
                   categories={categories}
                   showCosts={showCosts}
                   isAdmin={isAdmin}
+                  canEdit={canEdit}
                   isDark={isDark}
                   onToggle={handleToggle}
                 />

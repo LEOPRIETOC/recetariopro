@@ -80,9 +80,16 @@ export function useAuth() {
     return unsubscribe
   }, [])
 
-  const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superadmin'
+  const isMaster     = userProfile?.role === 'master'
   const isSuperAdmin = userProfile?.role === 'superadmin'
-  const isChef = userProfile?.role === 'chef'
+  const isAdmin      = userProfile?.role === 'admin' ||
+                       userProfile?.role === 'superadmin' ||
+                       userProfile?.role === 'master'
+  const isChef       = userProfile?.role === 'chef'
+  const isUsuario    = userProfile?.role === 'usuario'
+  const canEdit      = isMaster || isSuperAdmin || isAdmin
+  const canSeeCosts  = isMaster || isSuperAdmin || isAdmin
+  const canManageUsers = isMaster || isSuperAdmin || isAdmin
 
-  return { user, userProfile, loading, isAdmin, isSuperAdmin, isChef }
+  return { user, userProfile, loading, isAdmin, isSuperAdmin, isMaster, isChef, isUsuario, canEdit, canSeeCosts, canManageUsers }
 }

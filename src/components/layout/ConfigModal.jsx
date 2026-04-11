@@ -29,6 +29,7 @@ import {
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
+import { setMasterRole, migrateChefToUsuario } from '../../services/auth'
 import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
 } from '../../services/suppliers'
@@ -1649,9 +1650,20 @@ function VersionsTab({ restaurantId, isDark }) {
 // ── Personalización Tab (Appearance + Contrasts merged) ──────────────────────
 function AppearanceTab({ isDark }) {
   const { i18n } = useTranslation()
-  const { theme, setTheme, language, setLanguage, showCosts, setShowCosts, currentRestaurant, accentColor, setAccentColor } = useAppStore()
+  const { theme, setTheme, language, setLanguage, showCosts, setShowCosts, currentRestaurant, accentColor, setAccentColor, user, userProfile, setUserProfile } = useAppStore()
   const { success, error } = useToast()
   const [saving, setSaving] = useState(false)
+  const [masterBusy, setMasterBusy] = useState(false)
+
+  const handleSetMaster = async () => {
+    if (!user?.uid) return
+    setMasterBusy(true)
+    try {
+      await setMasterRole(user.uid)
+      setUserProfile({ ...userProfile, role: 'master' })
+      success('Rol master asignado. Recarga la página.')
+    } catch { error('Error al asignar rol') } finally { setMasterBusy(false) }
+  }
 
   const handleSave = async () => {
     if (!currentRestaurant?.id) return
@@ -1740,6 +1752,61 @@ function AppearanceTab({ isDark }) {
       </div>
 
       <Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</Button>
+
+      {/* Temporary: promote self to master (only for superadmin) */}
+      {userProfile?.role === 'superadmin' && (
+        <div className={cn('mt-4 p-4 rounded-xl border border-dashed', isDark ? 'border-gray-700' : 'border-gray-300')}>
+          <p className={cn('text-xs mb-3', isDark ? 'text-gray-500' : 'text-gray-400')}>
+            Migración de rol — solo visible para superadmin
+          </p>
+          <Button variant="outline" size="sm" onClick={handleSetMaster} disabled={masterBusy}>
+            {masterBusy ? '...' : '🔑 Establecerme como Master'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Users Admin Tab ───────────────────────────────────────────────────────────
+function UsersAdminTab({ isDark }) {
+  const { userProfile } = useAppStore()
+  const { isMaster } = useAuth()
+  const { success, error } = useToast()
+  const [migrating, setMigrating] = useState(false)
+  const [migrateResult, setMigrateResult] = useState(null)
+
+  const handleMigrate = async () => {
+    if (!confirm('¿Migrar todos los usuarios con rol "chef" a "usuario"?')) return
+    setMigrating(true)
+    try {
+      const count = await migrateChefToUsuario()
+      setMigrateResult(count)
+      success(`${count} usuario${count !== 1 ? 's' : ''} migrado${count !== 1 ? 's' : ''} a "usuario"`)
+    } catch { error('Error al migrar roles') } finally { setMigrating(false) }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className={cn('text-center py-12', isDark ? 'text-gray-500' : 'text-gray-400')}>
+        <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
+        <p className="text-sm">Gestión de usuarios — próximamente</p>
+      </div>
+
+      {isMaster && (
+        <div className={cn('p-4 rounded-xl border border-dashed', isDark ? 'border-gray-700' : 'border-gray-300')}>
+          <p className={cn('text-xs font-semibold mb-1', isDark ? 'text-gray-400' : 'text-gray-600')}>Migración de roles</p>
+          <p className={cn('text-xs mb-3', isDark ? 'text-gray-600' : 'text-gray-400')}>
+            Cambia todos los usuarios con rol "chef" al nuevo rol "usuario".
+          </p>
+          <Button variant="outline" size="sm" onClick={handleMigrate} disabled={migrating}>
+            {migrating ? 'Migrando...' : '🔄 Migrar roles (chef → usuario)'}
+          </Button>
+          {migrateResult !== null && (
+            <p className="text-xs text-emerald-500 mt-2">{migrateResult} usuarios migrados correctamente.</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1747,12 +1814,12 @@ function AppearanceTab({ isDark }) {
 // ── Main ConfigModal ──────────────────────────────────────────────────────────
 export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isMaster } = useAuth()
   const isDark = theme === 'night'
 
   if (!configOpen) return null
 
-  const tabs = isAdmin ? TABS : TABS.filter((t) => !['users','subscription'].includes(t.id))
+  const tabs = (isAdmin || isMaster) ? TABS : TABS.filter((t) => !['users','subscription'].includes(t.id))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1811,12 +1878,7 @@ export function ConfigModal() {
               {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={closeConfig} />}
               {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
               {configTab === 'appearance' && <AppearanceTab isDark={isDark} />}
-              {configTab === 'users' && (
-                <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                  <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Gestión de usuarios — próximamente</p>
-                </div>
-              )}
+              {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
               {configTab === 'subscription' && (
                 <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
                   <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />

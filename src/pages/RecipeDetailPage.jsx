@@ -11,6 +11,7 @@ import { db } from '../lib/firebase'
 
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { RecipeReadOnlyView } from '../components/RecipeReadOnlyView'
 import {
   getRecipe, createRecipe, updateRecipe, toggleRecipeActive,
   subscribeCategories, subscribeIngredients, subscribeRecipes,
@@ -694,7 +695,7 @@ export default function RecipeDetailPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { currentRestaurant, theme } = useAppStore()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canEdit, canSeeCosts, isUsuario, user: authUser } = useAuth()
   const { success, error } = useToast()
   const isDark = theme === 'night'
   const printRef = useRef()
@@ -1072,6 +1073,18 @@ export default function RecipeDetailPage() {
       error('Error al subir archivo: ' + (err?.message || err))
       setProgress(null)
     }
+  }
+
+  // Read-only view for 'usuario' role on existing recipes
+  if (isUsuario && !isNew && recipe) {
+    return (
+      <RecipeReadOnlyView
+        recipe={recipe}
+        restaurantId={currentRestaurant?.id}
+        userId={authUser?.uid}
+        isDark={isDark}
+      />
+    )
   }
 
   return (

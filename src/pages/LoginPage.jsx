@@ -36,7 +36,7 @@ export default function LoginPage() {
     try {
       await loginUser(data)
       success(t('auth.loginSuccess'))
-      navigate('/')
+      navigate('/restaurants')
     } catch (err) {
       const msgKey = mapFirebaseError(err.code)
       setAuthError(t(msgKey))

@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '../components/ui/toast'
 import { cn, formatCurrency, calculateMargin } from '../lib/utils'
 
-function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, isDark, onToggle }) {
+function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: recipe.id })
 
@@ -52,7 +52,7 @@ function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, isDark, on
         )}
       >
         {/* Drag handle */}
-        {isAdmin && (
+        {canEdit && (
           <div
             {...attributes}
             {...listeners}
@@ -138,7 +138,7 @@ function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, isDark, on
         </div>
 
         {/* Status toggle (admin only) */}
-        {isAdmin && (
+        {canEdit && (
           <button
             className={cn(
               'absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg',
@@ -160,7 +160,7 @@ function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, isDark, on
 export default function RecipesPage() {
   const { t } = useTranslation()
   const { currentRestaurant, theme, globalSearch, showCosts } = useAppStore()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canEdit } = useAuth()
   const { success, error } = useToast()
   const isDark = theme === 'night'
 
@@ -284,7 +284,7 @@ export default function RecipesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {canEdit && (
             <label>
               <Button variant="outline" size="sm" asChild>
                 <span className="cursor-pointer">
@@ -411,6 +411,7 @@ export default function RecipesPage() {
                   categories={categories}
                   showCosts={showCosts}
                   isAdmin={isAdmin}
+                  canEdit={canEdit}
                   isDark={isDark}
                   onToggle={handleToggle}
                 />

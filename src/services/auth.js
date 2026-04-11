@@ -6,7 +6,7 @@ import {
   updateProfile,
   onAuthStateChanged,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 export async function registerUser({ email, password, name, restaurantName }) {
@@ -73,6 +73,23 @@ export async function getUserProfile(uid) {
 
 export function onAuthChange(callback) {
   return onAuthStateChanged(auth, callback)
+}
+
+export async function setMasterRole(uid) {
+  await updateDoc(doc(db, 'users', uid), {
+    role: 'master',
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function migrateChefToUsuario() {
+  const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'chef')))
+  await Promise.all(
+    snap.docs.map((d) =>
+      updateDoc(doc(db, 'users', d.id), { role: 'usuario', updatedAt: serverTimestamp() })
+    )
+  )
+  return snap.size
 }
 
 export function mapFirebaseError(code) {
