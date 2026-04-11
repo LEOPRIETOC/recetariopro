@@ -370,7 +370,7 @@ function IngredientsTab({ restaurantId, isDark }) {
           </div>
 
           {/* Row: Unidad · Cant./Presentación · Valor · Precio/Unidad */}
-          <div className="grid grid-cols-4 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'end' }}>
             <div className="space-y-1">
               <Label>Unidad *</Label>
               <Select value={watch('unit') || ''} onValueChange={(v) => {
@@ -487,20 +487,7 @@ function IngredientsTab({ restaurantId, isDark }) {
         ref={scrollBodyRef}
         style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto' }}
       >
-        <table style={{ width: '100%', minWidth: '1250px', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <colgroup>
-            <col style={{ width: '90px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '110px' }} />
-            <col style={{ width: '190px' }} />
-            <col style={{ width: '75px' }} />
-            <col style={{ width: '105px' }} />
-            <col style={{ width: '105px' }} />
-            <col style={{ width: '130px' }} />
-            <col style={{ width: '110px' }} />
-            <col style={{ width: '130px' }} />
-            <col style={{ width: '75px' }} />
-          </colgroup>
+        <table style={{ width: '100%', minWidth: '900px', tableLayout: 'auto', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: headBg }}>
             <tr>
               {[
@@ -569,9 +556,6 @@ function IngredientsTab({ restaurantId, isDark }) {
                 {/* Código — sticky left */}
                 <td style={{
                   padding: '10px 12px',
-                  fontFamily: 'monospace',
-                  fontSize: '0.75rem',
-                  color: isDark ? '#d97706' : '#92400e',
                   background: rowBg,
                   position: 'sticky',
                   left: 0,
@@ -579,10 +563,10 @@ function IngredientsTab({ restaurantId, isDark }) {
                   boxShadow: '2px 0 6px rgba(0,0,0,0.12)',
                   whiteSpace: 'nowrap',
                 }}>
-                  {ing.code}
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--accent)', color: '#fff' }}>{ing.code}</span>
                 </td>
                 <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.reference || '—'}</td>
-                <td style={{ padding: '10px 12px', fontWeight: 500, color: isDark ? '#f9fafb' : '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.name || ing.description}</td>
+                <td style={{ padding: '10px 12px', fontWeight: 500, color: isDark ? '#f9fafb' : '#1f2937', whiteSpace: 'nowrap', minWidth: '160px' }}>{ing.name || ing.description}</td>
                 <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.useUnit || ing.unit || '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.quantityPerPresentation ?? '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#d1d5db' : '#374151', whiteSpace: 'nowrap' }}>{ing.value != null ? formatNumber(ing.value) : '—'}</td>
@@ -879,17 +863,20 @@ function MpCategoriesTab({ restaurantId, isDark }) {
           <p className="text-xs">Crea categorías para organizar tus materias primas</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {categories.map((cat) => (
-            <div key={cat.id} className={cn('group rounded-xl border p-3', isDark ? 'border-gray-800' : 'border-gray-200')}>
-              <div className="flex items-start justify-between gap-1">
-                <div className="flex-1 min-w-0">
-                  {cat.code && <p className="font-mono text-xs mb-0.5" style={{ color: 'var(--accent)' }}>{cat.code}</p>}
-                  <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button onClick={() => openEdit(cat)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => handleDelete(cat)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+            <div key={cat.id} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+              <div className="h-1.5" style={{ background: 'var(--accent)' }} />
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-1">
+                  <div className="flex-1 min-w-0">
+                    {cat.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code}</span>}
+                    <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button onClick={() => openEdit(cat)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => handleDelete(cat)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -897,12 +884,19 @@ function MpCategoriesTab({ restaurantId, isDark }) {
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b text-xs font-medium', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')}>
+            <span className="w-20 flex-shrink-0">Código</span>
+            <span className="flex-1">Nombre</span>
+            <span className="w-16 flex-shrink-0 text-right">Acciones</span>
+          </div>
           {categories.map((cat) => (
             <div key={cat.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code || '—'}</span>
+              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0 w-20" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code || '—'}</span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</span>
-              <button onClick={() => openEdit(cat)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-              <button onClick={() => handleDelete(cat)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              <div className="flex gap-1 w-16 justify-end flex-shrink-0">
+                <button onClick={() => openEdit(cat)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
+                <button onClick={() => handleDelete(cat)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
             </div>
           ))}
         </div>
