@@ -214,12 +214,14 @@ function IngredientsTab({ restaurantId, isDark }) {
     setEditing(ing)
     setNextCode(ing.code)
     setDupErrors({})
+    const rawUnit = ing.useUnit || ing.unit || ''
+    const matchedUnit = units.find((u) => u.abbreviation?.toUpperCase().trim() === rawUnit.toUpperCase().trim())
     reset({
       item: ing.item || '',
       reference: ing.reference || '',
       name: ing.name || ing.description || '',
-      unit: ing.useUnit || ing.unit || '',
-      unitName: ing.unitName || '',
+      unit: matchedUnit?.abbreviation || rawUnit,
+      unitName: matchedUnit?.name || ing.unitName || rawUnit,
       quantityPerPresentation: ing.quantityPerPresentation ?? 1,
       value: ing.value ?? ing.pricePerUnit ?? 0,
       category: ing.category || '',
@@ -250,6 +252,7 @@ function IngredientsTab({ restaurantId, isDark }) {
       const payload = {
         ...data,
         name: toTitleCase(data.name),
+        useUnit: data.unit,
         pricePerUnit: qty > 0 ? val / qty : 0,
       }
       if (editing) {
@@ -333,8 +336,8 @@ function IngredientsTab({ restaurantId, isDark }) {
 
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-4', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
 
-          {/* Row: Código · Item · Referencia */}
-          <div className="grid gap-3" style={{ gridTemplateColumns: '140px 1fr 1fr' }}>
+          {/* Row: Código · Referencia */}
+          <div className="grid gap-3" style={{ gridTemplateColumns: '140px 1fr' }}>
             <div className="space-y-1">
               <Label>Código</Label>
               <div className={cn('h-9 flex items-center px-3 rounded-lg border text-xs font-mono font-semibold', isDark ? 'bg-gray-700 border-gray-600 text-gold-400' : 'bg-gray-100 border-gray-200 text-gold-700')}>
@@ -342,20 +345,10 @@ function IngredientsTab({ restaurantId, isDark }) {
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Item</Label>
-              <Input
-                {...register('item')}
-                placeholder="AZ001"
-                className={dupErrors.item ? 'border-red-400' : ''}
-                onBlur={(e) => checkDuplicate('item', e.target.value)}
-              />
-              {dupErrors.item && <p className="text-xs text-red-500">{dupErrors.item}</p>}
-            </div>
-            <div className="space-y-1">
               <Label>Referencia</Label>
               <Input
                 {...register('reference')}
-                placeholder="REF-001"
+                placeholder="MP1000001"
                 className={dupErrors.reference ? 'border-red-400' : ''}
                 onBlur={(e) => checkDuplicate('reference', e.target.value)}
               />
@@ -381,9 +374,11 @@ function IngredientsTab({ restaurantId, isDark }) {
             <div className="space-y-1">
               <Label>Unidad *</Label>
               <Select value={watch('unit') || ''} onValueChange={(v) => {
-                setValue('unit', v)
                 const found = units.find((u) => u.abbreviation === v)
+                setValue('unit', v)
                 setValue('unitName', found?.name || v)
+                setValue('useUnit', v)
+                setValue('purchaseUnit', v)
               }}>
                 <SelectTrigger className={errors.unit ? 'border-red-400' : ''}><SelectValue placeholder="kg, lt..." /></SelectTrigger>
                 <SelectContent>
@@ -510,7 +505,6 @@ function IngredientsTab({ restaurantId, isDark }) {
             <tr>
               {[
                 ['code', 'Código', true, false],
-                ['item', 'Item', false, false],
                 ['reference', 'Referencia', false, false],
                 ['name', 'Nombre', false, false],
                 ['unit', 'Unidad', false, false],
@@ -587,7 +581,6 @@ function IngredientsTab({ restaurantId, isDark }) {
                 }}>
                   {ing.code}
                 </td>
-                <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: '0.75rem', color: isDark ? '#d1d5db' : '#4b5563', whiteSpace: 'nowrap' }}>{ing.item || '—'}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.reference || '—'}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 500, color: isDark ? '#f9fafb' : '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.name || ing.description}</td>
                 <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.useUnit || ing.unit || '—'}</td>
