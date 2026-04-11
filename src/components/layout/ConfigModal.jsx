@@ -336,16 +336,16 @@ function IngredientsTab({ restaurantId, isDark }) {
 
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-4', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
 
-          {/* Row: Código · Referencia */}
-          <div className="grid gap-3" style={{ gridTemplateColumns: '140px 1fr' }}>
-            <div className="space-y-1">
-              <Label>Código</Label>
+          {/* Fila 1: Código · Referencia */}
+          <div className="row g-3">
+            <div className="col-auto" style={{ minWidth: '140px' }}>
+              <Label className="form-label">Código</Label>
               <div className={cn('h-9 flex items-center px-3 rounded-lg border text-xs font-mono font-semibold', isDark ? 'bg-gray-700 border-gray-600 text-gold-400' : 'bg-gray-100 border-gray-200 text-gold-700')}>
                 {nextCode}
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Referencia</Label>
+            <div className="col">
+              <Label className="form-label">Referencia</Label>
               <Input
                 {...register('reference')}
                 placeholder="MP1000001"
@@ -356,65 +356,62 @@ function IngredientsTab({ restaurantId, isDark }) {
             </div>
           </div>
 
-          {/* Row: Nombre — full width */}
-          <div className="space-y-1">
-            <Label>Nombre *</Label>
-            <Input
-              {...register('name')}
-              placeholder="Harina de trigo"
-              className={errors.name || dupErrors.name ? 'border-red-400' : ''}
-              onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1)) }}
-              onBlur={(e) => { const v = toTitleCase(e.target.value); setValue('name', v); checkDuplicate('name', v) }}
-            />
-            {(errors.name || dupErrors.name) && <p className="text-xs text-red-500">{errors.name?.message || dupErrors.name}</p>}
+          {/* Fila 2: Nombre — ancho completo */}
+          <div className="row g-3">
+            <div className="col-12">
+              <Label className="form-label">Nombre *</Label>
+              <Input
+                {...register('name')}
+                placeholder="Harina de trigo"
+                className={errors.name || dupErrors.name ? 'border-red-400' : ''}
+                onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1)) }}
+                onBlur={(e) => { const v = toTitleCase(e.target.value); setValue('name', v); checkDuplicate('name', v) }}
+              />
+              {(errors.name || dupErrors.name) && <p className="text-xs text-red-500">{errors.name?.message || dupErrors.name}</p>}
+            </div>
           </div>
 
-          {/* Row: Unidad · Cant./Presentación · Valor · Precio/Unidad */}
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {[['Unidad *', '0 8px 6px 0'], ['Cant./Presentación *', '0 8px 6px'], ['Valor presentación *', '0 8px 6px'], [`Precio por ${watchedUnitName || 'unidad'}`, '0 0 6px 8px']].map(([label, pad]) => (
-                  <th key={label} style={{ textAlign: 'left', padding: pad, fontSize: '0.7rem', color: 'var(--t3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', width: '25%' }}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ verticalAlign: 'top' }}>
-                <td style={{ padding: '0 8px 0 0' }}>
-                  <Select value={watch('unit') || ''} onValueChange={(v) => {
-                    const found = units.find((u) => u.abbreviation === v)
-                    setValue('unit', v); setValue('unitName', found?.name || v)
-                    setValue('useUnit', v); setValue('purchaseUnit', v)
-                  }}>
-                    <SelectTrigger className={errors.unit ? 'border-red-400' : ''}><SelectValue placeholder="kg, lt..." /></SelectTrigger>
-                    <SelectContent>
-                      {units.map((u) => <SelectItem key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</SelectItem>)}
-                      {units.length === 0 && <SelectItem value="und">und</SelectItem>}
-                    </SelectContent>
-                  </Select>
-                  {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
-                </td>
-                <td style={{ padding: '0 8px' }}>
-                  <Input type="number" step="0.001" min="0.001" {...register('quantityPerPresentation')} className={errors.quantityPerPresentation ? 'border-red-400' : ''} />
-                  {errors.quantityPerPresentation && <p className="text-xs text-red-500 mt-1">{errors.quantityPerPresentation.message}</p>}
-                </td>
-                <td style={{ padding: '0 8px' }}>
-                  <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
-                  {errors.value && <p className="text-xs text-red-500 mt-1">{errors.value.message}</p>}
-                </td>
-                <td style={{ padding: '0 0 0 8px' }}>
-                  <div style={{ background: 'var(--bg3)', border: '1px solid var(--b1)', borderRadius: '8px', padding: '9px 12px', color: 'var(--accent)', fontWeight: 600, minHeight: '38px', display: 'flex', alignItems: 'center', fontSize: '0.875rem' }}>
-                    {pricePerUnit > 0 ? pricePerUnit.toFixed(2) : '—'}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* Fila 3: Unidad · Cant./Presentación · Valor · Precio/Unidad */}
+          <div className="row g-3">
+            <div className="col-md-3 col-6">
+              <Label className="form-label">Unidad *</Label>
+              <Select value={watch('unit') || ''} onValueChange={(v) => {
+                const found = units.find((u) => u.abbreviation === v)
+                setValue('unit', v); setValue('unitName', found?.name || v)
+                setValue('useUnit', v); setValue('purchaseUnit', v)
+              }}>
+                <SelectTrigger className={errors.unit ? 'border-red-400' : ''}><SelectValue placeholder="kg, lt..." /></SelectTrigger>
+                <SelectContent>
+                  {units.map((u) => <SelectItem key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</SelectItem>)}
+                  {units.length === 0 && <SelectItem value="und">und</SelectItem>}
+                </SelectContent>
+              </Select>
+              {errors.unit && <p className="text-xs text-red-500 mt-1">{errors.unit.message}</p>}
+            </div>
+            <div className="col-md-3 col-6">
+              <Label className="form-label">Cant./Presentación *</Label>
+              <Input type="number" step="0.001" min="0.001" {...register('quantityPerPresentation')} className={errors.quantityPerPresentation ? 'border-red-400' : ''} />
+              {errors.quantityPerPresentation && <p className="text-xs text-red-500 mt-1">{errors.quantityPerPresentation.message}</p>}
+            </div>
+            <div className="col-md-3 col-6">
+              <Label className="form-label">Valor presentación *</Label>
+              <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
+              {errors.value && <p className="text-xs text-red-500 mt-1">{errors.value.message}</p>}
+            </div>
+            <div className="col-md-3 col-6">
+              <Label className="form-label">Precio por {watchedUnitName || 'unidad'}</Label>
+              <Input
+                readOnly
+                value={pricePerUnit > 0 ? pricePerUnit.toFixed(2) : '—'}
+                style={{ color: 'var(--accent)', fontWeight: 600 }}
+              />
+            </div>
+          </div>
 
-          {/* Row: Categoría · Proveedor */}
-          <div className="grid-2">
-            <div className="space-y-1">
-              <Label>Categoría</Label>
+          {/* Fila 4: Categoría · Proveedor */}
+          <div className="row g-3">
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Categoría</Label>
               {mpCategories.length === 0 ? (
                 <p className={cn('text-xs px-3 py-2 rounded-lg border', isDark ? 'border-gray-700 text-gray-500' : 'border-gray-200 text-gray-400')}>
                   Crea categorías en <span className="font-medium">Configuración → Categorías</span>
@@ -429,8 +426,8 @@ function IngredientsTab({ restaurantId, isDark }) {
                 />
               )}
             </div>
-            <div className="space-y-1">
-              <Label>Proveedor</Label>
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Proveedor</Label>
               <ComboInput
                 value={watch('supplier') || ''}
                 onChange={(v) => setValue('supplier', v)}
@@ -687,24 +684,24 @@ function UnitsTab({ restaurantId, isDark }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px', gap: '12px' }}>
-            <div className="space-y-1">
-              <Label className="text-xs">Código</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+          <div className="row g-3 mb-3">
+            <div className="col-auto" style={{ minWidth: '100px' }}>
+              <Label className="form-label">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
                 {unitCode || '—'}
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Nombre *</Label>
+            <div className="col">
+              <Label className="form-label">Nombre *</Label>
               <Input {...register('name')} onBlur={(e) => { const v = toTitleCase(e.target.value); if (v) setValue('name', v) }} placeholder="Kilogramo" className={errors.name ? 'border-red-400' : ''} />
             </div>
-            <div className="space-y-1">
-              <Label>Abreviatura *</Label>
+            <div className="col-md-2 col-6">
+              <Label className="form-label">Abreviatura *</Label>
               <Input {...register('abbreviation')} onChange={(e) => setValue('abbreviation', e.target.value.toUpperCase())} placeholder="KG" className={errors.abbreviation ? 'border-red-400' : ''} />
             </div>
-            <div className="space-y-1">
-              <Label>Equivalencia</Label>
+            <div className="col-md-2 col-6">
+              <Label className="form-label">Equivalencia</Label>
               <Input {...register('equivalence')} type="number" step="any" min="0.0001" placeholder="1" className={errors.equivalence ? 'border-red-400' : ''} />
             </div>
           </div>
@@ -833,16 +830,16 @@ function MpCategoriesTab({ restaurantId, isDark }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px' }}>
-            <div className="space-y-1">
-              <Label className="text-xs">Código</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+          <div className="row g-3 mb-3">
+            <div className="col-auto" style={{ minWidth: '100px' }}>
+              <Label className="form-label">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
                 {catCode || '—'}
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Nombre *</Label>
+            <div className="col">
+              <Label className="form-label">Nombre *</Label>
               <Input
                 {...register('name')}
                 onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()); setDupError(null) }}
@@ -850,7 +847,7 @@ function MpCategoriesTab({ restaurantId, isDark }) {
                 className={errors.name || dupError ? 'border-red-400' : ''}
                 placeholder="Nombre de la categoría"
               />
-              {(errors.name || dupError) && <p className="text-xs text-red-500">{errors.name?.message || dupError}</p>}
+              {(errors.name || dupError) && <p className="text-xs text-red-500 mt-1">{errors.name?.message || dupError}</p>}
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -1024,20 +1021,20 @@ function CategoriesTab({ restaurantId, isDark }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px' }}>
-            <div className="space-y-1">
-              <Label className="text-xs">Código</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+          <div className="row g-3 mb-3">
+            <div className="col-auto" style={{ minWidth: '100px' }}>
+              <Label className="form-label">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
                 {catCode || '—'}
               </div>
             </div>
-            <div className="space-y-1">
-              <Label>Nombre *</Label>
+            <div className="col">
+              <Label className="form-label">Nombre *</Label>
               <Input {...register('name')}
                 onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()) }}
                 className={errors.name ? 'border-red-400' : ''} placeholder="Nombre del menú" />
-              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -1239,36 +1236,36 @@ function SuppliersTab({ restaurantId, isDark }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border space-y-3', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
-          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: '12px' }}>
-            <div className="space-y-1">
-              <Label className="text-xs">Código</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
+          <div className="row g-3 mb-3">
+            <div className="col-auto" style={{ minWidth: '100px' }}>
+              <Label className="form-label">Código</Label>
               <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
                 {nextCode || '—'}
               </div>
             </div>
-            <div className="space-y-1 col-span-2">
-              <Label>Nombre *</Label>
+            <div className="col-12 col-md">
+              <Label className="form-label">Nombre *</Label>
               <Input {...register('name')} className={errors.name ? 'border-red-400' : ''} placeholder="Nombre del proveedor" />
-              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
           </div>
-          <div className="grid-2">
-            <div className="space-y-1">
-              <Label>Contacto</Label>
+          <div className="row g-3 mb-3">
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Contacto</Label>
               <Input {...register('contact')} placeholder="Nombre del contacto" />
             </div>
-            <div className="space-y-1">
-              <Label>Teléfono</Label>
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Teléfono</Label>
               <Input {...register('phone')} placeholder="+34 600 000 000" />
             </div>
-            <div className="space-y-1">
-              <Label>Email</Label>
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Email</Label>
               <Input {...register('email')} placeholder="email@proveedor.com" />
-              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
             </div>
-            <div className="space-y-1">
-              <Label>Dirección</Label>
+            <div className="col-md-6 col-12">
+              <Label className="form-label">Dirección</Label>
               <Input {...register('address')} placeholder="Dirección" />
             </div>
           </div>
