@@ -328,14 +328,20 @@ export async function importMaterias(restaurantId, rows, onProgress) {
     const name = row.NOMBRE?.toString().trim()
     const useUnit = row.UNIDAD_USO?.toString().trim()
     const purchaseUnit = row.UNIDAD_COMPRA?.toString().trim()
+
     if (!reference) { result.errors.push(`Fila ${n}: REFERENCIA es requerida`); return }
     if (!name) { result.errors.push(`Fila ${n}: NOMBRE es requerido`); return }
     if (!useUnit) { result.errors.push(`Fila ${n}: UNIDAD_USO es requerida`); return }
-    if (!purchaseUnit) { result.errors.push(`Fila ${n}: UNIDAD_COMPRA es requerida`); return }
 
     const costRaw = row.COSTO?.toString().trim()
-    const cost = parseFloat(costRaw?.replace(',', '.')) || 0
     if (!costRaw) result.warnings.push(`Fila ${n}: COSTO vacío, se importa en 0`)
+
+    const cantRaw = row.CANT_PRESENTACION?.toString().trim()
+    if (!cantRaw) result.warnings.push(`Fila ${n}: CANT_PRESENTACION vacío, se usa 1 por defecto`)
+
+    const value = parseFloat((costRaw || '0').replace(',', '.')) || 0
+    const qty = parseFloat((cantRaw || '1').replace(',', '.')) || 1
+    const pricePerUnit = qty > 0 ? value / qty : 0
 
     const supplierCode = row.CODIGO_PROVEEDOR?.toString().trim() || null
     let supplierName = null
@@ -349,9 +355,11 @@ export async function importMaterias(restaurantId, rows, onProgress) {
       reference,
       name: toTitleCase(name),
       useUnit,
-      purchaseUnit,
-      cost,
-      pricePerUnit: cost,
+      purchaseUnit: purchaseUnit || null,
+      quantityPerPresentation: qty,
+      value,
+      pricePerUnit,
+      cost: value,
       supplierCode: supplierCode || null,
       supplier: supplierName || row.PROVEEDOR?.toString().trim() || null,
       category: row.CATEGORIA?.toString().trim() || 'General',
@@ -621,17 +629,18 @@ export function generateUnitTemplate() {
 
 export function generateMateriaTemplate() {
   const rows = [
-    { REFERENCIA: 'MP1000002', NOMBRE: 'ACEITE PARA FREIR', UNIDAD_USO: 'ML', UNIDAD_COMPRA: 'MILILITROS', COSTO: 0, CODIGO_PROVEEDOR: '', CATEGORIA: 'Aceites' },
-    { REFERENCIA: 'MP1000058', NOMBRE: 'ARROZ SUSHI',       UNIDAD_USO: 'G',  UNIDAD_COMPRA: 'KG',         COSTO: 5000, CODIGO_PROVEEDOR: '8355533', CATEGORIA: 'Granos' },
+    { REFERENCIA: 'MP1000002', NOMBRE: 'ACEITE PARA FREIR', UNIDAD_USO: 'ML', UNIDAD_COMPRA: 'MILILITROS', CANT_PRESENTACION: 1000, COSTO: 0,    CODIGO_PROVEEDOR: '',       CATEGORIA: 'Aceites' },
+    { REFERENCIA: 'MP1000058', NOMBRE: 'ARROZ SUSHI',       UNIDAD_USO: 'G',  UNIDAD_COMPRA: 'KG',         CANT_PRESENTACION: 1000, COSTO: 5000, CODIGO_PROVEEDOR: '8355533', CATEGORIA: 'Granos' },
   ]
   const inst = buildInstructionsSheet([
-    { col: 'REFERENCIA',       required: true,  note: 'Código único de la materia prima (ej: MP1000001). Se usa para vincular ingredientes en recetas.' },
-    { col: 'NOMBRE',           required: true,  note: 'Nombre de la materia prima.' },
-    { col: 'UNIDAD_USO',       required: true,  note: 'Unidad con la que se usa en recetas (ej: G, ML).' },
-    { col: 'UNIDAD_COMPRA',    required: true,  note: 'Unidad con la que se compra al proveedor (ej: KG, LITROS).' },
-    { col: 'COSTO',            required: false, note: 'Costo por unidad de compra. Si se deja vacío se importa en 0.' },
-    { col: 'CODIGO_PROVEEDOR', required: false, note: 'Código del proveedor (debe estar importado primero).' },
-    { col: 'CATEGORIA',        required: false, note: 'Categoría para agrupar materias primas (ej: Carnes, Granos, Lácteos).' },
+    { col: 'REFERENCIA',          required: true,  note: 'Código único de la materia prima (ej: MP1000001). Se usa para vincular ingredientes en recetas.' },
+    { col: 'NOMBRE',              required: true,  note: 'Nombre de la materia prima.' },
+    { col: 'UNIDAD_USO',          required: true,  note: 'Unidad con la que se usa en recetas (ej: G, ML).' },
+    { col: 'UNIDAD_COMPRA',       required: false, note: 'Unidad con la que se compra al proveedor (ej: KG, LITROS, MILILITROS).' },
+    { col: 'CANT_PRESENTACION',   required: false, note: 'Cantidad que trae la presentación en UNIDAD_USO (ej: botella de aceite 1000ml → 1000). Si se deja vacío se usa 1.' },
+    { col: 'COSTO',               required: false, note: 'Costo total de la presentación. Se divide entre CANT_PRESENTACION para obtener precio por unidad. Si vacío → 0.' },
+    { col: 'CODIGO_PROVEEDOR',    required: false, note: 'Código del proveedor (debe estar importado primero).' },
+    { col: 'CATEGORIA',           required: false, note: 'Categoría para agrupar materias primas (ej: Carnes, Granos, Lácteos).' },
   ])
   XLSX.writeFile(makeWorkbook(rows, 'Materias Primas', inst), 'plantilla_materias_primas.xlsx')
 }

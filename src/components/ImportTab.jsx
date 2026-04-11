@@ -60,10 +60,10 @@ const MODULES = [
     key: 'materias',
     moduleName: '4. Materias Primas',
     description: 'Importa ingredientes y materias primas. El código MP se genera automáticamente.',
-    templateColumns: ['REFERENCIA', 'NOMBRE', 'UNIDAD_USO', 'UNIDAD_COMPRA', 'COSTO', 'CODIGO_PROVEEDOR', 'CATEGORIA'],
+    templateColumns: ['REFERENCIA', 'NOMBRE', 'UNIDAD_USO', 'UNIDAD_COMPRA', 'CANT_PRESENTACION', 'COSTO', 'CODIGO_PROVEEDOR', 'CATEGORIA'],
     templateExample: [
-      ['MP1000001', 'Arroz Shari', 'G', 'KG', 5000, 'PRV001', 'Granos'],
-      ['MP1000002', 'Salmón fresco', 'G', 'KG', 45000, 'PRV001', 'Pescados'],
+      ['MP1000002', 'ACEITE PARA FREIR', 'ML', 'MILILITROS', 1000, 0, '', 'Aceites'],
+      ['MP1000058', 'ARROZ SUSHI', 'G', 'KG', 1000, 5000, '8355533', 'Granos'],
     ],
     templateFileName: 'plantilla_materias_primas.xlsx',
     importFn: importMaterias,
