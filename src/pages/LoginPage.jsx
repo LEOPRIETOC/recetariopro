@@ -122,7 +122,7 @@ export default function LoginPage() {
       {/* ── LEFT: food photo (hidden on mobile) ─────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80"
+          src="/login-bg.png"
           alt="Restaurante elegante"
           className="absolute inset-0 w-full h-full object-cover"
         />
