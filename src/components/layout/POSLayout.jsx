@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
+import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
 import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
 import { logoutUser } from '../../services/auth'
@@ -75,6 +76,7 @@ export function POSLayout() {
   } = useAppStore()
   const isDark = theme === 'night'
   const { showWarning, resetTimer } = useInactivityLogout()
+  const { canEdit } = useAuth()
 
   const [localCategories, setLocalCategories] = useState([])
 
@@ -169,17 +171,19 @@ export function POSLayout() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Settings gear */}
-          <button
-            onClick={() => openConfig('ingredients')}
-            className={cn(
-              'h-8 w-8 rounded-lg flex items-center justify-center transition-colors',
-              isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-            )}
-            title="Configuración"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
+          {/* Settings gear — hidden for usuarios */}
+          {canEdit && (
+            <button
+              onClick={() => openConfig('ingredients')}
+              className={cn(
+                'h-8 w-8 rounded-lg flex items-center justify-center transition-colors',
+                isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+              )}
+              title="Configuración"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          )}
           {/* Logout */}
           <button
             onClick={handleLogout}

@@ -7,8 +7,16 @@ import {
   onAuthStateChanged,
   signInWithPopup,
 } from 'firebase/auth'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
+import { auth, db, default as firebaseApp } from '../lib/firebase'
+
+// ── Secondary app to create users without signing out the current admin ────────
+function getSecondaryAuth() {
+  try { return getAuth(getApp('secondary')) }
+  catch { return getAuth(initializeApp(firebaseApp.options, 'secondary')) }
+}
 
 export async function registerUser({ email, password, name, restaurantName }) {
   const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -56,6 +64,50 @@ export async function registerUser({ email, password, name, restaurantName }) {
 export async function loginUser({ email, password }) {
   const credential = await signInWithEmailAndPassword(auth, email, password)
   return credential.user
+}
+
+// ── Create user without signing out current admin ─────────────────────────────
+export async function createUserWithRole(userData, creatorUid) {
+  const secondaryAuth = getSecondaryAuth()
+  const { user } = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password)
+  await signOut(secondaryAuth) // sign out from secondary immediately
+
+  await setDoc(doc(db, 'users', user.uid), {
+    uid: user.uid,
+    name: userData.name,
+    email: userData.email,
+    role: userData.role,
+    restaurantIds: userData.restaurantIds || [],
+    createdBy: creatorUid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    active: true,
+  })
+
+  await Promise.all((userData.restaurantIds || []).map((restId) =>
+    updateDoc(doc(db, 'restaurants', restId), {
+      [`members.${user.uid}`]: { role: userData.role, joinedAt: serverTimestamp() },
+    })
+  ))
+
+  return user
+}
+
+export async function updateUserRole(uid, newRole, restaurantIds) {
+  await updateDoc(doc(db, 'users', uid), { role: newRole, updatedAt: serverTimestamp() })
+  await Promise.all((restaurantIds || []).map((restId) =>
+    updateDoc(doc(db, 'restaurants', restId), {
+      [`members.${uid}.role`]: newRole,
+    })
+  ))
+}
+
+export async function deactivateUser(uid, active) {
+  await updateDoc(doc(db, 'users', uid), { active, updatedAt: serverTimestamp() })
+}
+
+export async function sendUserPasswordReset(email) {
+  await sendPasswordResetEmail(auth, email)
 }
 
 export async function signInWithSocialProvider(provider) {

@@ -1819,7 +1819,7 @@ function UsersAdminTab({ isDark }) {
 // ── Main ConfigModal ──────────────────────────────────────────────────────────
 export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
-  const { isAdmin, isMaster } = useAuth()
+  const { canEdit, canManageUsers, isMaster } = useAuth()
   const navigate = useNavigate()
   const isDark = theme === 'night'
 
@@ -1827,8 +1827,9 @@ export function ConfigModal() {
 
   const tabs = TABS.filter((t) => {
     if (t.masterOnly) return isMaster
-    if (['users', 'subscription'].includes(t.id)) return isAdmin || isMaster
-    return true
+    if (['users', 'subscription'].includes(t.id)) return canManageUsers
+    if (['analytics'].includes(t.id)) return canEdit
+    return canEdit // usuarios no ven config en absoluto, pero por seguridad filtramos
   })
 
   return (

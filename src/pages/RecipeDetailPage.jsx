@@ -280,7 +280,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 
   const subMatches = query.length > 1
     ? (allSubrecipes || [])
-        .filter((s) => isAdmin || !s.pin)
+        .filter((s) => canEdit || !s.pin)
         .filter((s) =>
           (s.name || '').toLowerCase().includes(qLow) ||
           (s.code || '').toLowerCase().includes(qLow)
@@ -696,6 +696,7 @@ export default function RecipeDetailPage() {
   const navigate = useNavigate()
   const { currentRestaurant, theme } = useAppStore()
   const { isAdmin, canEdit, canSeeCosts, isUsuario, user: authUser } = useAuth()
+  // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
   const isDark = theme === 'night'
   const printRef = useRef()
@@ -1102,7 +1103,7 @@ export default function RecipeDetailPage() {
           display: 'flex', justifyContent: 'flex-end', gap: '8px',
         }}
       >
-        {!isNew && recipe && isAdmin && (
+        {!isNew && recipe && canEdit && (
           <Button variant="outline" size="sm" onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}>
             {recipe.active !== false ? <><ToggleRight className="h-4 w-4 text-emerald-500" /> Desactivar</> : <><ToggleLeft className="h-4 w-4 text-gray-400" /> Activar</>}
           </Button>
@@ -1138,7 +1139,7 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* ── PIN gate for protected sub-recipes ───────────────────────────── */}
-      {!isNew && recipe?.isSubRecipe && recipe?.pin && !pinVerified && !isAdmin && (
+      {!isNew && recipe?.isSubRecipe && recipe?.pin && !pinVerified && !canEdit && (
         <Card className={cn('max-w-sm mx-auto', isDark && 'bg-gray-900 border-gray-800')}>
           <CardContent className="pt-6 space-y-4 text-center">
             <Lock className="h-10 w-10 mx-auto" style={{ color: 'var(--accent)' }} />
@@ -1163,7 +1164,7 @@ export default function RecipeDetailPage() {
         </Card>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: (!isNew && recipe?.isSubRecipe && recipe?.pin && !pinVerified && !isAdmin) ? 'none' : undefined }}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ display: (!isNew && recipe?.isSubRecipe && recipe?.pin && !pinVerified && !canEdit) ? 'none' : undefined }}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {/* Basic info */}
@@ -1435,7 +1436,7 @@ export default function RecipeDetailPage() {
                 </span>
               </CardHeader>
               <CardContent className="space-y-3">
-                {isAdmin && (
+                {canSeeCosts && (
                   <div className="flex items-center justify-between">
                     <div>
                       <p className={cn('text-xs font-medium', isDark ? 'text-gray-300' : 'text-gray-700')}>Costo manual</p>
@@ -1444,7 +1445,7 @@ export default function RecipeDetailPage() {
                     <Switch checked={useManualCost} onCheckedChange={(v) => setValue('useManualCost', v)} />
                   </div>
                 )}
-                {isAdmin && useManualCost && (
+                {canSeeCosts && useManualCost && (
                   <div className="space-y-1">
                     <Label className="text-xs">Costo total manual</Label>
                     <Input type="number" step="0.01" min="0" {...register('manualCost')} />
@@ -1459,8 +1460,8 @@ export default function RecipeDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Marginal Cost Analysis — admin only */}
-            {isAdmin && (
+            {/* Marginal Cost Analysis — admin/superadmin/master only */}
+            {canSeeCosts && (
               <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Análisis marginal</CardTitle>

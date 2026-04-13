@@ -98,18 +98,22 @@ export function useAuth() {
     return unsubscribe
   }, [])
 
-  const isMaster       = ['master'].includes(userProfile?.role)
-  const isSuperAdmin   = ['superadmin'].includes(userProfile?.role)
-  const isAdmin        = ['master', 'superadmin', 'admin'].includes(userProfile?.role)
-  const isChef         = ['chef'].includes(userProfile?.role)
-  const isUsuario      = ['usuario'].includes(userProfile?.role)
-  const canEdit        = isAdmin
-  const canSeeCosts    = isAdmin
-  const canManageUsers = isAdmin
+  const isMaster       = userProfile?.role === 'master'
+  const isSuperAdmin   = userProfile?.role === 'superadmin'
+  const isAdmin        = userProfile?.role === 'admin'
+  const isChef         = userProfile?.role === 'chef'
+  const isUsuario      = userProfile?.role === 'usuario'
+
+  // Permisos compuestos
+  const canEdit             = isMaster || isSuperAdmin || isAdmin
+  const canSeeCosts         = isMaster || isSuperAdmin || isAdmin
+  const canManageUsers      = isMaster || isSuperAdmin
+  const canCreateAdmin      = isMaster || isSuperAdmin
+  const canCreateRestaurant = isMaster
 
   return {
     user, userProfile, loading,
     isAdmin, isSuperAdmin, isMaster, isChef, isUsuario,
-    canEdit, canSeeCosts, canManageUsers,
+    canEdit, canSeeCosts, canManageUsers, canCreateAdmin, canCreateRestaurant,
   }
 }
