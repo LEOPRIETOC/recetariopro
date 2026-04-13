@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
+import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useTranslation } from 'react-i18next'
 import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
 import { logoutUser } from '../../services/auth'
@@ -69,6 +70,7 @@ export function POSLayout() {
     setUser, setUserProfile, setCurrentRestaurant,
   } = useAppStore()
   const isDark = theme === 'night'
+  const { showWarning, resetTimer } = useInactivityLogout()
 
   const [localCategories, setLocalCategories] = useState([])
 
@@ -246,6 +248,61 @@ export function POSLayout() {
 
       <Toaster />
       <ConfigModal />
+
+      {/* ── Modal de inactividad ─────────────────────────────────────────── */}
+      {showWarning && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+        }}>
+          <div style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--b2)',
+            borderRadius: 16,
+            padding: 32,
+            width: 'min(400px, 90vw)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          }}>
+            <div style={{ fontSize: '2rem' }}>⏱</div>
+            <h3 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '1.1rem',
+              color: 'var(--text)',
+              margin: 0,
+            }}>
+              ¿Sigues ahí?
+            </h3>
+            <p style={{ color: 'var(--t2)', fontSize: '0.88rem', margin: 0 }}>
+              Tu sesión se cerrará en 2 minutos por inactividad.
+            </p>
+            <button
+              onClick={resetTimer}
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '12px 20px',
+                fontFamily: 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              Continuar sesión
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )
