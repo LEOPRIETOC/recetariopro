@@ -585,12 +585,10 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
 
         {/* Left column — photo + meta */}
         <div className="print-col-left">
-          {recipe?.photoURL ? (
+          {recipe?.photoURL && (
             <div className="print-photo-wrap">
               <img src={recipe.photoURL} alt={recipe.name} />
             </div>
-          ) : (
-            <div className="print-no-photo">Sin foto</div>
           )}
 
           <div className="print-menu-box">
