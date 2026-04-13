@@ -28,7 +28,7 @@ export default function RestaurantsManagePage() {
   const [errors, setErrors] = useState({})
 
   const css = isDark
-    ? { '--bg': '#030712', '--bg2': '#111827', '--bg3': '#1f2937', '--b1': '#1f2937', '--b2': '#374151', '--text': '#f9fafb', '--t2': '#d1d5db', '--t3': '#6b7280' }
+    ? { '--bg': '#0a0e0b', '--bg2': '#111712', '--bg3': '#181f19', '--b1': 'rgba(255,255,255,0.06)', '--b2': 'rgba(255,255,255,0.10)', '--text': '#f0ece4', '--t2': '#8a8578', '--t3': '#4a4840' }
     : { '--bg': '#f9fafb', '--bg2': '#ffffff', '--bg3': '#f3f4f6', '--b1': '#e5e7eb', '--b2': '#d1d5db', '--text': '#111827', '--t2': '#374151', '--t3': '#9ca3af' }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))

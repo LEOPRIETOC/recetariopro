@@ -16,7 +16,7 @@ export default function RestaurantSelectorPage() {
 
   // CSS variables scoped to this page
   const css = isDark
-    ? { '--bg': '#030712', '--bg2': '#111827', '--bg3': '#1f2937', '--b1': '#1f2937', '--b2': '#374151', '--text': '#f9fafb', '--t2': '#d1d5db', '--t3': '#6b7280', '--green': '#10b981', '--gold': 'var(--accent)' }
+    ? { '--bg': '#0a0e0b', '--bg2': '#111712', '--bg3': '#181f19', '--b1': 'rgba(255,255,255,0.06)', '--b2': 'rgba(255,255,255,0.10)', '--text': '#f0ece4', '--t2': '#8a8578', '--t3': '#4a4840', '--green': '#4a9e6e', '--gold': '#c9a84c' }
     : { '--bg': '#f9fafb', '--bg2': '#ffffff', '--bg3': '#f3f4f6', '--b1': '#e5e7eb', '--b2': '#d1d5db', '--text': '#111827', '--t2': '#374151', '--t3': '#9ca3af', '--green': '#10b981', '--gold': 'var(--accent)' }
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function RestaurantSelectorPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: isDark ? '#030712' : '#f9fafb', color: isDark ? '#f9fafb' : '#111827', fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: isDark ? '#0a0e0b' : '#f9fafb', color: isDark ? '#f0ece4' : '#111827', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 36, height: 36, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
           <p style={{ color: isDark ? '#6b7280' : '#9ca3af', fontSize: '0.9rem' }}>Cargando restaurantes...</p>
@@ -132,8 +132,8 @@ export default function RestaurantSelectorPage() {
               <div
                 key={rest.id}
                 onClick={() => enterRestaurant(rest)}
-                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 16, padding: 24, cursor: 'pointer', transition: 'border-color 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column', gap: 16 }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.10)' }}
+                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 16, padding: 24, cursor: 'pointer', transition: 'border-color 0.25s, box-shadow 0.25s', display: 'flex', flexDirection: 'column', gap: 16 }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = isDark ? 'rgba(201,168,76,0.55)' : 'var(--accent)'; e.currentTarget.style.boxShadow = isDark ? '0 8px 40px rgba(0,0,0,0.70)' : '0 4px 24px rgba(0,0,0,0.10)' }}
                 onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--b1)'; e.currentTarget.style.boxShadow = 'none' }}
               >
                 {/* Header */}
@@ -163,9 +163,9 @@ export default function RestaurantSelectorPage() {
                 </div>
 
                 <button
-                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', fontFamily: 'inherit', fontWeight: 600, cursor: 'pointer', width: '100%', fontSize: '0.9rem', transition: 'opacity 0.2s' }}
-                  onMouseOver={(e) => { e.stopPropagation(); e.currentTarget.style.opacity = '0.85' }}
-                  onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
+                  style={{ background: isDark ? '#c9a84c' : 'var(--accent)', color: isDark ? '#0a0e0b' : '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.9rem', transition: 'background 0.2s', letterSpacing: '0.02em' }}
+                  onMouseOver={(e) => { e.stopPropagation(); e.currentTarget.style.background = isDark ? '#e8c96a' : 'color-mix(in srgb, var(--accent) 85%, black)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = isDark ? '#c9a84c' : 'var(--accent)' }}
                   onClick={(e) => { e.stopPropagation(); enterRestaurant(rest) }}
                 >
                   Entrar →

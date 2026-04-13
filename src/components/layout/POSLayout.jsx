@@ -45,14 +45,18 @@ function SortableCategoryButton({ cat, isActive, isDark, onClick }) {
       <button
         onClick={onClick}
         className={cn(
-          'flex-1 flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left',
+          'flex-1 flex items-center px-3 py-2.5 text-sm font-medium transition-all text-left',
           isActive
-            ? 'text-white shadow-sm'
+            ? isDark ? 'rounded-r-xl font-light' : 'text-white shadow-sm rounded-xl'
             : isDark
-              ? 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              ? 'rounded-xl text-gray-400 hover:bg-gray-800/40 hover:text-amber-100 font-light'
+              : 'rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900'
         )}
-        style={isActive ? { backgroundColor: 'var(--accent)' } : {}}
+        style={isActive
+          ? isDark
+            ? { background: 'rgba(201,168,76,0.08)', color: '#c9a84c', borderLeft: '2px solid #c9a84c', paddingLeft: '10px' }
+            : { backgroundColor: 'var(--accent)' }
+          : {}}
       >
         <span className="truncate">{cat.name}</span>
       </button>
@@ -118,9 +122,9 @@ export function POSLayout() {
     updateCategoryOrder(currentRestaurant.id, newOrder.map((c) => c.id))
   }
 
-  const bg = isDark ? 'bg-gray-950' : 'bg-gray-100'
-  const sideBg = isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-  const headerBg = isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+  const bg = isDark ? 'night-main-bg' : 'bg-gray-100'
+  const sideBg = isDark ? 'night-panel-bg border-r' : 'bg-white border-gray-200'
+  const headerBg = isDark ? 'night-panel-bg border-b' : 'bg-white border-gray-200'
 
   return (
     <div className={cn('flex flex-col h-screen overflow-hidden', bg)}>
@@ -132,7 +136,7 @@ export function POSLayout() {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
             <ChefHat className="h-4 w-4 text-white" />
           </div>
-          <span className={cn('font-display font-bold text-sm hidden sm:block', isDark ? 'text-white' : 'text-gray-900')}>
+          <span className={cn('font-display font-bold text-sm hidden sm:block night-logo-text', isDark ? 'text-white' : 'text-gray-900')}>
             RecetarioPro
           </span>
         </div>
