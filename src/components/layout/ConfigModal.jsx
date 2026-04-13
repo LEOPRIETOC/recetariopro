@@ -29,7 +29,9 @@ import {
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
-import { setMasterRole, migrateChefToUsuario } from '../../services/auth'
+import { setMasterRole, migrateChefToUsuario, createUserWithRole, updateUserRole } from '../../services/auth'
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
 } from '../../services/suppliers'
@@ -1773,42 +1775,299 @@ function AppearanceTab({ isDark }) {
   )
 }
 
+// ── Role badge ────────────────────────────────────────────────────────────────
+const ROLE_STYLE = {
+  master:     { bg: '#111111',                    color: '#c9a84c' },
+  superadmin: { bg: 'rgba(201,168,76,0.20)',      color: '#c9a84c' },
+  admin:      { bg: 'rgba(74,158,110,0.20)',      color: '#4a9e6e' },
+  usuario:    { bg: 'rgba(100,100,100,0.20)',     color: '#888888' },
+  chef:       { bg: 'rgba(100,130,200,0.20)',     color: '#7a9ad4' },
+}
+function RoleBadge({ role }) {
+  const s = ROLE_STYLE[role] || ROLE_STYLE.usuario
+  return (
+    <span style={{ background: s.bg, color: s.color, borderRadius: 20, padding: '2px 10px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+      {role}
+    </span>
+  )
+}
+
+// ── Inline field ──────────────────────────────────────────────────────────────
+function UField({ label, children }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--t3)', marginBottom: 4 }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+const uInput = (isDark) => ({
+  width: '100%', background: isDark ? '#181f19' : '#f9fafb',
+  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`,
+  borderRadius: 8, padding: '8px 11px', fontFamily: 'inherit',
+  fontSize: '0.85rem', color: isDark ? '#f0ece4' : '#111827',
+  outline: 'none', boxSizing: 'border-box',
+})
+
 // ── Users Admin Tab ───────────────────────────────────────────────────────────
 function UsersAdminTab({ isDark }) {
-  const { userProfile } = useAppStore()
-  const { isMaster } = useAuth()
+  const { currentRestaurant, user } = useAppStore()
+  const { isMaster, isSuperAdmin, isAdmin, canCreateAdmin } = useAuth()
   const { success, error } = useToast()
+
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [editUser, setEditUser] = useState(null)
   const [migrating, setMigrating] = useState(false)
   const [migrateResult, setMigrateResult] = useState(null)
 
+  // ── Create form state ──
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'usuario' })
+  const [saving, setSaving] = useState(false)
+
+  const roleOptions = isMaster
+    ? ['superadmin', 'admin', 'usuario']
+    : isSuperAdmin ? ['admin', 'usuario'] : ['usuario']
+
+  // ── Load users ──
+  const loadUsers = async () => {
+    if (!currentRestaurant?.id) return
+    setLoading(true)
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'users'), where('restaurantIds', 'array-contains', currentRestaurant.id))
+      )
+      // Also catch members who may not have restaurantIds (legacy)
+      const memberIds = Object.keys(currentRestaurant.members || {})
+      const fromQuery = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const fromQueryIds = new Set(fromQuery.map((u) => u.uid))
+
+      const legacySnaps = await Promise.all(
+        memberIds.filter((id) => !fromQueryIds.has(id)).map(async (uid) => {
+          const s = await getDocs(query(collection(db, 'users'), where('uid', '==', uid)))
+          return s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() }
+        })
+      )
+      setUsers([...fromQuery, ...legacySnaps.filter(Boolean)])
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { loadUsers() }, [currentRestaurant?.id])
+
+  // ── Create user ──
+  const handleCreate = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) { error('Completa todos los campos'); return }
+    if (form.password.length < 6) { error('La contraseña debe tener al menos 6 caracteres'); return }
+    setSaving(true)
+    try {
+      await createUserWithRole(
+        { ...form, restaurantIds: [currentRestaurant.id] },
+        user?.uid
+      )
+      success(`Usuario "${form.name}" creado`)
+      setForm({ name: '', email: '', password: '', role: 'usuario' })
+      setShowCreate(false)
+      loadUsers()
+    } catch (err) {
+      error(err.code === 'auth/email-already-in-use' ? 'Ese correo ya está registrado' : (err.message || 'Error al crear'))
+    } finally { setSaving(false) }
+  }
+
+  // ── Edit role ──
+  const [editRole, setEditRole] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const handleEditSave = async () => {
+    if (!editUser) return
+    setEditSaving(true)
+    try {
+      await updateUserRole(editUser.uid, editRole, editUser.restaurantIds || [currentRestaurant.id])
+      // Also update restaurant members map
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
+        [`members.${editUser.uid}.role`]: editRole,
+      })
+      success('Rol actualizado')
+      setEditUser(null)
+      loadUsers()
+    } catch { error('Error al actualizar') } finally { setEditSaving(false) }
+  }
+
+  // ── Delete ──
+  const canDelete = (targetRole) => {
+    if (isMaster) return true
+    if (isSuperAdmin) return ['admin', 'usuario'].includes(targetRole)
+    if (isAdmin) return targetRole === 'usuario'
+    return false
+  }
+  const handleDelete = async (u) => {
+    if (!confirm(`¿Eliminar a ${u.name} del restaurante?`)) return
+    try {
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
+        [`members.${u.uid}`]: null,
+      })
+      await updateDoc(doc(db, 'users', u.uid), {
+        restaurantIds: (u.restaurantIds || []).filter((id) => id !== currentRestaurant.id),
+        updatedAt: serverTimestamp(),
+      })
+      success('Usuario eliminado del restaurante')
+      loadUsers()
+    } catch { error('Error al eliminar') }
+  }
+
+  // ── Migration ──
   const handleMigrate = async () => {
     if (!confirm('¿Migrar todos los usuarios con rol "chef" a "usuario"?')) return
     setMigrating(true)
     try {
       const count = await migrateChefToUsuario()
       setMigrateResult(count)
-      success(`${count} usuario${count !== 1 ? 's' : ''} migrado${count !== 1 ? 's' : ''} a "usuario"`)
-    } catch { error('Error al migrar roles') } finally { setMigrating(false) }
+      success(`${count} usuario${count !== 1 ? 's' : ''} migrado${count !== 1 ? 's' : ''}`)
+      loadUsers()
+    } catch { error('Error al migrar') } finally { setMigrating(false) }
   }
 
+  const borderCol = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+  const bg2       = isDark ? '#111712' : '#fff'
+  const bgHdr     = isDark ? '#0d110e' : '#f9fafb'
+  const t3        = isDark ? '#4a4840' : '#9ca3af'
+  const t2        = isDark ? '#8a8578' : '#6b7280'
+  const ink       = isDark ? '#f0ece4' : '#111827'
+
   return (
-    <div className="space-y-6">
-      <div className={cn('text-center py-12', isDark ? 'text-gray-500' : 'text-gray-400')}>
-        <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-sm">Gestión de usuarios — próximamente</p>
+    <div className="space-y-5">
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, margin: 0 }}>Usuarios</h2>
+          <p style={{ fontSize: '0.78rem', color: t3, marginTop: 2 }}>{users.length} miembro{users.length !== 1 ? 's' : ''}</p>
+        </div>
+        <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
+          <Plus className="h-3.5 w-3.5" /> Nuevo usuario
+        </Button>
       </div>
 
+      {/* Create form */}
+      {showCreate && (
+        <div style={{ background: isDark ? '#181f19' : '#f9fafb', border: `1px solid ${borderCol}`, borderRadius: 12, padding: 18 }}>
+          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: ink, marginBottom: 14 }}>Crear nuevo usuario</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
+            <UField label="Nombre completo *">
+              <input style={uInput(isDark)} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: María García" />
+            </UField>
+            <UField label="Correo *">
+              <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
+            </UField>
+            <UField label="Contraseña temporal *">
+              <input style={uInput(isDark)} type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Mín. 6 caracteres" />
+            </UField>
+            <UField label="Rol *">
+              <select style={uInput(isDark)} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
+                {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </UField>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleCreate} disabled={saving}>
+              {saving ? 'Creando...' : 'Crear usuario'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+          <div style={{ width: 28, height: 28, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      ) : users.length === 0 ? (
+        <p style={{ color: t3, textAlign: 'center', padding: '32px 0', fontSize: '0.88rem' }}>No hay usuarios registrados.</p>
+      ) : (
+        <div style={{ border: `1px solid ${borderCol}`, borderRadius: 12, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+            <thead>
+              <tr style={{ background: bgHdr }}>
+                {['Nombre', 'Email', 'Rol', 'Acciones'].map((h) => (
+                  <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: t3, fontWeight: 700, borderBottom: `1px solid ${borderCol}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const role = u.role || 'usuario'
+                return (
+                  <tr key={u.uid || u.id}
+                    style={{ borderBottom: `1px solid ${borderCol}` }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = isDark ? 'rgba(201,168,76,0.04)' : '#fafafa' }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <td style={{ padding: '10px 14px', color: ink, fontWeight: 500 }}>{u.name || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: t2, fontSize: '0.8rem' }}>{u.email}</td>
+                    <td style={{ padding: '10px 14px' }}><RoleBadge role={role} /></td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {canCreateAdmin && u.uid !== user?.uid && (
+                          <button
+                            title="Editar rol"
+                            onClick={() => { setEditUser(u); setEditRole(role) }}
+                            style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                        {canDelete(role) && u.uid !== user?.uid && (
+                          <button
+                            title="Eliminar del restaurante"
+                            onClick={() => handleDelete(u)}
+                            style={{ background: 'rgba(192,72,72,0.10)', border: '1px solid rgba(192,72,72,0.25)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: '#c04848', display: 'flex', alignItems: 'center' }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit role modal */}
+      {editUser && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: bg2, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 24, width: 'min(360px, 95vw)' }}>
+            <p style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', color: ink, marginBottom: 16 }}>
+              Editar rol — {editUser.name}
+            </p>
+            <UField label="Nuevo rol">
+              <select style={uInput(isDark)} value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </UField>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+              <Button variant="outline" size="sm" onClick={() => setEditUser(null)}>Cancelar</Button>
+              <Button size="sm" onClick={handleEditSave} disabled={editSaving}>
+                {editSaving ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Migration */}
       {isMaster && (
-        <div className={cn('p-4 rounded-xl border border-dashed', isDark ? 'border-gray-700' : 'border-gray-300')}>
-          <p className={cn('text-xs font-semibold mb-1', isDark ? 'text-gray-400' : 'text-gray-600')}>Migración de roles</p>
-          <p className={cn('text-xs mb-3', isDark ? 'text-gray-600' : 'text-gray-400')}>
-            Cambia todos los usuarios con rol "chef" al nuevo rol "usuario".
-          </p>
+        <div style={{ borderTop: `1px solid ${borderCol}`, paddingTop: 16 }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: t2, marginBottom: 4 }}>Migración de roles</p>
+          <p style={{ fontSize: '0.75rem', color: t3, marginBottom: 10 }}>Cambia todos los usuarios con rol "chef" al nuevo rol "usuario".</p>
           <Button variant="outline" size="sm" onClick={handleMigrate} disabled={migrating}>
             {migrating ? 'Migrando...' : '🔄 Migrar roles (chef → usuario)'}
           </Button>
           {migrateResult !== null && (
-            <p className="text-xs text-emerald-500 mt-2">{migrateResult} usuarios migrados correctamente.</p>
+            <p style={{ fontSize: '0.75rem', color: '#4a9e6e', marginTop: 6 }}>{migrateResult} usuarios migrados correctamente.</p>
           )}
         </div>
       )}
