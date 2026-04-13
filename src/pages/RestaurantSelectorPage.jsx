@@ -179,9 +179,9 @@ export default function RestaurantSelectorPage() {
       {isMaster && (
         <button
           onClick={() => navigate('/restaurants/new')}
-          style={{ marginTop: 30, background: 'none', border: '2px dashed var(--b2)', borderRadius: 12, padding: '16px 32px', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9rem', transition: 'all 0.2s' }}
-          onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
-          onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--b2)'; e.currentTarget.style.color = 'var(--t3)' }}
+          style={{ marginTop: 30, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '14px 32px', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s' }}
+          onMouseOver={(e) => { e.currentTarget.style.opacity = '0.85' }}
+          onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
         >
           + Nuevo restaurante
         </button>
