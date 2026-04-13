@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   onAuthStateChanged,
+  signInWithPopup,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
@@ -55,6 +56,27 @@ export async function registerUser({ email, password, name, restaurantName }) {
 export async function loginUser({ email, password }) {
   const credential = await signInWithEmailAndPassword(auth, email, password)
   return credential.user
+}
+
+export async function signInWithSocialProvider(provider) {
+  const credential = await signInWithPopup(auth, provider)
+  const user = credential.user
+
+  // Create user doc only if new (no existing Firestore record)
+  const userRef = doc(db, 'users', user.uid)
+  const snap = await getDoc(userRef)
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || '',
+      role: 'usuario',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  }
+
+  return user
 }
 
 export async function logoutUser() {

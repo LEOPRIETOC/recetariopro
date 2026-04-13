@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth'
+import { getAuth, setPersistence, browserSessionPersistence, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -22,4 +22,13 @@ setPersistence(auth, browserSessionPersistence)
 
 export const db = getFirestore(app)
 export const storage = getStorage(app, 'gs://inom-recetas.firebasestorage.app')
+
+export const googleProvider = new GoogleAuthProvider()
+googleProvider.addScope('email')
+googleProvider.addScope('profile')
+
+export const appleProvider = new OAuthProvider('apple.com')
+appleProvider.addScope('email')
+appleProvider.addScope('name')
+
 export default app
