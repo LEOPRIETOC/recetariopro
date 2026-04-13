@@ -29,7 +29,7 @@ import {
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
-import { setMasterRole, migrateChefToUsuario, createUserWithRole, updateUserRole } from '../../services/auth'
+import { setMasterRole, createUserWithRole, updateUserRole } from '../../services/auth'
 import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import {
@@ -1819,8 +1819,6 @@ function UsersAdminTab({ isDark }) {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState(null)
-  const [migrating, setMigrating] = useState(false)
-  const [migrateResult, setMigrateResult] = useState(null)
 
   // ── Create form state ──
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'usuario' })
@@ -1914,17 +1912,6 @@ function UsersAdminTab({ isDark }) {
     } catch { error('Error al eliminar') }
   }
 
-  // ── Migration ──
-  const handleMigrate = async () => {
-    if (!confirm('¿Migrar todos los usuarios con rol "chef" a "usuario"?')) return
-    setMigrating(true)
-    try {
-      const count = await migrateChefToUsuario()
-      setMigrateResult(count)
-      success(`${count} usuario${count !== 1 ? 's' : ''} migrado${count !== 1 ? 's' : ''}`)
-      loadUsers()
-    } catch { error('Error al migrar') } finally { setMigrating(false) }
-  }
 
   const borderCol = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
   const bg2       = isDark ? '#111712' : '#fff'
@@ -2058,19 +2045,6 @@ function UsersAdminTab({ isDark }) {
         </div>
       )}
 
-      {/* Migration */}
-      {isMaster && (
-        <div style={{ borderTop: `1px solid ${borderCol}`, paddingTop: 16 }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: t2, marginBottom: 4 }}>Migración de roles</p>
-          <p style={{ fontSize: '0.75rem', color: t3, marginBottom: 10 }}>Cambia todos los usuarios con rol "chef" al nuevo rol "usuario".</p>
-          <Button variant="outline" size="sm" onClick={handleMigrate} disabled={migrating}>
-            {migrating ? 'Migrando...' : '🔄 Migrar roles (chef → usuario)'}
-          </Button>
-          {migrateResult !== null && (
-            <p style={{ fontSize: '0.75rem', color: '#4a9e6e', marginTop: 6 }}>{migrateResult} usuarios migrados correctamente.</p>
-          )}
-        </div>
-      )}
     </div>
   )
 }
