@@ -160,41 +160,43 @@ h1 .line2{display:block;color:var(--ink2);}
 
 /* ── PRICING ── */
 .pricing{padding:90px 5vw;background:var(--cream2);}
-.pricing-inner{max-width:900px;margin:0 auto;}
-.pricing-header{text-align:center;margin-bottom:52px;}
-.pricing-header h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.6rem);letter-spacing:-.02em;color:var(--ink);margin-bottom:10px;}
-.pricing-header p{color:var(--ink3);font-size:.93rem;line-height:1.6;}
+.pricing-inner{max-width:1060px;margin:0 auto;text-align:center;}
+.pricing-inner h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.6rem);letter-spacing:-.02em;color:var(--ink);margin-bottom:10px;}
 
-.plan-toggle{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px;}
-.toggle-label{font-size:.85rem;color:var(--ink3);}
-.toggle-label.active{color:var(--ink);font-weight:600;}
-.toggle-track{width:44px;height:24px;background:var(--gold);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;}
-.toggle-thumb{position:absolute;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;left:23px;}
-.save-badge{background:rgba(42,110,66,.12);color:var(--green);font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:10px;border:1px solid rgba(42,110,66,.2);}
+.prices-sub{text-align:center;color:var(--ink3);font-size:.95rem;margin-bottom:24px;}
 
-.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.plan{background:var(--cream);border:2px solid var(--cream3);border-radius:16px;padding:36px 32px;position:relative;transition:all .3s;}
-.plan:hover{box-shadow:var(--sh);}
-.plan.featured{background:var(--ink);border-color:var(--gold);box-shadow:0 12px 48px rgba(184,120,32,.2);}
-.plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold);color:#fff;font-size:.7rem;font-weight:700;padding:4px 16px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-.plan-name{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:16px;}
-.plan.featured .plan-name{color:rgba(255,255,255,.5);}
-.plan-price{font-family:'Playfair Display',serif;font-size:2.8rem;color:var(--ink);line-height:1;margin-bottom:4px;letter-spacing:-.02em;}
-.plan.featured .plan-price{color:#fff;}
-.plan-price sup{font-size:1.1rem;vertical-align:top;margin-top:8px;font-family:'DM Sans',sans-serif;font-weight:500;}
-.plan-price sub{font-size:.8rem;font-family:'DM Sans',sans-serif;font-weight:400;}
-.plan-period{font-size:.78rem;color:var(--ink3);margin-bottom:28px;}
-.plan.featured .plan-period{color:rgba(255,255,255,.4);}
-.plan-feats{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:32px;}
-.plan-feats li{display:flex;align-items:flex-start;gap:9px;font-size:.86rem;color:var(--ink2);}
-.plan.featured .plan-feats li{color:rgba(255,255,255,.75);}
-.plan-feats li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px;}
-.plan.featured .plan-feats li::before{color:var(--gold3);}
-.plan-cta{display:block;text-align:center;padding:14px;border-radius:9px;font-weight:700;font-size:.9rem;text-decoration:none;transition:all .2s;}
-.plan-cta.light{background:var(--goldBg);color:var(--gold);border:1px solid rgba(184,120,32,.25);}
-.plan-cta.light:hover{background:var(--gold);color:#fff;}
-.plan-cta.dark{background:var(--gold);color:#fff;}
-.plan-cta.dark:hover{background:var(--gold2);transform:translateY(-1px);}
+.billing-toggle{display:flex;gap:4px;background:#f0ece4;border-radius:10px;padding:4px;width:fit-content;margin:0 auto 40px;}
+.toggle-btn{background:none;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.88rem;color:#7a5838;transition:all .2s;display:flex;align-items:center;gap:8px;}
+.toggle-btn.active{background:#fff;color:#261808;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.save-badge{background:#b87c20;color:#fff;font-size:.68rem;padding:2px 8px;border-radius:10px;font-weight:700;}
+
+.plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;max-width:1000px;margin:0 auto;}
+
+.plan-card{background:#fff;border:1px solid #e2dfdc;border-radius:20px;padding:32px 24px;display:flex;flex-direction:column;gap:12px;position:relative;transition:all .3s;text-align:left;}
+.plan-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(30,20,10,.12);}
+.plan-card.featured{border:2px solid #b87c20;transform:scale(1.02);}
+.plan-card.featured:hover{transform:scale(1.02) translateY(-4px);}
+
+.plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#b87c20;color:#fff;font-size:.72rem;font-weight:700;padding:4px 14px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em;}
+
+.plan-icon{font-size:2rem;}
+.plan-name{font-family:'Playfair Display',serif;font-size:1.3rem;color:#261808;font-weight:700;}
+.plan-price{display:flex;align-items:baseline;gap:4px;}
+.plan-price .price-mensual,.plan-price .price-anual{font-family:'Playfair Display',serif;font-size:2.2rem;color:#b87c20;font-weight:700;}
+.price-period{font-size:.85rem;color:#7a5838;}
+.plan-anual-note{font-size:.75rem;color:#b87c20;background:rgba(184,124,32,.08);padding:4px 10px;border-radius:6px;}
+
+.plan-features{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:8px;flex:1;}
+.plan-features li{font-size:.85rem;color:#4a3828;display:flex;align-items:center;gap:8px;}
+.feat-yes::before{content:'✅';}
+.feat-no::before{content:'❌';}
+
+.plan-note{font-size:.72rem;color:#9a8878;font-style:italic;margin:0;padding:8px 0;border-top:1px solid #e2dfdc;}
+
+.plan-btn{display:block;text-align:center;padding:13px 20px;border-radius:10px;font-weight:600;font-size:.9rem;text-decoration:none;transition:all .2s;border:2px solid #b87c20;color:#b87c20;background:transparent;font-family:inherit;cursor:pointer;margin-top:auto;}
+.plan-btn:hover{background:#b87c20;color:#fff;}
+.plan-btn.primary{background:#b87c20;color:#fff;}
+.plan-btn.primary:hover{background:#d49530;}
 
 /* ── HOW IT WORKS ── */
 .how{padding:80px 5vw;background:var(--cream);}
@@ -495,56 +497,122 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
 <!-- PRICING -->
 <section class="pricing" id="pricing">
   <div class="pricing-inner">
-    <div class="pricing-header reveal">
-      <div class="section-eyebrow" style="color:var(--gold);text-align:center">Precios</div>
-      <h2>Simple. Sin sorpresas.</h2>
-      <p>Sin contratos de permanencia. Cancela cuando quieras.</p>
-    </div>
-
-    <div class="plan-toggle reveal">
-      <span class="toggle-label">Mensual</span>
-      <div class="toggle-track" onclick="toggleBilling(this)"><div class="toggle-thumb"></div></div>
-      <span class="toggle-label active">Anual</span>
-      <span class="save-badge">Ahorra 20%</span>
-    </div>
-
-    <div class="plans reveal reveal-delay-1">
-      <div class="plan">
-        <div class="plan-name">Plan Mensual</div>
-        <div class="plan-price" id="price-m"><sup>$</sup>89.900<sub>/mes</sub></div>
-        <div class="plan-period" id="period-m">Facturado mes a mes · COP</div>
-        <ul class="plan-feats">
-          <li>Hasta 3 usuarios</li>
-          <li>Hasta 30 recetas</li>
-          <li>Fotos</li>
-          <li>Importación por Excel</li>
-          <li>Roles de usuario</li>
-          <li>Soporte por WhatsApp</li>
-        </ul>
-        <a href="https://recetariopro-app.vercel.app" class="plan-cta light">Ingresar</a>
-      </div>
-
-      <div class="plan featured">
-        <div class="plan-badge">⭐ Más popular</div>
-        <div class="plan-name">Plan Anual</div>
-        <div class="plan-price" id="price-a"><sup>$</sup>69.900<sub>/mes</sub></div>
-        <div class="plan-period" id="period-a">Facturado anual · $838.800 COP/año</div>
-        <ul class="plan-feats">
-          <li>Hasta 10 usuarios</li>
-          <li>Hasta 200 recetas</li>
-          <li>Fotos</li>
-          <li>Importación por Excel</li>
-          <li>Roles de usuario</li>
-          <li>Soporte prioritario WhatsApp</li>
-          <li>Capacitación inicial incluida</li>
-        </ul>
-        <a href="https://recetariopro-app.vercel.app" class="plan-cta dark">Ingresar</a>
-      </div>
-    </div>
-
-    <p class="reveal" style="text-align:center;margin-top:20px;font-size:.8rem;color:var(--ink3)">
-      ✓ Cancela cuando quieras &nbsp;·&nbsp; ✓ Soporte en español
+    <div class="section-eyebrow reveal" style="color:var(--gold);text-align:center">PRECIOS</div>
+    <h2 class="reveal">Simple. Sin sorpresas.</h2>
+    <p class="prices-sub reveal">
+      Paga mensual o anual — 2 meses gratis en plan anual
     </p>
+
+    <div class="billing-toggle reveal">
+      <button class="toggle-btn active" id="btn-mensual"
+              onclick="setBilling('mensual')">Mensual</button>
+      <button class="toggle-btn" id="btn-anual"
+              onclick="setBilling('anual')">
+        Anual <span class="save-badge">2 meses gratis</span>
+      </button>
+    </div>
+
+    <div class="plans-grid reveal reveal-delay-1">
+
+      <!-- EMPRENDEDOR -->
+      <div class="plan-card">
+        <div class="plan-icon">🌱</div>
+        <div class="plan-name">Emprendedor</div>
+        <div class="plan-price">
+          <span class="price-mensual">$59.900</span>
+          <span class="price-anual" style="display:none">$49.900</span>
+          <span class="price-period">/mes</span>
+        </div>
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $119.400
+        </div>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 50 recetas</li>
+          <li class="feat-yes">3 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-no">Sub-recetas</li>
+          <li class="feat-no">Costo automático</li>
+          <li class="feat-no">Fotos de recetas</li>
+          <li class="feat-no">Videos de recetas</li>
+          <li class="feat-no">Analítica BCG</li>
+          <li class="feat-no">Top sells por categoría</li>
+        </ul>
+        <a href="https://app.inom.pro" class="plan-btn">
+          Comenzar gratis
+        </a>
+      </div>
+
+      <!-- BÁSICO -->
+      <div class="plan-card featured">
+        <div class="plan-badge">Más popular</div>
+        <div class="plan-icon">🍳</div>
+        <div class="plan-name">Básico</div>
+        <div class="plan-price">
+          <span class="price-mensual">$99.900</span>
+          <span class="price-anual" style="display:none">$82.900</span>
+          <span class="price-period">/mes</span>
+        </div>
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $203.400
+        </div>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 120 recetas</li>
+          <li class="feat-yes">5 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-yes">Sub-recetas</li>
+          <li class="feat-yes">Costo automático</li>
+          <li class="feat-yes">Fotos de recetas</li>
+          <li class="feat-no">Videos de recetas</li>
+          <li class="feat-no">Analítica BCG</li>
+          <li class="feat-no">Top sells por categoría</li>
+        </ul>
+        <a href="https://app.inom.pro" class="plan-btn primary">
+          Comenzar gratis
+        </a>
+      </div>
+
+      <!-- PRO -->
+      <div class="plan-card">
+        <div class="plan-icon">👨‍🍳</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">
+          <span class="price-mensual">$149.900</span>
+          <span class="price-anual" style="display:none">$124.900</span>
+          <span class="price-period">/mes</span>
+        </div>
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $299.400
+        </div>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 500 recetas</li>
+          <li class="feat-yes">20 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-yes">Sub-recetas</li>
+          <li class="feat-yes">Costo automático</li>
+          <li class="feat-yes">Fotos de recetas</li>
+          <li class="feat-yes">Videos de recetas</li>
+          <li class="feat-yes">Analítica BCG *</li>
+          <li class="feat-yes">Top sells por categoría *</li>
+        </ul>
+        <p class="plan-note">
+          * Requiere cargar información de ventas al sistema
+          para generar los análisis.
+        </p>
+        <a href="https://app.inom.pro" class="plan-btn">
+          Comenzar gratis
+        </a>
+      </div>
+
+    </div>
   </div>
 </section>
 
@@ -612,24 +680,13 @@ function toggleFaq(item){
 }
 
 // ── Billing toggle ──
-let isAnnual=true;
-function toggleBilling(track){
-  isAnnual=!isAnnual;
-  const thumb=track.querySelector('.toggle-thumb');
-  thumb.style.left=isAnnual?'23px':'3px';
-  track.style.background=isAnnual?'var(--gold)':'var(--cream3)';
-  document.querySelectorAll('.toggle-label').forEach((l,i)=>{
-    l.classList.toggle('active',(isAnnual&&i===1)||(!isAnnual&&i===0));
-  });
-  if(isAnnual){
-    document.getElementById('price-m').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
-    document.getElementById('price-a').innerHTML='<sup>$</sup>69.900<sub>/mes</sub>';
-    document.getElementById('period-a').textContent='Facturado anual · $838.800 COP/año';
-  } else {
-    document.getElementById('price-m').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
-    document.getElementById('price-a').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
-    document.getElementById('period-a').textContent='Facturado mes a mes';
-  }
+function setBilling(type){
+  const isMensual=type==='mensual';
+  document.getElementById('btn-mensual').classList.toggle('active',isMensual);
+  document.getElementById('btn-anual').classList.toggle('active',!isMensual);
+  document.querySelectorAll('.price-mensual').forEach(el=>el.style.display=isMensual?'inline':'none');
+  document.querySelectorAll('.price-anual').forEach(el=>el.style.display=isMensual?'none':'inline');
+  document.querySelectorAll('.plan-anual-note').forEach(el=>el.style.display=isMensual?'none':'block');
 }
 
 // ── Smooth nav ──
