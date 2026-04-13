@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
 import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
 import { logoutUser } from '../../services/auth'
+import { signOut } from 'firebase/auth'
+import { auth } from '../../lib/firebase'
 import {
   DndContext, PointerSensor, useSensor, useSensors, closestCenter,
 } from '@dnd-kit/core'
@@ -76,14 +78,14 @@ export function POSLayout() {
   } = useAppStore()
   const isDark = theme === 'night'
   const { showWarning, resetTimer } = useInactivityLogout()
-  const { canEdit } = useAuth()
+  const { canEdit, userProfile } = useAuth()
 
   const [localCategories, setLocalCategories] = useState([])
+  const [showSalirModal, setShowSalirModal] = useState(false)
 
-  const handleLogout = async () => {
-    if (!window.confirm('¿Cerrar sesión?')) return
+  const doLogout = async () => {
     try {
-      await logoutUser()
+      await signOut(auth)
       setUser(null)
       setUserProfile(null)
       setCurrentRestaurant(null)
@@ -91,6 +93,18 @@ export function POSLayout() {
       navigate('/login')
     } catch (err) {
       console.error('Error al cerrar sesión:', err)
+    }
+  }
+
+  const handleSalirClick = async () => {
+    const restaurantIds = userProfile?.restaurantIds || []
+    const isMasterUser = userProfile?.role === 'master'
+    if (restaurantIds.length > 1 || isMasterUser) {
+      setShowSalirModal(true)
+    } else {
+      if (window.confirm('¿Deseas cerrar sesión?')) {
+        await doLogout()
+      }
     }
   }
 
@@ -186,7 +200,7 @@ export function POSLayout() {
           )}
           {/* Logout */}
           <button
-            onClick={handleLogout}
+            onClick={handleSalirClick}
             className={cn(
               'flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
               isDark
@@ -258,6 +272,85 @@ export function POSLayout() {
       <ConfigModal />
 
       {/* ── Modal de inactividad ─────────────────────────────────────────── */}
+      {/* ── Modal Salir ──────────────────────────────────────────────────── */}
+      {showSalirModal && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16,
+        }}>
+          <div style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--b2)',
+            borderRadius: 16, padding: 32,
+            width: 'min(380px, 90vw)',
+            display: 'flex', flexDirection: 'column', gap: 12,
+          }}>
+            <h3 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '1.1rem', color: 'var(--text)',
+              textAlign: 'center', margin: '0 0 8px',
+            }}>
+              ¿Qué deseas hacer?
+            </h3>
+
+            <button
+              onClick={() => { setShowSalirModal(false); navigate('/restaurants') }}
+              style={{
+                background: 'var(--bg3)', border: '1px solid var(--b2)',
+                borderRadius: 10, padding: '14px 16px',
+                color: 'var(--text)', fontFamily: 'inherit',
+                fontSize: '0.9rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                transition: 'all 0.2s', textAlign: 'left',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--b2)' }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>🏠</span>
+              <div>
+                <div style={{ fontWeight: 600 }}>Cambiar restaurante</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--t3)' }}>Ir al selector de restaurantes</div>
+              </div>
+            </button>
+
+            <button
+              onClick={async () => { setShowSalirModal(false); await doLogout() }}
+              style={{
+                background: 'rgba(192,72,72,0.08)', border: '1px solid rgba(192,72,72,0.25)',
+                borderRadius: 10, padding: '14px 16px',
+                color: 'var(--red, #c04848)', fontFamily: 'inherit',
+                fontSize: '0.9rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                transition: 'all 0.2s', textAlign: 'left',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(192,72,72,0.15)' }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(192,72,72,0.08)' }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>→</span>
+              <div>
+                <div style={{ fontWeight: 600 }}>Cerrar sesión</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--t3)' }}>Salir completamente de la app</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setShowSalirModal(false)}
+              style={{
+                background: 'none', border: 'none',
+                color: 'var(--t3)', fontFamily: 'inherit',
+                fontSize: '0.8rem', cursor: 'pointer',
+                padding: 8, marginTop: 4,
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {showWarning && (
         <div style={{
           position: 'fixed',
