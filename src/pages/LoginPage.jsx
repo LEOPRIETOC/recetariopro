@@ -126,22 +126,17 @@ export default function LoginPage() {
           alt="Restaurante elegante"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        {/* Gradient overlay using primary theme colors */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, rgba(120,53,15,0.88) 0%, rgba(180,83,9,0.72) 50%, rgba(217,119,6,0.55) 100%)',
-          }}
-        />
         {/* Text over image */}
         <div className="relative z-10 flex flex-col justify-end p-14 text-white">
-          <span className="font-display font-bold text-xl mb-8">RecetarioPro</span>
-          <h2 className="font-display text-3xl font-bold leading-snug mb-3">
-            Tu cocina,<br />protegida.
-          </h2>
-          <p className="text-amber-100 text-base leading-relaxed max-w-xs">
-            Estandariza, controla y comparte tus recetas con tu equipo. Sin cuadernos, sin WhatsApp.
-          </p>
+          <div style={{ background: 'rgba(0,0,0,0.45)', borderRadius: 12, padding: '20px 24px', backdropFilter: 'blur(2px)' }}>
+            <span className="font-display font-bold text-xl block mb-3">RecetarioPro</span>
+            <h2 className="font-display text-3xl font-bold leading-snug mb-3">
+              Tu cocina,<br />protegida.
+            </h2>
+            <p className="text-gray-200 text-base leading-relaxed max-w-xs">
+              Estandariza, controla y comparte tus recetas con tu equipo. Sin cuadernos, sin WhatsApp.
+            </p>
+          </div>
         </div>
       </div>
 
