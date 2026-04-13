@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, ChefHat } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -122,8 +122,8 @@ export default function LoginPage() {
       {/* ── LEFT: food photo (hidden on mobile) ─────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80"
-          alt="Cocina profesional"
+          src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80"
+          alt="Restaurante elegante"
           className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Gradient overlay using primary theme colors */}
@@ -135,28 +135,13 @@ export default function LoginPage() {
         />
         {/* Text over image */}
         <div className="relative z-10 flex flex-col justify-end p-14 text-white">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.2)' }}>
-              <ChefHat className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl">RecetarioPro</span>
-          </div>
+          <span className="font-display font-bold text-xl mb-8">RecetarioPro</span>
           <h2 className="font-display text-3xl font-bold leading-snug mb-3">
             Tu cocina,<br />protegida.
           </h2>
           <p className="text-amber-100 text-base leading-relaxed max-w-xs">
             Estandariza, controla y comparte tus recetas con tu equipo. Sin cuadernos, sin WhatsApp.
           </p>
-          <div className="flex gap-6 mt-10">
-            <div>
-              <div className="text-2xl font-bold">+500</div>
-              <div className="text-amber-200 text-sm">Recetas gestionadas</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold">3 veces</div>
-              <div className="text-amber-200 text-sm">Más rápida la capacitación</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -166,12 +151,6 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg mb-4"
-              style={{ backgroundColor: 'var(--accent, #d97706)' }}
-            >
-              <ChefHat className="h-7 w-7 text-white" />
-            </div>
             <h1 className={`font-display text-2xl font-bold ${textPrimary}`}>RecetarioPro</h1>
           </div>
 
@@ -273,16 +252,23 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-10" disabled={loading || !!socialLoading}>
+            <button
+              type="submit"
+              disabled={loading || !!socialLoading}
+              className="w-full h-10 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: loading ? '#000' : '#111111', color: '#ffffff', border: 'none' }}
+              onMouseOver={(e) => { if (!loading) e.currentTarget.style.background = '#000000' }}
+              onMouseOut={(e) => { e.currentTarget.style.background = '#111111' }}
+            >
               {loading ? (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center justify-center gap-2">
                   <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Ingresando...
                 </span>
               ) : (
                 t('auth.login')
               )}
-            </Button>
+            </button>
           </form>
 
           {/* Register link */}
