@@ -359,7 +359,7 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
     <div class="pain-vs reveal">
       <div class="vs-item"><div class="vs-num">68%</div><div class="vs-label">de restaurantes en Col.<br>no tienen recetario digital</div></div>
       <div class="vs-sep">—</div>
-      <div class="vs-item"><div class="vs-num">3x</div><div class="vs-label">más lenta la capacitación<br>sin recetas estandarizadas</div></div>
+      <div class="vs-item"><div class="vs-num">3 veces</div><div class="vs-label">más lenta la capacitación<br>sin recetas estandarizadas</div></div>
       <div class="vs-sep">—</div>
       <div class="vs-item"><div class="vs-num">30%</div><div class="vs-label">del desperdicio se reduce<br>con recetas exactas</div></div>
     </div>
@@ -372,7 +372,7 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
     <div class="feat-header reveal">
       <div class="section-eyebrow" style="color:var(--gold)">Lo que incluye</div>
       <h2>Todo lo que necesitas,<br><em>nada de lo que no.</em></h2>
-      <p>Diseñado específicamente para restaurantes medianos colombianos. Sin curva de aprendizaje enorme, sin contratos largos.</p>
+      <p>Diseñado específicamente para restaurantes medianos. Sin curva de aprendizaje enorme, sin contratos largos.</p>
     </div>
 
     <!-- F1 -->
@@ -497,8 +497,8 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
   <div class="pricing-inner">
     <div class="pricing-header reveal">
       <div class="section-eyebrow" style="color:var(--gold);text-align:center">Precios</div>
-      <h2>Simple. Sin sorpresas.<br>En pesos colombianos.</h2>
-      <p>Sin contratos de permanencia. Cancela cuando quieras. Precios pensados para el restaurante colombiano real.</p>
+      <h2>Simple. Sin sorpresas.</h2>
+      <p>Sin contratos de permanencia. Cancela cuando quieras.</p>
     </div>
 
     <div class="plan-toggle reveal">
@@ -511,7 +511,7 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
     <div class="plans reveal reveal-delay-1">
       <div class="plan">
         <div class="plan-name">Plan Mensual</div>
-        <div class="plan-price" id="price-m"><sup>$</sup>49.900<sub>/mes</sub></div>
+        <div class="plan-price" id="price-m"><sup>$</sup>89.900<sub>/mes</sub></div>
         <div class="plan-period" id="period-m">Facturado mes a mes · COP</div>
         <ul class="plan-feats">
           <li>Hasta 3 usuarios</li>
@@ -527,8 +527,8 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
       <div class="plan featured">
         <div class="plan-badge">⭐ Más popular</div>
         <div class="plan-name">Plan Anual</div>
-        <div class="plan-price" id="price-a"><sup>$</sup>39.900<sub>/mes</sub></div>
-        <div class="plan-period" id="period-a">Facturado anual · $478.800 COP/año</div>
+        <div class="plan-price" id="price-a"><sup>$</sup>69.900<sub>/mes</sub></div>
+        <div class="plan-period" id="period-a">Facturado anual · $838.800 COP/año</div>
         <ul class="plan-feats">
           <li>Hasta 10 usuarios</li>
           <li>Hasta 200 recetas</li>
@@ -554,14 +554,18 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
     <h2 class="reveal">Preguntas frecuentes</h2>
 
     <div class="faq-item reveal" onclick="toggleFaq(this)">
+      <div class="faq-q"><h3>¿Mis recetas son confidenciales?</h3><div class="faq-ico">+</div></div>
+      <div class="faq-a"><p>Sí. Tus recetas son 100% privadas y confidenciales. Solo las personas que tú autorices con su correo electrónico registrado en la aplicación pueden acceder a tu información. Ningún usuario externo, sin importar su rol, puede ver tus recetas sin tu autorización expresa. Tu conocimiento culinario es tuyo y solo tuyo.</p></div>
+    </div>
+    <div class="faq-item reveal reveal-delay-1" onclick="toggleFaq(this)">
       <div class="faq-q"><h3>¿Necesito instalar algo?</h3><div class="faq-ico">+</div></div>
       <div class="faq-a"><p>No. RecetarioPro funciona completamente desde el navegador, en cualquier dispositivo. Tus chefs lo abren desde el celular sin descargar ninguna app.</p></div>
     </div>
-    <div class="faq-item reveal reveal-delay-1" onclick="toggleFaq(this)">
+    <div class="faq-item reveal reveal-delay-2" onclick="toggleFaq(this)">
       <div class="faq-q"><h3>¿Puedo importar recetas que ya tengo en Excel?</h3><div class="faq-ico">+</div></div>
       <div class="faq-a"><p>Sí. Descarga nuestra plantilla, llénala con tus recetas e importa el archivo. En minutos tienes todo cargado sin escribir nada de nuevo.</p></div>
     </div>
-    <div class="faq-item reveal reveal-delay-2" onclick="toggleFaq(this)">
+    <div class="faq-item reveal reveal-delay-3" onclick="toggleFaq(this)">
       <div class="faq-q"><h3>¿Los chefs pueden modificar las recetas?</h3><div class="faq-ico">+</div></div>
       <div class="faq-a"><p>No. El rol de Chef es solo lectura. Pueden consultar recetas y dejar notas o sugerencias, pero nunca modificar ni eliminar. Solo el Administrador y el Super Admin pueden editar.</p></div>
     </div>
@@ -616,13 +620,13 @@ function toggleBilling(track){
     l.classList.toggle('active',(isAnnual&&i===1)||(!isAnnual&&i===0));
   });
   if(isAnnual){
-    document.getElementById('price-m').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
-    document.getElementById('price-a').innerHTML='<sup>$</sup>39.900<sub>/mes</sub>';
-    document.getElementById('period-a').textContent='Facturado anual · $478.800 COP/año';
+    document.getElementById('price-m').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
+    document.getElementById('price-a').innerHTML='<sup>$</sup>69.900<sub>/mes</sub>';
+    document.getElementById('period-a').textContent='Facturado anual · $838.800 COP/año';
   } else {
-    document.getElementById('price-m').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
-    document.getElementById('price-a').innerHTML='<sup>$</sup>49.900<sub>/mes</sub>';
-    document.getElementById('period-a').textContent='Facturado mes a mes · COP';
+    document.getElementById('price-m').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
+    document.getElementById('price-a').innerHTML='<sup>$</sup>89.900<sub>/mes</sub>';
+    document.getElementById('period-a').textContent='Facturado mes a mes';
   }
 }
 
