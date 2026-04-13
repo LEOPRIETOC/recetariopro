@@ -557,96 +557,85 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
       ? new Date(recipe.createdAt).toLocaleDateString('es-ES')
       : null
 
-  const prepSteps = (recipe?.preparation || '').split('\n').filter((s) => s.trim())
-
   const menuLabel = recipe?.isSubRecipe ? 'Sub-receta' : (cat?.name || null)
 
-  const metaRows = [
-    ['Menú', menuLabel],
-    ['Código', recipe?.code],
-    ['Item', recipe?.item],
-    ['Referencia', recipe?.reference],
-    recipe?.portions ? ['Porciones', recipe.portions] : null,
-  ].filter((row) => row && row[1])
+  const pills = [
+    menuLabel && { label: 'Menú', value: menuLabel },
+    recipe?.code && { label: 'Código', value: recipe.code },
+    recipe?.item && { label: 'Item', value: recipe.item },
+    recipe?.reference && { label: 'Ref', value: recipe.reference },
+    recipe?.portions && { label: 'Porciones', value: recipe.portions },
+  ].filter(Boolean)
 
   return (
     <div ref={forwardRef} className="print-document">
+      <div className="print-container">
 
-      {/* ── HEADER ── */}
-      <div className="print-header">
-        {restaurantName && <div className="print-restaurant">{restaurantName}</div>}
-        {cat && <div className="print-menu-name">{cat.name}</div>}
-        <div className="print-header-line" />
-        <h1 className="print-recipe-title">{recipe?.name}</h1>
-      </div>
-
-      {/* ── BODY ── */}
-      <div className="print-body">
-
-        {/* Left column — photo + meta */}
-        <div className="print-col-left">
+        {/* ── HEADER ── */}
+        <div className="print-header">
+          <div>
+            <h1 className="print-title">{recipe?.name}</h1>
+            {restaurantName && <p className="print-subtitle">{restaurantName}</p>}
+          </div>
           {recipe?.photoURL && (
-            <div className="print-photo-wrap">
+            <div className="print-photo">
               <img src={recipe.photoURL} alt={recipe.name} />
             </div>
           )}
+        </div>
 
-          <div className="print-menu-box">
-            <div className="print-menu-label">Menú</div>
-            <div className="print-menu-value">{menuLabel || 'Sin menú'}</div>
+        {/* ── META PILLS ── */}
+        {pills.length > 0 && (
+          <div className="print-meta">
+            {pills.map((pill, i) => (
+              <span key={i} className="print-pill">
+                <strong>{pill.label}:</strong> {pill.value}
+              </span>
+            ))}
           </div>
+        )}
+
+        {/* ── INGREDIENTS ── */}
+        {ingList.length > 0 && (
+          <>
+            <div className="print-label">Ingredientes</div>
+            <table className="print-ingredients">
+              <thead>
+                <tr>
+                  <th>Ingrediente</th>
+                  <th>Cantidad</th>
+                  <th>Unidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingList.map((ing, i) => (
+                  <tr key={i}>
+                    <td>{ing.description || ing.ingredientName || '—'}</td>
+                    <td>{ing.quantity}</td>
+                    <td>{ing.unit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* ── PREPARATION ── */}
+        {recipe?.preparation && (
+          <>
+            <div className="print-label">Preparación</div>
+            <div className="print-preparation">{recipe.preparation}</div>
+          </>
+        )}
+
+        {/* ── FOOTER ── */}
+        <div className="print-footer">
+          <span>v{recipe?.version || 1}{createdDate ? ` · Creada ${createdDate}` : ''}</span>
+          <span>{restaurantName?.toUpperCase()}</span>
+          <span>Impresa: {new Date().toLocaleDateString('es-ES')}</span>
         </div>
 
-        {/* Right column — ingredients + preparation */}
-        <div className="print-col-right">
-          <h2 className="print-section-title">Ingredientes</h2>
-          {(recipe?.code || recipe?.item || recipe?.reference) && (
-            <div className="print-meta-inline">
-              {[recipe.code, recipe.item, recipe.reference].filter(Boolean).map((val, i) => (
-                <span key={i} className="print-meta-chip">{val}</span>
-              ))}
-            </div>
-          )}
-          {ingList.length > 0 ? (
-            <ul className="print-ing-list">
-              {ingList.map((ing, i) => (
-                <li key={i} className="print-ing-item">
-                  <span className="print-ing-bullet" />
-                  <span className="print-ing-qty">{ing.quantity}</span>
-                  <span className="print-ing-unit">{ing.unit}</span>
-                  <span className="print-ing-name">{ing.description || ing.ingredientName || '—'}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p style={{ fontSize: '8.5pt', color: '#aaa', margin: '0 0 8mm' }}>Sin ingredientes</p>
-          )}
-
-          <h2 className="print-section-title">Procedimiento</h2>
-          {prepSteps.length > 0 ? (
-            <ol className="print-prep-list">
-              {prepSteps.map((step, i) => (
-                <li key={i} className="print-prep-item">
-                  <span className="print-prep-num">{i + 1}.</span>
-                  <span>{step.replace(/^\d+\.\s*/, '')}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p style={{ fontSize: '8.5pt', color: '#aaa', margin: 0 }}>Sin preparación</p>
-          )}
-        </div>
       </div>
-
-      {/* ── FOOTER ── */}
-      <div className="print-footer">
-        <span className="print-footer-left">
-          v{recipe?.version || 1}{createdDate ? ` · Creada ${createdDate}` : ''}
-        </span>
-        <span className="print-footer-center">{restaurantName?.toUpperCase()}</span>
-        <span className="print-footer-right">Impresa: {new Date().toLocaleDateString('es-ES')}</span>
-      </div>
-
     </div>
   )
 }
