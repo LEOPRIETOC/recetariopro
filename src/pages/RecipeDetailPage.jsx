@@ -1097,7 +1097,7 @@ export default function RecipeDetailPage() {
         className="sticky-actions no-print"
         style={{
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           alignItems: 'center',
           padding: '10px 0',
           position: 'sticky', top: 0, zIndex: 50,
@@ -1108,6 +1108,20 @@ export default function RecipeDetailPage() {
           paddingLeft: '1.25rem', paddingRight: '1.25rem',
         }}
       >
+        {/* IZQUIERDA — Nombre receta */}
+        <div style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: '1rem',
+          fontWeight: 700,
+          color: isDark ? '#f9fafb' : 'var(--text)',
+          maxWidth: '40%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {watch('name') || recipe?.name || (isNew ? (typeFromUrl === 'subrecipe' ? 'Nueva sub-receta' : 'Nueva receta') : '…')}
+        </div>
+
         {/* DERECHA — Imprimir / Guardar / Salir */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {!isNew && (
