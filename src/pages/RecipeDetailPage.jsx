@@ -867,27 +867,28 @@ export default function RecipeDetailPage() {
   const handleSave = () => handleSubmit(onSubmit)()
 
   const handleRemovePhoto = async () => {
-    try {
-      if (recipe?.photoURL && recipe.photoURL.includes('firebasestorage')) {
-        try {
-          const photoRef = storageRef(storage, recipe.photoURL)
-          await deleteObject(photoRef)
-        } catch (storageErr) {
-          console.log('Storage delete error:', storageErr)
-        }
+    // 1. Intentar borrar de Storage (ignorar errores — nunca bloquea)
+    if (recipe?.photoURL) {
+      try {
+        const photoRef = storageRef(storage, recipe.photoURL)
+        await deleteObject(photoRef)
+      } catch {
+        console.log('Storage no encontrado, continuando...')
       }
-      await updateDoc(
-        doc(db, 'restaurants', currentRestaurant.id, 'recipes', recipe.id),
-        { photoURL: null, updatedAt: serverTimestamp() }
-      )
-      setPhotoURL(null)
-      setPhotoPreview(null)
-      if (recipe) recipe.photoURL = null
-      success('Foto eliminada ✓')
-    } catch (err) {
-      console.error('Error eliminando foto:', err)
-      error('Error al eliminar foto')
     }
+
+    // 2. SIEMPRE borrar en Firestore
+    await updateDoc(
+      doc(db, 'restaurants', currentRestaurant.id, 'recipes', recipe.id),
+      { photoURL: null, updatedAt: serverTimestamp() }
+    )
+
+    // 3. SIEMPRE actualizar estado local
+    setPhotoURL(null)
+    setPhotoPreview(null)
+    if (recipe) recipe.photoURL = null
+
+    success('Foto eliminada ✓')
   }
 
   const handlePrint = useReactToPrint({ contentRef: printRef })
