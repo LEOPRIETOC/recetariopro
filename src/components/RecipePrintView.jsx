@@ -38,14 +38,14 @@ function generatePrintHTML(recipe, restaurant, menuName, ingList, prepSteps) {
       </div>
     </div>
 
-    <div style="padding:30px 24px;display:flex;justify-content:center;align-items:center;flex:1;background:#1a1a1a">
+    <div style="padding:20px 24px;display:flex;justify-content:center;align-items:center;flex:1;background:#1a1a1a">
       ${recipe.photoURL
         ? `<img src="${recipe.photoURL}" style="width:180px;height:180px;border-radius:50%;border:3px solid #c9a84c;object-fit:cover;display:block">`
         : `<div style="width:180px;height:180px;border-radius:50%;border:3px solid #c9a84c;background:#111;display:flex;align-items:center;justify-content:center;font-size:64px">🍽</div>`
       }
     </div>
 
-    <div style="background:#111111;padding:14px 24px">
+    <div style="background:#1a1a1a;padding:14px 24px">
       <div style="display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:0.08em;width:70px">Menú</span>
@@ -225,7 +225,7 @@ export function RecipePrintView({ recipe, restaurant, categories, onClose }) {
           </div>
 
           {/* Photo */}
-          <div style={{ padding: '30px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, background: '#1a1a1a' }}>
+          <div style={{ padding: '20px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, background: '#1a1a1a' }}>
             {recipe?.photoURL
               ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: 180, height: 180, borderRadius: '50%', border: '3px solid #c9a84c', objectFit: 'cover', display: 'block' }} />
               : <div style={{ width: 180, height: 180, borderRadius: '50%', border: '3px solid #c9a84c', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>🍽</div>
@@ -233,7 +233,7 @@ export function RecipePrintView({ recipe, restaurant, categories, onClose }) {
           </div>
 
           {/* Info bar */}
-          <div style={{ background: '#111111', padding: '14px 24px' }}>
+          <div style={{ background: '#1a1a1a', padding: '14px 24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[['Menú', menuName], ['Código', recipe?.code], ['Referencia', recipe?.reference]].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
