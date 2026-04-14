@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
@@ -77,6 +77,8 @@ export function POSLayout() {
     setUser, setUserProfile, setCurrentRestaurant,
   } = useAppStore()
   const isDark = theme === 'night'
+  const location = useLocation()
+  const recipeOpen = location.pathname.startsWith('/recipes')
   const { showWarning, resetTimer } = useInactivityLogout()
   const { canEdit, userProfile } = useAuth()
 
@@ -146,7 +148,8 @@ export function POSLayout() {
     <div className={cn('flex flex-col h-screen overflow-hidden', bg)}>
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
-      <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}>
+      <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}
+        style={{ opacity: recipeOpen ? 0.4 : 1, pointerEvents: recipeOpen ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
         {/* Logo */}
         <div className="flex items-center gap-2 select-none flex-shrink-0">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
@@ -221,7 +224,8 @@ export function POSLayout() {
         <aside className={cn(
           'w-[200px] flex-shrink-0 flex flex-col border-r overflow-y-auto',
           sideBg
-        )}>
+        )}
+          style={{ opacity: recipeOpen ? 0.4 : 1, pointerEvents: recipeOpen ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
           <div className="p-3 space-y-1">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={localCategories.map((c) => c.id).filter(Boolean)} strategy={verticalListSortingStrategy}>
