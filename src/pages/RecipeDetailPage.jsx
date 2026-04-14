@@ -1109,17 +1109,23 @@ export default function RecipeDetailPage() {
         }}
       >
         {/* IZQUIERDA — Nombre receta */}
-        <div style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '1rem',
-          fontWeight: 700,
-          color: isDark ? '#f9fafb' : 'var(--text)',
-          maxWidth: '40%',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          {watch('name') || recipe?.name || (isNew ? (typeFromUrl === 'subrecipe' ? 'Nueva sub-receta' : 'Nueva receta') : '…')}
+        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '45%' }}>
+          <div style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: '1.4rem',
+            fontWeight: 700,
+            color: isDark ? '#f9fafb' : 'var(--text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {watch('name') || recipe?.name || (isNew ? (typeFromUrl === 'subrecipe' ? 'Nueva sub-receta' : 'Nueva receta') : '…')}
+          </div>
+          {!isNew && recipe && (
+            <div style={{ fontSize: '0.72rem', color: isDark ? '#4b5563' : '#9ca3af', whiteSpace: 'nowrap' }}>
+              v{recipe.version || 1} · {recipe.active !== false ? 'Activa' : 'Inactiva'} · Creada: {formatDate(recipe.createdAt) || '—'}
+            </div>
+          )}
         </div>
 
         {/* DERECHA — Imprimir / Guardar / Salir */}
@@ -1182,24 +1188,6 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      {/* Title row */}
-      <div className="flex items-center gap-3">
-        <div>
-          <h1 className={cn('font-display text-xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
-            {isNew ? (typeFromUrl === 'subrecipe' ? 'Nueva sub-receta' : 'Nueva receta') : (watch('name') || recipe?.name || 'Cargando...')}
-          </h1>
-          {!isNew && recipe && (
-            <>
-              <p className={cn('text-sm', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                v{recipe.version || 1} · {recipe.active !== false ? 'Activa' : 'Inactiva'}
-              </p>
-              <p style={{ fontSize: '0.72rem', color: isDark ? '#4b5563' : '#9ca3af' }}>
-                Creada: {formatDate(recipe.createdAt) || '—'} | Última impresión: {formatDate(recipe.printedAt) || 'Nunca'}
-              </p>
-            </>
-          )}
-        </div>
-      </div>
 
       {/* ── PIN gate for protected sub-recipes ───────────────────────────── */}
       {!isNew && recipe?.isSubRecipe && recipe?.pin && !pinVerified && !canEdit && (
