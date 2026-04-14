@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const DEFAULT_ACCENT = '#d97706'
+const DEFAULT_ACCENT = '#C2410C'
 
 export const useAppStore = create(
   persist(
