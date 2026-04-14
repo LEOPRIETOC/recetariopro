@@ -2137,13 +2137,13 @@ export function ConfigModal() {
                       background: 'var(--bg2)',
                       border: '1px solid var(--b1)',
                       borderRadius: 12,
-                      padding: '20px 12px',
+                      padding: '24px 16px',
                       cursor: 'pointer',
                       textAlign: 'center',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 10,
+                      gap: 0,
                       transition: 'all 0.18s',
                       fontFamily: 'inherit',
                     }}
@@ -2158,8 +2158,7 @@ export function ConfigModal() {
                       e.currentTarget.style.boxShadow = 'none'
                     }}
                   >
-                    <span style={{ fontSize: 28, lineHeight: 1, filter: 'grayscale(100%)', opacity: 0.6 }}>{emoji}</span>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{label}</span>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em', lineHeight: 1.3 }}>{label}</span>
                   </button>
                 ))}
               </div>
