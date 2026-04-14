@@ -56,7 +56,7 @@ const TABS = [
   { id: 'recipes', icon: FileText, label: 'Gestión recetas' },
   { id: 'versions', icon: History, label: 'Historial versiones' },
   { id: 'users', icon: Users, label: 'Usuarios' },
-  { id: 'appearance', icon: Settings, label: 'Personalización' },
+  { id: 'appearance', icon: Settings, label: 'Personalización', masterOnly: true },
   { id: 'subscription', icon: CreditCard, label: 'Suscripción' },
   { id: 'restaurants_link', icon: Store, label: 'Restaurantes', masterOnly: true },
 ]
@@ -2132,7 +2132,7 @@ export function ConfigModal() {
               {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => setConfigTab('sales')} />}
               {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={closeConfig} />}
               {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'appearance' && <AppearanceTab isDark={isDark} />}
+              {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
               {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
               {configTab === 'subscription' && (
                 <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
