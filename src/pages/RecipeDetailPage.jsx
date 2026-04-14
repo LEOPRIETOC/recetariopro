@@ -548,7 +548,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 
 
 // ── Print Component ───────────────────────────────────────────────────────────
-const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwardRef }) => {
+const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, restaurant, forwardRef }) => {
   const cat = categories.find((c) => c.id === recipe?.categoryId)
   const ingList = (recipe?.ingredients || []).filter((i) => i.description || i.ingredientName || i.ingredientId)
 
@@ -559,49 +559,69 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
       : null
 
   const prepSteps = (recipe?.preparation || '').split('\n').filter((s) => s.trim())
-
   const menuLabel = recipe?.isSubRecipe ? 'Sub-receta' : (cat?.name || null)
+  const logoURL = restaurant?.logoURL || null
+
+  const infoItems = [
+    { label: 'Menú', value: menuLabel },
+    { label: 'Código', value: recipe?.code },
+    { label: 'Item', value: recipe?.item },
+    { label: 'Referencia', value: recipe?.reference },
+    recipe?.portions ? { label: 'Porciones', value: recipe.portions } : null,
+  ].filter((x) => x && x.value)
 
   return (
     <div ref={forwardRef} className="print-document">
 
-      {/* ── HEADER ── */}
+      {/* ── HEADER — logo | restaurant name | recipe photo ── */}
       <div className="print-header">
-        {restaurantName && <div className="print-restaurant">{restaurantName}</div>}
-        {cat && <div className="print-menu-name">{cat.name}</div>}
-        <div className="print-header-line" />
-        <h1 className="print-recipe-title">{recipe?.name}</h1>
+        {/* LEFT: logo */}
+        <div className="print-header-logo">
+          {logoURL
+            ? <img src={logoURL} alt="Logo" className="print-logo-img" />
+            : <div className="print-logo-placeholder">Logo</div>
+          }
+        </div>
+
+        {/* CENTER: restaurant + recipe name */}
+        <div className="print-header-center">
+          {restaurantName && <div className="print-restaurant-name">{restaurantName}</div>}
+          <h1 className="print-recipe-title">{recipe?.name}</h1>
+        </div>
+
+        {/* RIGHT: recipe photo */}
+        <div className="print-header-photo">
+          {recipe?.photoURL
+            ? <img src={recipe.photoURL} alt={recipe.name} className="print-photo-circle-img" />
+            : <span className="print-photo-emoji">🍽</span>
+          }
+        </div>
       </div>
+
+      {/* ── INFO BAR ── */}
+      {infoItems.length > 0 && (
+        <div className="print-info-bar">
+          {infoItems.map((item, i) => (
+            <div key={i} className="print-info-bar-row">
+              {i > 0 && <div className="print-info-sep" />}
+              <div className="print-info-item">
+                <span className="print-info-label">{item.label}</span>
+                <span className="print-info-value">{item.value}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── BODY ── */}
       <div className="print-body">
 
-        {/* Left column — photo + meta */}
-        <div className="print-col-left">
-          {recipe?.photoURL ? (
-            <div className="print-photo-wrap">
-              <img src={recipe.photoURL} alt={recipe.name} />
-            </div>
-          ) : (
-            <div className="print-no-photo">Sin foto</div>
-          )}
-
-          <div className="print-menu-box">
-            <div className="print-menu-label">Menú</div>
-            <div className="print-menu-value">{menuLabel || 'Sin menú'}</div>
-          </div>
-        </div>
+        {/* Left column — just padding/space, no photo/menu box */}
+        <div className="print-col-left" />
 
         {/* Right column — ingredients + preparation */}
         <div className="print-col-right">
           <h2 className="print-section-title">Ingredientes</h2>
-          {(recipe?.code || recipe?.item || recipe?.reference) && (
-            <div className="print-meta-inline">
-              {[recipe.code, recipe.item, recipe.reference].filter(Boolean).map((val, i) => (
-                <span key={i} className="print-meta-chip">{val}</span>
-              ))}
-            </div>
-          )}
           {ingList.length > 0 ? (
             <ul className="print-ing-list">
               {ingList.map((ing, i) => (
@@ -1583,7 +1603,7 @@ export default function RecipeDetailPage() {
 
       {/* Hidden print view */}
       <div className="hidden">
-        <PrintRecipe recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }} categories={categories} allIngredients={allIngredients} restaurantName={currentRestaurant?.name} forwardRef={printRef} />
+        <PrintRecipe recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }} categories={categories} allIngredients={allIngredients} restaurantName={currentRestaurant?.name} restaurant={currentRestaurant} forwardRef={printRef} />
       </div>
 
       {/* ── Unsaved changes modal ── */}
