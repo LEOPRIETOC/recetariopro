@@ -262,9 +262,9 @@ export function POSLayout() {
                 width: '100%',
                 marginTop: 8,
                 background: 'transparent',
-                border: '1px solid var(--red)',
+                border: '1px solid var(--red, #DC2626)',
                 borderRadius: 8,
-                color: 'var(--red)',
+                color: 'var(--red, #DC2626)',
                 fontFamily: 'inherit',
                 fontSize: '0.82rem',
                 fontWeight: 600,
@@ -272,8 +272,8 @@ export function POSLayout() {
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
-              onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
+              onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
             >
               Salir
             </button>

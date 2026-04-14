@@ -7,7 +7,14 @@
 @layer base {
   :root {
     --radius: 0.75rem;
-    --accent: #d97706;
+    --accent: #C2410C;
+    --red: #DC2626;
+    --green: #16A34A;
+    --text: #3F3F46;
+    --t2: #6B7280;
+    --t3: #9CA3AF;
+    --bg2: #FFFFFF;
+    --b1: #E5E7EB;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
