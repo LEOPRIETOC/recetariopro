@@ -229,11 +229,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [dropRect, setDropRect] = useState(null)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
-  const [quickAddName, setQuickAddName] = useState('')
-  const [quickAddPrice, setQuickAddPrice] = useState(0)
-  const [quickAddPurchaseUnit, setQuickAddPurchaseUnit] = useState('')
-  const [quickAddUnit, setQuickAddUnit] = useState('')
-  const [quickAddCategory, setQuickAddCategory] = useState('')
+  const [quickAddData, setQuickAddData] = useState({})
   const [savingQuick, setSavingQuick] = useState(false)
   const [compatibleUnits, setCompatibleUnits] = useState(allUnits)
   const quantityInputRef = useRef(null)
@@ -336,29 +332,49 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   }
 
   const handleQuickAdd = async () => {
-    if (!quickAddCategory) { alert('Selecciona una categoría'); return }
+    const { name, useUnit, purchaseUnit, quantityPerPresentation, value } = quickAddData
+    if (!name?.trim()) { alert('El nombre es obligatorio'); return }
+    if (!useUnit) { alert('La unidad de uso es obligatoria'); return }
+    if (!purchaseUnit) { alert('La unidad de compra es obligatoria'); return }
+    if (!quantityPerPresentation || quantityPerPresentation <= 0) { alert('La cantidad por presentación debe ser mayor a 0'); return }
+    if (value === undefined || value === null || value < 0) { alert('El valor de presentación es obligatorio'); return }
     setSavingQuick(true)
     try {
+      const qty = parseFloat(quantityPerPresentation) || 1
+      const val = parseFloat(value) || 0
+      const pricePerUnit = qty > 0 ? val / qty : 0
       const code = await getNextIngredientCode(restaurantId)
+      const displayName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
       const newRef = await createIngredient(restaurantId, {
         code,
-        description: quickAddName.charAt(0).toUpperCase() + quickAddName.slice(1).toLowerCase(),
-        unit: quickAddUnit,
-        purchaseUnit: quickAddPurchaseUnit,
-        pricePerUnit: parseFloat(quickAddPrice) || 0,
-        category: quickAddCategory,
+        name: displayName,
+        description: displayName,
+        reference: quickAddData.reference || code,
+        useUnit,
+        unit: useUnit,
+        purchaseUnit,
+        quantityPerPresentation: qty,
+        value: val,
+        pricePerUnit,
+        category: quickAddData.category || '',
         supplier: '',
       })
       handleSelectIngredient({
         id: newRef.id,
-        description: quickAddName.charAt(0).toUpperCase() + quickAddName.slice(1).toLowerCase(),
-        unit: quickAddUnit,
-        purchaseUnit: quickAddPurchaseUnit,
-        pricePerUnit: parseFloat(quickAddPrice) || 0,
+        name: displayName,
+        description: displayName,
+        reference: quickAddData.reference || code,
+        useUnit,
+        unit: useUnit,
+        purchaseUnit,
+        quantityPerPresentation: qty,
+        value: val,
+        pricePerUnit,
       })
       setShowQuickAdd(false)
-      success(`"${quickAddName}" agregado a materias primas`)
-    } catch { } finally { setSavingQuick(false) }
+      setQuickAddData({})
+      success(`"${displayName}" agregado a materias primas`)
+    } catch (err) { console.error(err); alert('Error al crear materia prima') } finally { setSavingQuick(false) }
   }
 
   const rowBg = isDark ? '#111827' : '#ffffff'
@@ -417,7 +433,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 </>
               )}
               {noMatch && (
-                <button type="button" onMouseDown={() => { setQuickAddName(query); setShowQuickAdd(true); setShowSuggestions(false); setDropRect(null) }}
+                <button type="button" onMouseDown={() => { setQuickAddData({ name: query }); setShowQuickAdd(true); setShowSuggestions(false); setDropRect(null) }}
                   className={cn('w-full text-left px-3 py-2 text-sm font-medium text-gold-600', isDark ? 'hover:bg-gray-800' : 'hover:bg-gold-50')}>
                   ＋ Agregar "{query}" a Materias Primas
                 </button>
@@ -496,53 +512,113 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
         </td>
       </tr>
 
-      {/* Quick-add mini form */}
+      {/* Quick-add full MP form */}
       {showQuickAdd && (
         <tr>
-          <td colSpan={7} style={{ padding: '0 8px 8px' }}>
-            <div className={cn('p-3 rounded-xl border space-y-2', isDark ? 'bg-gray-800 border-gray-700' : 'bg-amber-50 border-amber-200')}>
-              <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Agregar a Materias Primas</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-xs">Nombre</Label>
-                  <input value={quickAddName} onChange={(e) => setQuickAddName(e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1).toLowerCase())}
-                    className={cn('w-full px-2 h-7 text-xs rounded border outline-none', isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300')} />
+          <td colSpan={7} style={{ padding: '0 8px 12px' }}>
+            <div style={{ background: isDark ? '#1f2937' : '#fffbeb', border: `1px solid ${isDark ? '#374151' : '#fde68a'}`, borderRadius: 10, padding: 16, marginTop: 4 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)', marginBottom: 12 }}>Nueva materia prima</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {/* Nombre */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Nombre *</label>
+                  <input
+                    value={quickAddData.name || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, name: e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1) }))}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
                 </div>
+                {/* Referencia */}
                 <div>
-                  <Label className="text-xs">Categoría *</Label>
-                  <select value={quickAddCategory} onChange={(e) => setQuickAddCategory(e.target.value)}
-                    className={cn('w-full px-2 h-7 text-xs rounded border outline-none', isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300', !quickAddCategory && 'border-red-300')}>
-                    <option value="">Seleccionar...</option>
-                    {INGREDIENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Referencia</label>
+                  <input
+                    value={quickAddData.reference || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, reference: e.target.value }))}
+                    placeholder="MP1000001"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                {/* Categoría */}
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Categoría</label>
+                  <select
+                    value={quickAddData.category || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, category: e.target.value }))}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">-- Seleccionar</option>
+                    {INGREDIENT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
+                {/* Unidad de uso */}
                 <div>
-                  <Label className="text-xs">Precio/unidad</Label>
-                  <input type="number" step="0.01" min="0" value={quickAddPrice} onChange={(e) => setQuickAddPrice(e.target.value)}
-                    className={cn('w-full px-2 h-7 text-xs rounded border outline-none', isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300')} />
-                </div>
-                <div>
-                  <Label className="text-xs">Unidad de compra</Label>
-                  <select value={quickAddPurchaseUnit} onChange={(e) => setQuickAddPurchaseUnit(e.target.value)}
-                    className={cn('w-full px-2 h-7 text-xs rounded border outline-none', isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300')}>
-                    <option value="">--</option>
-                    {(allUnits || []).map((u) => <option key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</option>)}
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Unidad de uso *</label>
+                  <select
+                    value={quickAddData.useUnit || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, useUnit: e.target.value }))}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">-- Seleccionar</option>
+                    {(allUnits || []).map(u => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
                   </select>
                 </div>
+                {/* Unidad de compra */}
                 <div>
-                  <Label className="text-xs">Unidad de uso</Label>
-                  <select value={quickAddUnit} onChange={(e) => setQuickAddUnit(e.target.value)}
-                    className={cn('w-full px-2 h-7 text-xs rounded border outline-none', isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300')}>
-                    <option value="">--</option>
-                    {(allUnits || []).map((u) => <option key={u.id} value={u.abbreviation}>{u.name} ({u.abbreviation})</option>)}
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Unidad de compra *</label>
+                  <select
+                    value={quickAddData.purchaseUnit || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, purchaseUnit: e.target.value }))}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">-- Seleccionar</option>
+                    {(allUnits || []).map(u => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
                   </select>
                 </div>
+                {/* Cant./Presentación */}
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Cant./Presentación *</label>
+                  <input
+                    type="number" min="0" step="0.001"
+                    value={quickAddData.quantityPerPresentation || ''}
+                    onChange={e => setQuickAddData(d => ({ ...d, quantityPerPresentation: parseFloat(e.target.value) || 0 }))}
+                    placeholder="1000"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                {/* Valor presentación */}
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Valor presentación *</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={quickAddData.value || ''}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value) || 0
+                      const qty = parseFloat(quickAddData.quantityPerPresentation) || 1
+                      setQuickAddData(d => ({ ...d, value: val, pricePerUnit: qty > 0 ? val / qty : 0 }))
+                    }}
+                    placeholder="8500"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                {/* Precio por unidad calculado */}
+                {quickAddData.pricePerUnit > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--t3)' }}>
+                      Precio por unidad de uso:&nbsp;
+                      <strong style={{ color: 'var(--accent)' }}>${quickAddData.pricePerUnit?.toFixed(4)}</strong>
+                      {quickAddData.useUnit ? ` / ${quickAddData.useUnit}` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowQuickAdd(false)} className="text-xs px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-100">Cancelar</button>
-                <button type="button" onClick={handleQuickAdd} disabled={savingQuick || !quickAddCategory}
-                  className="text-xs px-3 py-1 rounded-lg text-white disabled:opacity-50" style={{ backgroundColor: 'var(--accent)' }}>
-                  {savingQuick ? '...' : 'Guardar y seleccionar'}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => { setShowQuickAdd(false); setQuickAddData({}) }}
+                  style={{ background: 'none', border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, borderRadius: 6, padding: '7px 14px', color: 'var(--t2)', fontFamily: 'inherit', fontSize: '0.82rem', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleQuickAdd} disabled={savingQuick}
+                  style={{ background: 'var(--accent)', border: 'none', borderRadius: 6, padding: '7px 14px', color: '#fff', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, cursor: savingQuick ? 'not-allowed' : 'pointer', opacity: savingQuick ? 0.6 : 1 }}>
+                  {savingQuick ? 'Creando...' : 'Crear y agregar'}
                 </button>
               </div>
             </div>
