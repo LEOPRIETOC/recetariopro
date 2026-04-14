@@ -215,7 +215,7 @@ export default function LoginPage() {
                 <Link
                   to="/forgot-password"
                   className="text-xs font-medium hover:underline"
-                  style={{ color: 'var(--accent, #d97706)' }}
+                  style={{ color: 'var(--accent, #C2410C)' }}
                 >
                   {t('auth.forgotPassword')}
                 </Link>
@@ -272,7 +272,7 @@ export default function LoginPage() {
             <Link
               to="/register"
               className="font-medium hover:underline"
-              style={{ color: 'var(--accent, #d97706)' }}
+              style={{ color: 'var(--accent, #C2410C)' }}
             >
               {t('auth.register')}
             </Link>
