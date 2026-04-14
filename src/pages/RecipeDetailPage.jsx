@@ -547,6 +547,13 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 }
 
 
+// ── Default plate icons ───────────────────────────────────────────────────────
+const PLATE_ICONS = ['🍽', '🍳', '🥘', '🫕', '🍲']
+const getPlateIcon = (id = '') => {
+  const n = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return PLATE_ICONS[n % PLATE_ICONS.length]
+}
+
 // ── Print Component ───────────────────────────────────────────────────────────
 const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwardRef }) => {
   const cat = categories.find((c) => c.id === recipe?.categoryId)
@@ -583,7 +590,9 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
               <img src={recipe.photoURL} alt={recipe.name} />
             </div>
           ) : (
-            <div className="print-no-photo">Sin foto</div>
+            <div className="print-no-photo" style={{ fontSize: '44pt', letterSpacing: 0, textTransform: 'none', color: 'inherit' }}>
+              {getPlateIcon(recipe?.id)}
+            </div>
           )}
 
           <div className="print-menu-box">
