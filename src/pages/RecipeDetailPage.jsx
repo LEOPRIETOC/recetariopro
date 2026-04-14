@@ -1621,19 +1621,39 @@ export default function RecipeDetailPage() {
             <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '.88rem', margin: 0 }}>
               Tienes cambios sin guardar. ¿Qué deseas hacer?
             </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <Button variant="outline" size="sm" onClick={() => setShowExitModal(false)}>
-                Seguir editando
-              </Button>
-              <Button variant="outline" size="sm"
-                style={{ borderColor: '#ef4444', color: '#ef4444' }}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
+              <button
                 onClick={() => { setShowExitModal(false); navigate(pendingNavigation) }}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--red)',
+                  borderRadius: 8,
+                  color: 'var(--red)',
+                  fontFamily: 'inherit',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                }}
               >
                 Salir sin guardar
-              </Button>
-              <Button size="sm" onClick={async () => { setShowExitModal(false); await handleSave(); navigate(pendingNavigation) }}>
-                <Save className="h-4 w-4" /> Guardar y salir
-              </Button>
+              </button>
+              <button
+                onClick={async () => { setShowExitModal(false); await handleSave(); navigate(pendingNavigation) }}
+                style={{
+                  background: 'var(--accent)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontFamily: 'inherit',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                }}
+              >
+                Guardar y salir
+              </button>
             </div>
           </div>
         </div>
