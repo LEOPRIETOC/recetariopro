@@ -2104,24 +2104,14 @@ export function ConfigModal() {
           <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
             {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
           </h2>
-          <div className="flex items-center gap-2">
-            {section && (
-              <button
-                onClick={goBack}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 12px', borderRadius: 8, transition: 'color 0.2s' }}
-              >
-                ← Volver
-              </button>
-            )}
-            <button
-              onClick={closeConfig}
-              style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
-            >
-              Salir
-            </button>
-          </div>
+          <button
+            onClick={section ? goBack : closeConfig}
+            style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+            onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
+          >
+            Salir
+          </button>
         </div>
 
         {/* ── Body ── */}
