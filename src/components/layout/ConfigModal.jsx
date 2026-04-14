@@ -2101,25 +2101,16 @@ export function ConfigModal() {
           'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
           isDark ? 'border-gray-800' : 'border-gray-100'
         )}>
-          <div className="flex items-center gap-3">
-            {section && (
-              <button
-                onClick={goBack}
-                style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}
-              >
-                ← Volver
-              </button>
-            )}
-            {section && <span className={cn('text-sm', isDark ? 'text-gray-600' : 'text-gray-300')}>/</span>}
-            <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
-              {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
-            </h2>
-          </div>
+          <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+            {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
+          </h2>
           <button
-            onClick={closeConfig}
-            className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', isDark ? 'text-gray-500 hover:bg-gray-800 hover:text-white' : 'text-gray-400 hover:bg-gray-200 hover:text-gray-700')}
+            onClick={section ? goBack : closeConfig}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', fontSize: '1.4rem', lineHeight: 1, padding: 8, borderRadius: 8, transition: 'color 0.2s' }}
+            onMouseOver={e => e.currentTarget.style.color = 'var(--text)'}
+            onMouseOut={e => e.currentTarget.style.color = 'var(--t2)'}
           >
-            <X className="h-4 w-4" />
+            ←
           </button>
         </div>
 
