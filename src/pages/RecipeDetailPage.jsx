@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Save, Printer, Plus, Trash2, Lock, ToggleRight, ToggleLeft, ImageIcon, Video, Upload } from 'lucide-react'
-import { useReactToPrint } from 'react-to-print'
+import { RecipePrintView } from '../components/RecipePrintView'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -547,124 +547,6 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 }
 
 
-// ── Print Component ───────────────────────────────────────────────────────────
-const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, restaurant, forwardRef }) => {
-  const cat = categories.find((c) => c.id === recipe?.categoryId)
-  const ingList = (recipe?.ingredients || []).filter((i) => i.description || i.ingredientName || i.ingredientId)
-
-  const createdDate = recipe?.createdAt?.toDate
-    ? recipe.createdAt.toDate().toLocaleDateString('es-ES')
-    : recipe?.createdAt
-      ? new Date(recipe.createdAt).toLocaleDateString('es-ES')
-      : null
-
-  const prepSteps = (recipe?.preparation || '').split('\n').filter((s) => s.trim())
-  const menuLabel = recipe?.isSubRecipe ? 'Sub-receta' : (cat?.name || null)
-  const logoURL = restaurant?.logoURL || null
-
-  const infoItems = [
-    { label: 'Menú', value: menuLabel },
-    { label: 'Código', value: recipe?.code },
-    { label: 'Item', value: recipe?.item },
-    { label: 'Referencia', value: recipe?.reference },
-    recipe?.portions ? { label: 'Porciones', value: recipe.portions } : null,
-  ].filter((x) => x && x.value)
-
-  return (
-    <div ref={forwardRef} className="print-document">
-
-      {/* ── HEADER — logo | restaurant name | recipe photo ── */}
-      <div className="print-header">
-        {/* LEFT: logo */}
-        <div className="print-header-logo">
-          {logoURL
-            ? <img src={logoURL} alt="Logo" className="print-logo-img" />
-            : <div className="print-logo-placeholder">Logo</div>
-          }
-        </div>
-
-        {/* CENTER: restaurant + recipe name */}
-        <div className="print-header-center">
-          {restaurantName && <div className="print-restaurant-name">{restaurantName}</div>}
-          <h1 className="print-recipe-title">{recipe?.name}</h1>
-        </div>
-
-        {/* RIGHT: recipe photo */}
-        <div className="print-header-photo">
-          {recipe?.photoURL
-            ? <img src={recipe.photoURL} alt={recipe.name} className="print-photo-circle-img" />
-            : <span className="print-photo-emoji">🍽</span>
-          }
-        </div>
-      </div>
-
-      {/* ── INFO BAR ── */}
-      {infoItems.length > 0 && (
-        <div className="print-info-bar">
-          {infoItems.map((item, i) => (
-            <div key={i} className="print-info-bar-row">
-              {i > 0 && <div className="print-info-sep" />}
-              <div className="print-info-item">
-                <span className="print-info-label">{item.label}</span>
-                <span className="print-info-value">{item.value}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── BODY ── */}
-      <div className="print-body">
-
-        {/* Left column — just padding/space, no photo/menu box */}
-        <div className="print-col-left" />
-
-        {/* Right column — ingredients + preparation */}
-        <div className="print-col-right">
-          <h2 className="print-section-title">Ingredientes</h2>
-          {ingList.length > 0 ? (
-            <ul className="print-ing-list">
-              {ingList.map((ing, i) => (
-                <li key={i} className="print-ing-item">
-                  <span className="print-ing-bullet" />
-                  <span className="print-ing-qty">{ing.quantity}</span>
-                  <span className="print-ing-unit">{ing.unit}</span>
-                  <span className="print-ing-name">{ing.description || ing.ingredientName || '—'}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p style={{ fontSize: '8.5pt', color: '#aaa', margin: '0 0 8mm' }}>Sin ingredientes</p>
-          )}
-
-          <h2 className="print-section-title">Procedimiento</h2>
-          {prepSteps.length > 0 ? (
-            <ol className="print-prep-list">
-              {prepSteps.map((step, i) => (
-                <li key={i} className="print-prep-item">
-                  <span className="print-prep-num">{i + 1}.</span>
-                  <span>{step.replace(/^\d+\.\s*/, '')}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p style={{ fontSize: '8.5pt', color: '#aaa', margin: 0 }}>Sin preparación</p>
-          )}
-        </div>
-      </div>
-
-      {/* ── FOOTER ── */}
-      <div className="print-footer">
-        <span className="print-footer-left">
-          v{recipe?.version || 1}{createdDate ? ` · Creada ${createdDate}` : ''}
-        </span>
-        <span className="print-footer-center">{restaurantName?.toUpperCase()}</span>
-        <span className="print-footer-right">Impresa: {new Date().toLocaleDateString('es-ES')}</span>
-      </div>
-
-    </div>
-  )
-}
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -712,7 +594,7 @@ export default function RecipeDetailPage() {
   // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
   const isDark = theme === 'night'
-  const printRef = useRef()
+  const [showPrintView, setShowPrintView] = useState(false)
 
   const [recipe, setRecipe] = useState(null)
   const [categories, setCategories] = useState([])
@@ -876,17 +758,14 @@ export default function RecipeDetailPage() {
 
   const handleSave = () => handleSubmit(onSubmit)()
 
-  const handlePrint = useReactToPrint({ contentRef: printRef })
-
   const handlePrintClick = async () => {
-    document.body.setAttribute('data-rest-name', currentRestaurant?.name || 'RecetarioPro')
     if (!isNew && currentRestaurant?.id && id) {
       try {
         await updateDoc(doc(db, 'restaurants', currentRestaurant.id, 'recipes', id), { printedAt: serverTimestamp() })
         setRecipe((prev) => prev ? { ...prev, printedAt: { toDate: () => new Date() } } : prev)
       } catch { /* non-critical */ }
     }
-    setTimeout(() => handlePrint(), 150)
+    setShowPrintView(true)
   }
 
   const handlePhotoDrop = async (file) => {
@@ -1601,10 +1480,15 @@ export default function RecipeDetailPage() {
         </div>
       </form>
 
-      {/* Hidden print view */}
-      <div className="hidden">
-        <PrintRecipe recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }} categories={categories} allIngredients={allIngredients} restaurantName={currentRestaurant?.name} restaurant={currentRestaurant} forwardRef={printRef} />
-      </div>
+      {/* Print preview */}
+      {showPrintView && (
+        <RecipePrintView
+          recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }}
+          restaurant={currentRestaurant}
+          categories={categories}
+          onClose={() => setShowPrintView(false)}
+        />
+      )}
 
       {/* ── Unsaved changes modal ── */}
       {showExitModal && (
