@@ -7,7 +7,8 @@ import { z } from 'zod'
 import { ArrowLeft, Save, Printer, Plus, Trash2, Lock, ToggleRight, ToggleLeft, ImageIcon, Video, Upload } from 'lucide-react'
 import { useReactToPrint } from 'react-to-print'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../lib/firebase'
+import { db, storage } from '../lib/firebase'
+import { ref as storageRef, deleteObject } from 'firebase/storage'
 
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
@@ -865,6 +866,30 @@ export default function RecipeDetailPage() {
 
   const handleSave = () => handleSubmit(onSubmit)()
 
+  const handleRemovePhoto = async () => {
+    try {
+      if (recipe?.photoURL && recipe.photoURL.includes('firebasestorage')) {
+        try {
+          const photoRef = storageRef(storage, recipe.photoURL)
+          await deleteObject(photoRef)
+        } catch (storageErr) {
+          console.log('Storage delete error:', storageErr)
+        }
+      }
+      await updateDoc(
+        doc(db, 'restaurants', currentRestaurant.id, 'recipes', recipe.id),
+        { photoURL: null, updatedAt: serverTimestamp() }
+      )
+      setPhotoURL(null)
+      setPhotoPreview(null)
+      if (recipe) recipe.photoURL = null
+      success('Foto eliminada ✓')
+    } catch (err) {
+      console.error('Error eliminando foto:', err)
+      error('Error al eliminar foto')
+    }
+  }
+
   const handlePrint = useReactToPrint({ contentRef: printRef })
 
   const handlePrintClick = async () => {
@@ -1643,7 +1668,7 @@ export default function RecipeDetailPage() {
                       )}
                     </div>
                     {photoPreview && (
-                      <button type="button" onClick={() => { setPhotoURL(''); setPhotoPreview(''); setPhotoProgress(null) }}
+                      <button type="button" onClick={handleRemovePhoto}
                         className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
                         Quitar foto
                       </button>
