@@ -291,17 +291,23 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const noMatch = query.length > 1 && ingMatches.length === 0 && subMatches.length === 0
 
   const handleSelectIngredient = (ing) => {
-    const ingUnitObj = (allUnits || []).find((u) => u.abbreviation?.toUpperCase().trim() === ing.unit?.toUpperCase().trim())
+    const ingUnitObj = (allUnits || []).find((u) => u.abbreviation?.toUpperCase().trim() === (ing.useUnit || ing.unit)?.toUpperCase().trim())
     const filtered = ingUnitObj?.type
       ? (allUnits || []).filter((u) => u.type === ingUnitObj.type)
       : (allUnits || [])
     setCompatibleUnits(filtered.length > 0 ? filtered : allUnits)
     const displayName = toTitleCase(ing.description || ing.name || '')
+    // Compute pricePerUnit from value/quantityPerPresentation if not explicitly set
+    const qty = parseFloat(ing.quantityPerPresentation) || 0
+    const val = parseFloat(ing.value) || 0
+    const calculatedPrice = parseFloat(ing.pricePerUnit) || (qty > 0 ? val / qty : 0)
     setValue(`ingredients.${index}.ingredientId`, ing.id)
     setValue(`ingredients.${index}.description`, displayName)
-    setValue(`ingredients.${index}.unit`, ing.unit || '')
+    setValue(`ingredients.${index}.ingredientName`, displayName)
+    setValue(`ingredients.${index}.reference`, ing.reference || ing.item || '')
+    setValue(`ingredients.${index}.unit`, ing.useUnit || ing.unit || '')
     setValue(`ingredients.${index}.purchaseUnit`, ing.purchaseUnit || '')
-    setValue(`ingredients.${index}.pricePerUnit`, ing.pricePerUnit || 0)
+    setValue(`ingredients.${index}.pricePerUnit`, calculatedPrice)
     setValue(`ingredients.${index}.quantity`, null)
     setValue(`ingredients.${index}.type`, 'ingredient')
     setQuery(displayName)
@@ -678,12 +684,17 @@ const schema = z.object({
   ingredients: z.array(z.object({
     ingredientId: z.string().optional(),
     description: z.string().optional().default(''),
+    ingredientName: z.string().optional(),
+    reference: z.string().optional(),
     quantity: z.coerce.number().min(0).default(0),
     unit: z.string().optional(),
     pricePerUnit: z.coerce.number().min(0).default(0),
     purchaseUnit: z.string().optional(),
     wasteMargin: z.coerce.number().min(0).max(100).default(0),
     type: z.enum(['ingredient', 'subrecipe']).default('ingredient'),
+    baseCost: z.coerce.number().default(0),
+    wasteCost: z.coerce.number().default(0),
+    totalCost: z.coerce.number().default(0),
   })).default([]),
 })
 
