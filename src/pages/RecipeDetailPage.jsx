@@ -1092,32 +1092,102 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* ── Sticky action bar — scoped to this component, unmounts with it ── */}
+      {/* ── Sticky action bar ── */}
       <div
         className="sticky-actions no-print"
         style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px 0',
           position: 'sticky', top: 0, zIndex: 50,
           background: isDark ? 'rgba(3,7,18,0.97)' : 'rgba(243,244,246,0.97)',
           backdropFilter: 'blur(8px)',
           borderBottom: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
           marginLeft: '-1.25rem', marginRight: '-1.25rem',
-          padding: '8px 1.25rem',
-          display: 'flex', justifyContent: 'flex-end', gap: '8px',
+          paddingLeft: '1.25rem', paddingRight: '1.25rem',
         }}
       >
-        {!isNew && recipe && canEdit && (
-          <Button variant="outline" size="sm" onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}>
-            {recipe.active !== false ? <><ToggleRight className="h-4 w-4 text-emerald-500" /> Desactivar</> : <><ToggleLeft className="h-4 w-4 text-gray-400" /> Activar</>}
-          </Button>
-        )}
-        {!isNew && (
-          <Button variant="outline" size="sm" onClick={handlePrintClick}>
-            <Printer className="h-4 w-4" /> Imprimir
-          </Button>
-        )}
-        <Button onClick={handleSubmit(onSubmit)} disabled={saving || hasErrors || photoUploading}>
-          <Save className="h-4 w-4" /> {saving ? 'Guardando...' : photoUploading ? 'Subiendo foto...' : 'Guardar'}
-        </Button>
+        {/* IZQUIERDA — Activar/Desactivar */}
+        <div>
+          {!isNew && recipe && canEdit && (
+            <button
+              onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}
+              style={{
+                background: recipe.active !== false ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)',
+                border: `1px solid ${recipe.active !== false ? 'var(--red, #DC2626)' : 'var(--green, #16A34A)'}`,
+                borderRadius: 8,
+                color: recipe.active !== false ? 'var(--red, #DC2626)' : 'var(--green, #16A34A)',
+                fontFamily: 'inherit',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                padding: '7px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              {recipe.active !== false ? 'Desactivar' : 'Activar'}
+            </button>
+          )}
+        </div>
+
+        {/* DERECHA — Imprimir / Guardar / Salir */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {!isNew && (
+            <button
+              onClick={handlePrintClick}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                borderRadius: 8,
+                color: isDark ? '#9ca3af' : '#6b7280',
+                fontFamily: 'inherit',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                padding: '7px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              🖨 Imprimir
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || hasErrors || photoUploading}
+            style={{
+              background: 'var(--accent)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontFamily: 'inherit',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              padding: '7px 16px',
+              cursor: saving || hasErrors || photoUploading ? 'not-allowed' : 'pointer',
+              opacity: saving || hasErrors || photoUploading ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Guardando...' : photoUploading ? 'Subiendo...' : 'Guardar'}
+          </button>
+          <button
+            onClick={() => safeNavigate('/')}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--red, #DC2626)',
+              borderRadius: 8,
+              color: 'var(--red, #DC2626)',
+              fontFamily: 'inherit',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              padding: '7px 16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
+          >
+            Salir
+          </button>
+        </div>
       </div>
 
       {/* Title row */}
@@ -1137,14 +1207,6 @@ export default function RecipeDetailPage() {
             </>
           )}
         </div>
-        <button
-          onClick={() => safeNavigate('/')}
-          style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--red, #DC2626)', borderRadius: 8, color: 'var(--red, #DC2626)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
-          onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
-          onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
-        >
-          Salir
-        </button>
       </div>
 
       {/* ── PIN gate for protected sub-recipes ───────────────────────────── */}
