@@ -2065,132 +2065,130 @@ export function ConfigModal() {
   const { canEdit, canManageUsers, isMaster } = useAuth()
   const navigate = useNavigate()
   const isDark = theme === 'night'
+  const [section, setSection] = useState(null)
 
-  const PARAM_IDS = PARAM_TABS.map(t => t.id)
-  const [paramOpen, setParamOpen] = useState(() => {
-    try { return localStorage.getItem('config_param_open') !== 'false' } catch { return true }
-  })
+  const CARDS = [
+    { key: 'ingredients',   emoji: '🥩', label: 'Materias Primas',    visible: canEdit },
+    { key: 'mp_categories', emoji: '📂', label: 'Categorías MP',      visible: canEdit },
+    { key: 'units',         emoji: '📏', label: 'Unidades',           visible: canEdit },
+    { key: 'categories',    emoji: '🏷️', label: 'Menús',              visible: canEdit },
+    { key: 'suppliers',     emoji: '🚚', label: 'Proveedores',        visible: canEdit },
+    { key: 'import',        emoji: '📥', label: 'Importación Masiva', visible: canEdit },
+    { key: 'recipes',       emoji: '📋', label: 'Gestión Recetas',    visible: canEdit },
+    { key: 'sales',         emoji: '📊', label: 'Ventas',             visible: canEdit },
+    { key: 'analytics',     emoji: '📈', label: 'Análisis BCG',       visible: canEdit },
+    { key: 'versions',      emoji: '🕒', label: 'Historial',          visible: canEdit },
+    { key: 'users',         emoji: '👥', label: 'Usuarios',           visible: canManageUsers },
+    { key: 'appearance',    emoji: '🎨', label: 'Personalización',    visible: isMaster },
+    { key: 'subscription',  emoji: '💳', label: 'Suscripción',        visible: canManageUsers },
+  ].filter(c => c.visible)
 
-  const toggleParam = () => setParamOpen(v => {
-    const next = !v
-    try { localStorage.setItem('config_param_open', String(next)) } catch {}
-    return next
-  })
+  const goTo = (key) => { setSection(key); setConfigTab(key) }
+  const goBack = () => setSection(null)
 
   if (!configOpen) return null
 
-  const visibleParamTabs = PARAM_TABS.filter(() => canEdit)
-
-  const tabs = TABS.filter((t) => {
-    if (t.masterOnly) return isMaster
-    if (['users', 'subscription'].includes(t.id)) return canManageUsers
-    if (['analytics'].includes(t.id)) return canEdit
-    return canEdit
-  })
-
-  const tabBtn = (id, Icon, label, indent = false, extra = null) => (
-    <button key={id} onClick={() => {
-      if (id === 'restaurants_link') { closeConfig(); navigate('/restaurants') }
-      else setConfigTab(id)
-    }} className={cn(
-      'flex items-center gap-2.5 py-2 rounded-xl text-sm font-medium transition-all text-left w-full',
-      indent ? 'px-3 pl-7' : 'px-3',
-      configTab === id
-        ? 'text-white shadow-sm'
-        : isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-white hover:text-gray-900'
-    )}
-    style={configTab === id ? { backgroundColor: 'var(--accent)' } : {}}
-    >
-      <Icon className={cn('flex-shrink-0', indent ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
-      <span className={indent ? 'text-xs' : ''}>{label}</span>
-      {extra}
-    </button>
-  )
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeConfig} />
 
-      {/* Panel */}
       <div className={cn(
-        'relative w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex overflow-hidden',
+        'relative w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden',
         isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'
       )}>
-        {/* Left tabs */}
-        <div className={cn('w-52 flex-shrink-0 flex flex-col border-r p-3 gap-1 overflow-y-auto', isDark ? 'border-gray-800 bg-gray-950' : 'border-gray-100 bg-gray-50')}>
-          {/* Header with close button */}
-          <div className="px-2 pb-3 pt-1 flex items-center justify-between">
-            <p className={cn('font-display text-base font-bold', isDark ? 'text-white' : 'text-gray-900')}>Configuración</p>
-            <button
-              onClick={closeConfig}
-              className={cn(
-                'min-w-8 min-h-8 w-8 h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0',
-                isDark ? 'text-gray-500 hover:bg-gray-800 hover:text-white' : 'text-gray-400 hover:bg-gray-200 hover:text-gray-700'
-              )}
-              aria-label="Cerrar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* ── Parametrización (expandible) ── */}
-          {canEdit && (
-            <>
+        {/* ── Topbar ── */}
+        <div className={cn(
+          'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
+          isDark ? 'border-gray-800' : 'border-gray-100'
+        )}>
+          <div className="flex items-center gap-3">
+            {section && (
               <button
-                onClick={toggleParam}
-                className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all text-left w-full',
-                  PARAM_IDS.includes(configTab)
-                    ? isDark ? 'text-white bg-gray-800' : 'text-gray-900 bg-white'
-                    : isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                )}
+                onClick={goBack}
+                style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}
               >
-                <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">Parametrización</span>
-                <span style={{ transition: 'transform 0.2s', display: 'inline-flex', transform: paramOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </span>
+                ← Volver
               </button>
-
-              {paramOpen && visibleParamTabs.map(({ id, icon: Icon, label }) =>
-                tabBtn(id, Icon, label, true)
-              )}
-            </>
-          )}
-
-          {/* ── Resto de tabs ── */}
-          {tabs.map(({ id, icon: Icon, label }) =>
-            tabBtn(id, Icon, label, false,
-              id === 'restaurants_link' ? <ExternalLink className="h-3 w-3 ml-auto opacity-50" /> : null
-            )
-          )}
+            )}
+            {section && <span className={cn('text-sm', isDark ? 'text-gray-600' : 'text-gray-300')}>/</span>}
+            <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+              {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
+            </h2>
+          </div>
+          <button
+            onClick={closeConfig}
+            className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', isDark ? 'text-gray-500 hover:bg-gray-800 hover:text-white' : 'text-gray-400 hover:bg-gray-200 hover:text-gray-700')}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Content — ingredients tab gets full-height flex control, others get padding + y-scroll */}
+        {/* ── Body ── */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {configTab === 'ingredients' ? (
-            <IngredientsTab restaurantId={currentRestaurant?.id} isDark={isDark} />
-          ) : (
+          {!section ? (
+            /* GRID DE CARDS */
             <div className="flex-1 overflow-y-auto p-6">
-              {configTab === 'mp_categories' && <MpCategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'units' && <UnitsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'categories' && <CategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'suppliers' && <SuppliersTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'import' && <ImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => setConfigTab('analytics')} />}
-              {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => setConfigTab('sales')} />}
-              {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={closeConfig} />}
-              {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-              {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
-              {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
-              {configTab === 'subscription' && (
-                <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                  <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Gestión de suscripciones — próximamente</p>
-                </div>
-              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 12 }}>
+                {CARDS.map(({ key, emoji, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => goTo(key)}
+                    style={{
+                      background: 'var(--bg2)',
+                      border: '1px solid var(--b1)',
+                      borderRadius: 12,
+                      padding: '20px 12px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 10,
+                      transition: 'all 0.18s',
+                      fontFamily: 'inherit',
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.borderColor = 'var(--accent)'
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                      e.currentTarget.style.boxShadow = 'var(--sh)'
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.borderColor = 'var(--b1)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: 32, lineHeight: 1 }}>{emoji}</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+          ) : (
+            /* CONTENIDO DE SECCIÓN */
+            configTab === 'ingredients' ? (
+              <IngredientsTab restaurantId={currentRestaurant?.id} isDark={isDark} />
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6">
+                {configTab === 'mp_categories' && <MpCategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'units' && <UnitsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'categories' && <CategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'suppliers' && <SuppliersTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'import' && <ImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
+                {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
+                {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={closeConfig} />}
+                {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
+                {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
+                {configTab === 'subscription' && (
+                  <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                    <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Gestión de suscripciones — próximamente</p>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
       </div>
