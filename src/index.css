@@ -14,33 +14,76 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* ── Tema Noche: variables premium ──────────────────────────────────── */
-  html.dark {
-    --bg:          #0a0e0b;
-    --bg2:         #111712;
-    --bg3:         #181f19;
-    --bg4:         #1f2820;
-    --b1:          rgba(255,255,255,0.06);
-    --b2:          rgba(255,255,255,0.10);
-    --gold:        #c9a84c;
-    --gold2:       #e8c96a;
-    --goldBg:      rgba(201,168,76,0.10);
-    --text:        #f0ece4;
-    --t2:          #8a8578;
-    --t3:          #4a4840;
-    --green:       #4a9e6e;
-    --red:         #c04848;
-    --blue:        #4a88b8;
-    --orange:      #c87030;
-    --purple:      #7a5fb0;
-    --noteBg:      rgba(74,136,184,0.07);
-    --noteBr:      rgba(74,136,184,0.20);
-    --sh:          0 8px 40px rgba(0,0,0,0.70);
-    --sh2:         0 2px 12px rgba(0,0,0,0.50);
-    --inp:         #111712;
-    --inactive-bg: rgba(192,72,72,0.06);
-    --inactive-br: rgba(192,72,72,0.18);
-    --drag-over:   rgba(201,168,76,0.12);
+  /* ── Tema Día ────────────────────────────────────────────────────────── */
+  [data-theme="day"] {
+    --bg:          #FAF3E0;
+    --bg2:         #FFFFFF;
+    --bg3:         #F5F0E8;
+    --bg4:         #E5E7EB;
+    --b1:          #E5E7EB;
+    --b2:          #D6D3D1;
+    --text:        #3F3F46;
+    --t2:          #6B7280;
+    --t3:          #9CA3AF;
+    --accent:      #C2410C;
+    --gold:        #C2410C;
+    --gold2:       #9A3412;
+    --goldBg:      rgba(194,65,12,0.08);
+    --green:       #16A34A;
+    --red:         #DC2626;
+    --orange:      #D97706;
+    --blue:        #2563EB;
+    --secondary:   #D6D3D1;
+    --sh:          0 4px 18px rgba(30,20,10,0.10);
+    --sh2:         0 1px 6px rgba(30,20,10,0.08);
+    --inp:         #FFFFFF;
+    --sub-ok-bg:   rgba(22,163,74,0.10);
+    --sub-ok-c:    #16A34A;
+    --sub-tr-bg:   rgba(217,119,6,0.10);
+    --sub-tr-c:    #D97706;
+    --sub-ex-bg:   rgba(220,38,38,0.10);
+    --sub-ex-c:    #DC2626;
+    --drag-over:   rgba(194,65,12,0.10);
+    --noteBg:      rgba(37,99,235,0.06);
+    --noteBr:      rgba(37,99,235,0.18);
+    --inactive-bg: rgba(220,38,38,0.06);
+    --inactive-br: rgba(220,38,38,0.18);
+  }
+
+  /* ── Tema Noche ───────────────────────────────────────────────────────── */
+  [data-theme="night"] {
+    --bg:          #1C1917;
+    --bg2:         #292524;
+    --bg3:         #3A3530;
+    --bg4:         #44403C;
+    --b1:          rgba(255,255,255,0.07);
+    --b2:          #44403C;
+    --text:        #FAFAF9;
+    --t2:          #D6D3D1;
+    --t3:          #A8A29E;
+    --accent:      #EA580C;
+    --gold:        #EA580C;
+    --gold2:       #C2410C;
+    --goldBg:      rgba(234,88,12,0.10);
+    --green:       #16A34A;
+    --red:         #DC2626;
+    --orange:      #D97706;
+    --blue:        #2563EB;
+    --secondary:   #78716C;
+    --sh:          0 8px 40px rgba(0,0,0,0.55);
+    --sh2:         0 2px 12px rgba(0,0,0,0.40);
+    --inp:         #292524;
+    --sub-ok-bg:   rgba(22,163,74,0.12);
+    --sub-ok-c:    #16A34A;
+    --sub-tr-bg:   rgba(217,119,6,0.12);
+    --sub-tr-c:    #D97706;
+    --sub-ex-bg:   rgba(220,38,38,0.12);
+    --sub-ex-c:    #DC2626;
+    --drag-over:   rgba(234,88,12,0.12);
+    --noteBg:      rgba(37,99,235,0.07);
+    --noteBr:      rgba(37,99,235,0.22);
+    --inactive-bg: rgba(220,38,38,0.06);
+    --inactive-br: rgba(220,38,38,0.18);
   }
 
   * { box-sizing: border-box; }
@@ -53,8 +96,8 @@
   }
 
   html.dark body {
-    background-color: #030712;
-    color: #f9fafb;
+    background-color: #1C1917;
+    color: #FAFAF9;
   }
 
   #root {

@@ -1703,33 +1703,9 @@ function AppearanceTab({ isDark }) {
         </div>
       </div>
 
-      {/* Accent color */}
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">Color de acento</Label>
-        <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
-          Se aplica a botones, pestañas activas, bordes e íconos de acento en toda la aplicación.
-        </p>
-        <div className="grid grid-cols-8 gap-2">
-          {ACCENT_PALETTE.map((color) => (
-            <button
-              key={color}
-              onClick={() => handleAccent(color)}
-              title={color}
-              className={cn('w-8 h-8 rounded-full transition-all hover:scale-110', accentColor === color && 'ring-4 ring-offset-2 scale-110')}
-              style={{ background: color, '--tw-ring-color': color }}
-            />
-          ))}
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="color"
-            value={accentColor || '#d97706'}
-            onChange={(e) => handleAccent(e.target.value)}
-            className="w-10 h-9 rounded-lg border cursor-pointer"
-            style={{ borderColor: 'var(--accent)' }}
-          />
-          <span className={cn('text-sm font-mono', isDark ? 'text-gray-300' : 'text-gray-700')}>{accentColor || '#d97706'}</span>
-        </div>
+      {/* Accent color — deshabilitado temporalmente */}
+      <div className={cn('p-4 rounded-xl border text-sm', isDark ? 'border-gray-700 bg-gray-800/40 text-gray-400' : 'border-gray-200 bg-gray-50 text-gray-500')}>
+        🎨 La personalización de colores estará disponible próximamente.
       </div>
 
       {/* Language */}

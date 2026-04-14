@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Sun, Moon, Leaf, Globe, DollarSign, Eye, EyeOff } from 'lucide-react'
+import { Sun, Moon, Globe, DollarSign, Eye, EyeOff } from 'lucide-react'
 
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
@@ -25,7 +25,6 @@ export default function SettingsPage() {
   const themes = [
     { value: 'day', icon: Sun, label: t('settings.themes.day'), preview: 'bg-white border-gray-200' },
     { value: 'night', icon: Moon, label: t('settings.themes.night'), preview: 'bg-gray-900 border-gray-700' },
-    { value: 'earth', icon: Leaf, label: t('settings.themes.earth'), preview: 'bg-earth-800 border-earth-600' },
   ]
 
   const languages = [
@@ -67,7 +66,7 @@ export default function SettingsPage() {
           {/* Theme */}
           <div className="space-y-3">
             <Label>{t('settings.theme')}</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {themes.map(({ value, icon: Icon, label, preview }) => (
                 <button
                   key={value}
@@ -80,7 +79,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <div className={cn('w-10 h-10 rounded-lg border-2 flex items-center justify-center', preview)}>
-                    <Icon className={cn('h-5 w-5', value === 'day' ? 'text-yellow-500' : value === 'night' ? 'text-blue-400' : 'text-earth-400')} />
+                    <Icon className={cn('h-5 w-5', value === 'day' ? 'text-yellow-500' : 'text-blue-400')} />
                   </div>
                   <span className={cn('text-sm font-medium', isDark ? 'text-gray-300' : 'text-gray-700')}>{label}</span>
                   {theme === value && <div className="w-2 h-2 rounded-full bg-gold-500" />}

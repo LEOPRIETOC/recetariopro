@@ -23,6 +23,7 @@ function ThemeProvider({ children }) {
 
   useEffect(() => {
     const root = document.documentElement
+    root.setAttribute('data-theme', theme)
     root.classList.remove('dark')
     if (theme === 'night') {
       root.classList.add('dark')
