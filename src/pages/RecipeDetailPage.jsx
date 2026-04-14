@@ -1509,18 +1509,14 @@ export default function RecipeDetailPage() {
               </CardContent>
             </Card>
 
-            {/* ── Estado receta + Costo manual toggles ── */}
+            {/* ── Estado de la receta toggle ── */}
             {!isNew && recipe && canEdit && (
               <div style={{
                 background: isDark ? '#111827' : 'var(--bg2)',
                 border: `1px solid ${isDark ? '#1f2937' : 'var(--b1)'}`,
                 borderRadius: 12,
                 padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
               }}>
-                {/* Estado de la receta */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : 'var(--text)' }}>
@@ -1554,45 +1550,6 @@ export default function RecipeDetailPage() {
                     }} />
                   </div>
                 </div>
-
-                <div style={{ borderTop: `1px solid ${isDark ? '#1f2937' : 'var(--b1)'}` }} />
-
-                {/* Costo manual */}
-                {canSeeCosts && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : 'var(--text)' }}>
-                        Costo manual
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--t3)', marginTop: 2 }}>
-                        Sobreescribe el costo calculado
-                      </div>
-                    </div>
-                    <div
-                      onClick={() => setValue('useManualCost', !useManualCost)}
-                      style={{
-                        width: 44, height: 24,
-                        borderRadius: 12,
-                        background: useManualCost ? 'var(--accent)' : (isDark ? '#374151' : '#d1d5db'),
-                        cursor: 'pointer',
-                        position: 'relative',
-                        transition: 'background 0.3s',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: useManualCost ? 22 : 2,
-                        width: 20, height: 20,
-                        borderRadius: '50%',
-                        background: '#fff',
-                        transition: 'left 0.3s',
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                      }} />
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
