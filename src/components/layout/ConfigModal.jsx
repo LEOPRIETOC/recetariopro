@@ -2151,23 +2151,26 @@ export function ConfigModal() {
   const navigate = useNavigate()
   const isDark = theme === 'night'
   const [section, setSection] = useState(null)
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('config-view-mode') || 'grid')
+
+  const setView = (mode) => { setViewMode(mode); localStorage.setItem('config-view-mode', mode) }
 
   const CARDS = [
-    { key: 'ingredients',   emoji: '🥩', label: 'Materias Primas',    visible: canEdit },
-    { key: 'mp_categories', emoji: '📂', label: 'Categorías MP',      visible: canEdit },
-    { key: 'units',         emoji: '📏', label: 'Unidades',           visible: canEdit },
-    { key: 'categories',    emoji: '🏷️', label: 'Menús',              visible: canEdit },
-    { key: 'suppliers',     emoji: '🚚', label: 'Proveedores',        visible: canEdit },
-    { key: 'import',        emoji: '📥', label: 'Importación Masiva', visible: canEdit },
-    { key: 'recipes',       emoji: '📋', label: 'Gestión Recetas',    visible: canEdit },
-    { key: 'sales',         emoji: '📊', label: 'Ventas',             visible: canEdit },
-    { key: 'analytics',     emoji: '📈', label: 'Análisis BCG',       visible: canEdit },
-    { key: 'versions',      emoji: '🕒', label: 'Historial',          visible: canEdit },
-    { key: 'users',         emoji: '👥', label: 'Usuarios',           visible: canManageUsers },
-    { key: 'appearance',    emoji: '🎨', label: 'Personalización',    visible: isMaster },
-    { key: 'subscription',  emoji: '💳', label: 'Suscripción',        visible: canManageUsers },
-    { key: 'restaurante',   emoji: '🏠', label: 'Restaurante',         visible: canEdit },
-  ].filter(c => c.visible)
+    { key: 'ingredients',   label: 'Materias Primas',    visible: canEdit },
+    { key: 'mp_categories', label: 'Categorías MP',      visible: canEdit },
+    { key: 'units',         label: 'Unidades',           visible: canEdit },
+    { key: 'categories',    label: 'Menús',              visible: canEdit },
+    { key: 'suppliers',     label: 'Proveedores',        visible: canEdit },
+    { key: 'import',        label: 'Importación Masiva', visible: canEdit },
+    { key: 'recipes',       label: 'Gestión Recetas',    visible: canEdit },
+    { key: 'sales',         label: 'Ventas',             visible: canEdit },
+    { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
+    { key: 'versions',      label: 'Historial',          visible: canEdit },
+    { key: 'users',         label: 'Usuarios',           visible: canManageUsers },
+    { key: 'appearance',    label: 'Personalización',    visible: isMaster },
+    { key: 'subscription',  label: 'Suscripción',        visible: canManageUsers },
+    { key: 'restaurante',   label: 'Restaurante',        visible: canEdit },
+  ].filter(c => c.visible).sort((a, b) => a.label.localeCompare(b.label, 'es'))
 
   const goTo = (key) => { setSection(key); setConfigTab(key) }
   const goBack = () => setSection(null)
@@ -2190,55 +2193,76 @@ export function ConfigModal() {
           <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
             {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
           </h2>
-          <button
-            onClick={section ? goBack : closeConfig}
-            style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
-            onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
-          >
-            Salir
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Grid/Lista toggle — solo en el home del modal */}
+            {!section && (
+              <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
+                <button
+                  onClick={() => setView('grid')}
+                  style={{ background: viewMode === 'grid' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.15s' }}
+                >⊞</button>
+                <button
+                  onClick={() => setView('list')}
+                  style={{ background: viewMode === 'list' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.15s' }}
+                >☰</button>
+              </div>
+            )}
+            <button
+              onClick={section ? goBack : closeConfig}
+              style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
+            >
+              Salir
+            </button>
+          </div>
         </div>
 
         {/* ── Body ── */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {!section ? (
-            /* GRID DE CARDS */
+            /* GRID / LISTA */
             <div className="flex-1 overflow-y-auto p-6">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 12 }}>
-                {CARDS.map(({ key, emoji, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => goTo(key)}
-                    style={{
-                      background: 'var(--bg2)',
-                      border: '1px solid var(--b1)',
-                      borderRadius: 12,
-                      padding: '24px 16px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0,
-                      transition: 'all 0.18s',
-                      fontFamily: 'inherit',
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.borderColor = 'var(--accent)'
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                      e.currentTarget.style.boxShadow = 'var(--sh)'
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.borderColor = 'var(--b1)'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  >
-                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em', lineHeight: 1.3 }}>{label}</span>
-                  </button>
-                ))}
-              </div>
+              {viewMode === 'grid' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 12 }}>
+                  {CARDS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => goTo(key)}
+                      style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, transition: 'all 0.18s', fontFamily: 'inherit' }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--sh)' }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                    >
+                      <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em', lineHeight: 1.3 }}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--t3)', borderBottom: '1px solid var(--b1)' }}>Sección</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--t3)', borderBottom: '1px solid var(--b1)' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CARDS.map(({ key, label }) => (
+                      <tr
+                        key={key}
+                        style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
+                        onClick={() => goTo(key)}
+                        onMouseOver={e => e.currentTarget.style.background = isDark ? '#1f2937' : '#f9fafb'}
+                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '12px', color: 'var(--text)', fontWeight: 500, fontSize: '0.9rem' }}>{label}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <span style={{ color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 600 }}>Abrir →</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           ) : (
             /* CONTENIDO DE SECCIÓN */
