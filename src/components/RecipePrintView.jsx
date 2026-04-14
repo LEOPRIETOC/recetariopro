@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export function RecipePrintView({ recipe, restaurant, onClose }) {
   const restaurantName = restaurant?.name || ''
@@ -16,7 +17,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
 
   const [imageLoaded, setImageLoaded] = useState(!recipe?.photoURL)
 
-  return (
+  return createPortal(
     <div
       id="print-only"
       style={{
@@ -302,6 +303,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }
