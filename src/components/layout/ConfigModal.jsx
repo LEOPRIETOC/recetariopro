@@ -2059,6 +2059,91 @@ function UsersAdminTab({ isDark }) {
   )
 }
 
+// ── RestauranteTab ────────────────────────────────────────────────────────────
+function RestauranteTab({ currentRestaurant, isDark }) {
+  const { success, error } = useToast()
+  const [restData, setRestData] = useState({
+    name:    currentRestaurant?.name    || '',
+    address: currentRestaurant?.address || '',
+    contact: currentRestaurant?.contact || '',
+    phone:   currentRestaurant?.phone   || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  const inputStyle = {
+    width: '100%',
+    padding: '9px 12px',
+    borderRadius: 8,
+    border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+    background: isDark ? '#1f2937' : '#fff',
+    color: isDark ? '#f9fafb' : 'var(--text)',
+    fontFamily: 'inherit',
+    fontSize: '0.88rem',
+    outline: 'none',
+    marginTop: 4,
+  }
+  const labelStyle = {
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: isDark ? '#9ca3af' : 'var(--t2)',
+    display: 'block',
+  }
+
+  const handleSaveRestaurant = async () => {
+    if (!restData.name.trim()) { error('El nombre es obligatorio'); return }
+    setSaving(true)
+    try {
+      await updateDoc(
+        doc(db, 'restaurants', currentRestaurant.id),
+        { name: restData.name.trim(), address: restData.address.trim(), contact: restData.contact.trim(), phone: restData.phone.trim(), updatedAt: serverTimestamp() }
+      )
+      success('Restaurante guardado ✓')
+    } catch (err) {
+      console.error(err)
+      error('Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', marginBottom: 20, color: isDark ? '#f9fafb' : 'var(--text)' }}>
+        Información del Restaurante
+      </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <label style={labelStyle}>Nombre *</label>
+          <input style={inputStyle} value={restData.name} onChange={e => setRestData({ ...restData, name: e.target.value })} />
+        </div>
+        <div>
+          <label style={labelStyle}>Dirección</label>
+          <input style={inputStyle} value={restData.address} onChange={e => setRestData({ ...restData, address: e.target.value })} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Contacto</label>
+            <input style={inputStyle} value={restData.contact} onChange={e => setRestData({ ...restData, contact: e.target.value })} />
+          </div>
+          <div>
+            <label style={labelStyle}>Celular</label>
+            <input style={inputStyle} value={restData.phone} onChange={e => setRestData({ ...restData, phone: e.target.value })} />
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+        <button
+          onClick={handleSaveRestaurant}
+          disabled={saving}
+          style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontFamily: 'inherit', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
+        >
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ConfigModal ──────────────────────────────────────────────────────────
 export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
@@ -2081,6 +2166,7 @@ export function ConfigModal() {
     { key: 'users',         emoji: '👥', label: 'Usuarios',           visible: canManageUsers },
     { key: 'appearance',    emoji: '🎨', label: 'Personalización',    visible: isMaster },
     { key: 'subscription',  emoji: '💳', label: 'Suscripción',        visible: canManageUsers },
+    { key: 'restaurante',   emoji: '🏠', label: 'Restaurante',         visible: canEdit },
   ].filter(c => c.visible)
 
   const goTo = (key) => { setSection(key); setConfigTab(key) }
@@ -2177,6 +2263,7 @@ export function ConfigModal() {
                     <p className="text-sm">Gestión de suscripciones — próximamente</p>
                   </div>
                 )}
+                {configTab === 'restaurante' && <RestauranteTab currentRestaurant={currentRestaurant} isDark={isDark} />}
               </div>
             )
           )}
