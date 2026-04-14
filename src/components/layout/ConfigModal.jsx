@@ -2158,7 +2158,7 @@ export function ConfigModal() {
                       e.currentTarget.style.boxShadow = 'none'
                     }}
                   >
-                    <span style={{ fontSize: 32, lineHeight: 1 }}>{emoji}</span>
+                    <span style={{ fontSize: 28, lineHeight: 1, filter: 'grayscale(100%)', opacity: 0.6 }}>{emoji}</span>
                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{label}</span>
                   </button>
                 ))}
