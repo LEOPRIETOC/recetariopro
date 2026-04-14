@@ -1,0 +1,251 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   ESTILOS DE IMPRESIÓN — archivo aislado, modificar aquí sin riesgo
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@page {
+  margin: 0;
+  size: A4 portrait;
+}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #f5f0e8 !important;
+    color: #1a1a1a !important;
+    font-family: 'DM Sans', Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body::after {
+    content: attr(data-rest-name);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 56pt;
+    color: rgba(0,0,0,0.025);
+    white-space: nowrap;
+    pointer-events: none;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    z-index: 0;
+  }
+
+  .topbar, .sidebar, aside, nav,
+  .sticky-actions, .no-print,
+  button, .toolbar,
+  [class*="topbar"],
+  [class*="sidebar"],
+  [class*="toolbar"] { display: none !important; }
+
+  #root > *:not(.print-document) { display: none !important; }
+  .print-document { display: block !important; }
+
+  /* ── Header ── */
+  .print-header {
+    background: #111111;
+    color: #ffffff;
+    text-align: center;
+    padding: 6mm 12mm 5mm;
+    page-break-inside: avoid;
+  }
+  .print-restaurant {
+    font-size: 7pt;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 1.5mm;
+  }
+  .print-menu-name {
+    font-size: 7.5pt;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 2mm;
+  }
+  .print-header-line {
+    width: 20mm;
+    height: 0.5pt;
+    background: rgba(255,255,255,0.3);
+    margin: 2mm auto;
+  }
+  .print-recipe-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 20pt;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  /* ── Body ── */
+  .print-body {
+    display: grid;
+    grid-template-columns: 75mm 1fr;
+    gap: 0;
+    background: #f5f0e8;
+    min-height: 200mm;
+  }
+
+  /* ── Left column ── */
+  .print-col-left {
+    padding: 10mm 6mm 10mm 12mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6mm;
+  }
+  .print-photo-wrap {
+    width: 58mm;
+    height: 58mm;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3pt solid #c9a84c;
+    box-shadow: 0 4pt 16pt rgba(0,0,0,0.18);
+    flex-shrink: 0;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .print-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+  .print-no-photo {
+    width: 58mm;
+    height: 58mm;
+    border-radius: 50%;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40pt;
+    border: 3pt solid #c9a84c;
+  }
+  .print-menu-box {
+    width: 100%;
+    background: #111;
+    border-radius: 8pt;
+    padding: 4mm 6mm;
+    text-align: center;
+  }
+  .print-menu-label {
+    font-size: 6pt;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 1.5mm;
+  }
+  .print-menu-value {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Right column ── */
+  .print-col-right {
+    padding: 10mm 12mm 10mm 6mm;
+    border-left: 0.5pt solid rgba(0,0,0,0.08);
+  }
+  .print-section-title {
+    font-size: 10pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #111;
+    margin-bottom: 4mm;
+    margin-top: 0;
+  }
+
+  /* ── Meta chips ── */
+  .print-meta-inline {
+    display: flex;
+    gap: 6pt;
+    flex-wrap: wrap;
+    margin-bottom: 5mm;
+    margin-top: -2mm;
+  }
+  .print-meta-chip {
+    background: #111;
+    color: #fff;
+    font-size: 6.5pt;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 1.5mm 4mm;
+    border-radius: 20pt;
+    text-transform: uppercase;
+  }
+
+  /* ── Ingredients list ── */
+  .print-ing-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8mm 0;
+  }
+  .print-ing-item {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    font-size: 8.5pt;
+    color: #222;
+    padding: 1.2mm 0;
+    border-bottom: 0.25pt solid rgba(0,0,0,0.06);
+    line-height: 1.4;
+  }
+  .print-ing-item:last-child { border-bottom: none; }
+  .print-ing-bullet {
+    width: 3pt;
+    height: 3pt;
+    border-radius: 50%;
+    background: #111;
+    flex-shrink: 0;
+    margin-top: 1.5pt;
+    display: inline-block;
+  }
+  .print-ing-qty { font-weight: 700; color: #111; min-width: 12mm; flex-shrink: 0; }
+  .print-ing-unit { color: #666; font-size: 7.5pt; min-width: 8mm; flex-shrink: 0; }
+  .print-ing-name { flex: 1; color: #333; }
+
+  /* ── Preparation ── */
+  .print-prep-list { list-style: none; padding: 0; margin: 0; }
+  .print-prep-item {
+    display: flex;
+    gap: 3mm;
+    font-size: 8.5pt;
+    color: #333;
+    line-height: 1.65;
+    margin-bottom: 2.5mm;
+    align-items: flex-start;
+  }
+  .print-prep-num { font-weight: 800; color: #111; font-size: 9pt; min-width: 5mm; flex-shrink: 0; }
+
+  /* ── Footer ── */
+  .print-footer {
+    background: #f5f0e8;
+    border-top: 0.5pt solid rgba(0,0,0,0.12);
+    padding: 3mm 12mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .print-footer-left  { font-size: 6.5pt; color: #999; }
+  .print-footer-center { font-size: 6.5pt; color: #bbb; font-weight: 600; letter-spacing: 0.06em; }
+  .print-footer-right { font-size: 6.5pt; color: #999; }
+}
