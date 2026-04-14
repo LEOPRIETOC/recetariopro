@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState } from 'react'
 
 export function RecipePrintView({ recipe, restaurant, onClose }) {
   const restaurantName = restaurant?.name || ''
@@ -12,16 +12,9 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
     .map((s) => s.replace(/^\d+\.\s*/, ''))
 
   const printDate = new Date().toLocaleDateString('es-ES')
-
   const twoCol = ingList.length > 6
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.print()
-      onClose()
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [])
+  const [imageLoaded, setImageLoaded] = useState(!recipe?.photoURL)
 
   return (
     <div
@@ -35,8 +28,62 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'auto',
+        paddingTop: 52,
       }}
     >
+      {/* ── TOOLBAR ── */}
+      <div
+        className="print-toolbar"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#333',
+          padding: '10px 20px',
+          display: 'flex',
+          gap: 12,
+          alignItems: 'center',
+          zIndex: 999999,
+        }}
+      >
+        <span style={{ color: '#fff', fontSize: '0.85rem', flex: 1 }}>
+          Vista previa de impresión
+        </span>
+        <button
+          onClick={() => window.print()}
+          disabled={!imageLoaded}
+          style={{
+            background: '#c9a84c',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '8px 20px',
+            fontWeight: 600,
+            cursor: imageLoaded ? 'pointer' : 'not-allowed',
+            fontFamily: 'inherit',
+            opacity: imageLoaded ? 1 : 0.5,
+            transition: 'opacity 0.2s',
+          }}
+        >
+          🖨 Imprimir
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: 8,
+            color: '#fff',
+            padding: '8px 16px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          ✕ Cerrar
+        </button>
+      </div>
+
       {/* ── WATERMARK ── */}
       {restaurantName && (
         <div style={{
@@ -83,7 +130,15 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           fontSize: 36,
         }}>
           {recipe?.photoURL
-            ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ? (
+              <img
+                src={recipe.photoURL}
+                alt={recipe.name}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            )
             : '🍽'}
         </div>
 
@@ -230,11 +285,13 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
       {/* Print CSS */}
       <style>{`
         @media print {
+          .print-toolbar { display: none !important; }
           #print-only {
             position: fixed !important;
             inset: 0 !important;
             z-index: 99999 !important;
             overflow: visible !important;
+            padding-top: 0 !important;
           }
           body > *:not(#print-only) {
             display: none !important;
