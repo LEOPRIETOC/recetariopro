@@ -1097,7 +1097,7 @@ export default function RecipeDetailPage() {
         className="sticky-actions no-print"
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           alignItems: 'center',
           padding: '10px 0',
           position: 'sticky', top: 0, zIndex: 50,
@@ -1108,28 +1108,6 @@ export default function RecipeDetailPage() {
           paddingLeft: '1.25rem', paddingRight: '1.25rem',
         }}
       >
-        {/* IZQUIERDA — Activar/Desactivar */}
-        <div>
-          {!isNew && recipe && canEdit && (
-            <button
-              onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}
-              style={{
-                background: recipe.active !== false ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)',
-                border: `1px solid ${recipe.active !== false ? 'var(--red, #DC2626)' : 'var(--green, #16A34A)'}`,
-                borderRadius: 8,
-                color: recipe.active !== false ? 'var(--red, #DC2626)' : 'var(--green, #16A34A)',
-                fontFamily: 'inherit',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                padding: '7px 16px',
-                cursor: 'pointer',
-              }}
-            >
-              {recipe.active !== false ? 'Desactivar' : 'Activar'}
-            </button>
-          )}
-        </div>
-
         {/* DERECHA — Imprimir / Guardar / Salir */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {!isNew && (
@@ -1530,6 +1508,93 @@ export default function RecipeDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* ── Estado receta + Costo manual toggles ── */}
+            {!isNew && recipe && canEdit && (
+              <div style={{
+                background: isDark ? '#111827' : 'var(--bg2)',
+                border: `1px solid ${isDark ? '#1f2937' : 'var(--b1)'}`,
+                borderRadius: 12,
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+                {/* Estado de la receta */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : 'var(--text)' }}>
+                      Estado de la receta
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--t3)', marginTop: 2 }}>
+                      {recipe?.active !== false ? 'Receta activa y visible' : 'Receta desactivada'}
+                    </div>
+                  </div>
+                  <div
+                    onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}
+                    style={{
+                      width: 44, height: 24,
+                      borderRadius: 12,
+                      background: recipe?.active !== false ? 'var(--green, #16A34A)' : (isDark ? '#374151' : '#d1d5db'),
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'background 0.3s',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: recipe?.active !== false ? 22 : 2,
+                      width: 20, height: 20,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: `1px solid ${isDark ? '#1f2937' : 'var(--b1)'}` }} />
+
+                {/* Costo manual */}
+                {canSeeCosts && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : 'var(--text)' }}>
+                        Costo manual
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--t3)', marginTop: 2 }}>
+                        Sobreescribe el costo calculado
+                      </div>
+                    </div>
+                    <div
+                      onClick={() => setValue('useManualCost', !useManualCost)}
+                      style={{
+                        width: 44, height: 24,
+                        borderRadius: 12,
+                        background: useManualCost ? 'var(--accent)' : (isDark ? '#374151' : '#d1d5db'),
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background 0.3s',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: useManualCost ? 22 : 2,
+                        width: 20, height: 20,
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transition: 'left 0.3s',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Marginal Cost Analysis — admin/superadmin/master only */}
             {canSeeCosts && (
