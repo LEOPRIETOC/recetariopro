@@ -38,10 +38,10 @@ function generatePrintHTML(recipe, restaurant, menuName, ingList, prepSteps) {
       </div>
     </div>
 
-    <div style="flex:1;min-height:300px;overflow:hidden">
+    <div style="padding:20px 24px;display:flex;justify-content:center;align-items:center;flex:1;background:#1a1a1a">
       ${recipe.photoURL
-        ? `<img src="${recipe.photoURL}" style="width:100%;height:100%;object-fit:cover;display:block">`
-        : `<div style="width:100%;height:100%;min-height:300px;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:80px">🍽</div>`
+        ? `<img src="${recipe.photoURL}" style="width:180px;height:180px;border-radius:50%;border:3px solid #c9a84c;object-fit:cover;display:block">`
+        : `<div style="width:180px;height:180px;border-radius:50%;border:3px solid #c9a84c;background:#111;display:flex;align-items:center;justify-content:center;font-size:64px">🍽</div>`
       }
     </div>
 
@@ -225,10 +225,10 @@ export function RecipePrintView({ recipe, restaurant, categories, onClose }) {
           </div>
 
           {/* Photo */}
-          <div style={{ flex: 1, minHeight: 300, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, background: '#1a1a1a' }}>
             {recipe?.photoURL
-              ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              : <div style={{ width: '100%', height: '100%', minHeight: 300, background: '#f0ede8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}>🍽</div>
+              ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: 180, height: 180, borderRadius: '50%', border: '3px solid #c9a84c', objectFit: 'cover', display: 'block' }} />
+              : <div style={{ width: 180, height: 180, borderRadius: '50%', border: '3px solid #c9a84c', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>🍽</div>
             }
           </div>
 
