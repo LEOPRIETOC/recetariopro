@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Save, Printer, Plus, Trash2, Lock, ToggleRight, ToggleLeft, ImageIcon, Video, Upload } from 'lucide-react'
-import { useReactToPrint } from 'react-to-print'
+import { RecipePrintView } from '../components/RecipePrintView'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -546,99 +546,6 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   )
 }
 
-// ── Print Component ───────────────────────────────────────────────────────────
-const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwardRef }) => {
-  const cat = categories.find((c) => c.id === recipe?.categoryId)
-  const ingList = (recipe?.ingredients || []).filter((i) => i.description || i.ingredientName || i.ingredientId)
-
-  const createdDate = recipe?.createdAt?.toDate
-    ? recipe.createdAt.toDate().toLocaleDateString('es-ES')
-    : recipe?.createdAt
-      ? new Date(recipe.createdAt).toLocaleDateString('es-ES')
-      : null
-
-  const menuLabel = recipe?.isSubRecipe ? 'Sub-receta' : (cat?.name || null)
-
-  const pills = [
-    menuLabel && { label: 'Menú', value: menuLabel },
-    recipe?.code && { label: 'Código', value: recipe.code },
-    recipe?.item && { label: 'Item', value: recipe.item },
-    recipe?.reference && { label: 'Ref', value: recipe.reference },
-    recipe?.portions && { label: 'Porciones', value: recipe.portions },
-  ].filter(Boolean)
-
-  return (
-    <div ref={forwardRef} className="print-document">
-      <div className="print-container">
-
-        {/* ── HEADER ── */}
-        <div className="print-header">
-          <div>
-            <h1 className="print-title">{recipe?.name}</h1>
-            {restaurantName && <p className="print-subtitle">{restaurantName}</p>}
-          </div>
-          {recipe?.photoURL && (
-            <div className="print-photo">
-              <img src={recipe.photoURL} alt={recipe.name} />
-            </div>
-          )}
-        </div>
-
-        {/* ── META PILLS ── */}
-        {pills.length > 0 && (
-          <div className="print-meta">
-            {pills.map((pill, i) => (
-              <span key={i} className="print-pill">
-                <strong>{pill.label}:</strong> {pill.value}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* ── INGREDIENTS ── */}
-        {ingList.length > 0 && (
-          <>
-            <div className="print-label">Ingredientes</div>
-            <table className="print-ingredients">
-              <thead>
-                <tr>
-                  <th>Ingrediente</th>
-                  <th>Cantidad</th>
-                  <th>Unidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ingList.map((ing, i) => (
-                  <tr key={i}>
-                    <td>{ing.description || ing.ingredientName || '—'}</td>
-                    <td>{ing.quantity}</td>
-                    <td>{ing.unit}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
-        {/* ── PREPARATION ── */}
-        {recipe?.preparation && (
-          <>
-            <div className="print-label">Preparación</div>
-            <div className="print-preparation">{recipe.preparation}</div>
-          </>
-        )}
-
-        {/* ── FOOTER ── */}
-        <div className="print-footer">
-          <span>v{recipe?.version || 1}{createdDate ? ` · Creada ${createdDate}` : ''}</span>
-          <span>{restaurantName?.toUpperCase()}</span>
-          <span>Impresa: {new Date().toLocaleDateString('es-ES')}</span>
-        </div>
-
-      </div>
-    </div>
-  )
-}
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -686,7 +593,7 @@ export default function RecipeDetailPage() {
   // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
   const isDark = theme === 'night'
-  const printRef = useRef()
+  const [showPrintView, setShowPrintView] = useState(false)
 
   const [recipe, setRecipe] = useState(null)
   const [categories, setCategories] = useState([])
@@ -850,17 +757,14 @@ export default function RecipeDetailPage() {
 
   const handleSave = () => handleSubmit(onSubmit)()
 
-  const handlePrint = useReactToPrint({ contentRef: printRef })
-
   const handlePrintClick = async () => {
-    document.body.setAttribute('data-rest-name', currentRestaurant?.name || 'RecetarioPro')
     if (!isNew && currentRestaurant?.id && id) {
       try {
         await updateDoc(doc(db, 'restaurants', currentRestaurant.id, 'recipes', id), { printedAt: serverTimestamp() })
         setRecipe((prev) => prev ? { ...prev, printedAt: { toDate: () => new Date() } } : prev)
       } catch { /* non-critical */ }
     }
-    setTimeout(() => handlePrint(), 150)
+    setShowPrintView(true)
   }
 
   const handlePhotoDrop = async (file) => {
@@ -1575,10 +1479,14 @@ export default function RecipeDetailPage() {
         </div>
       </form>
 
-      {/* Hidden print view */}
-      <div className="hidden">
-        <PrintRecipe recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }} categories={categories} allIngredients={allIngredients} restaurantName={currentRestaurant?.name} forwardRef={printRef} />
-      </div>
+      {/* Print view overlay */}
+      {showPrintView && (
+        <RecipePrintView
+          recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }}
+          restaurant={currentRestaurant}
+          onClose={() => setShowPrintView(false)}
+        />
+      )}
 
       {/* ── Unsaved changes modal ── */}
       {showExitModal && (

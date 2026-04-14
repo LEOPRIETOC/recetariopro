@@ -190,16 +190,16 @@
     padding: 0 !important;
   }
 
-  /* Ocultar todo excepto la receta */
-  .topbar, .sidebar, aside, nav,
-  .sticky-actions, .no-print, .config-modal,
-  button, .toolbar,
-  [class*="topbar"], [class*="sidebar"], [class*="toolbar"] {
+  /* Ocultar todo excepto la vista de impresión */
+  #print-only {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    overflow: visible !important;
+  }
+  body > *:not(#print-only) {
     display: none !important;
   }
-
-  #root > *:not(.print-document) { display: none !important; }
-  .print-document { display: block !important; }
 
   /* Marca de agua */
   body::after {
