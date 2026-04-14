@@ -237,7 +237,7 @@ export function ImportTab({ restaurantId, isDark }) {
           className={cn(
             'text-xs px-4 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-60',
           )}
-          style={{ backgroundColor: '#6366f1' }}
+          style={{ backgroundColor: 'var(--accent)' }}
         >
           {fixingTypes ? 'Procesando...' : '🔧 Corregir tipos de sub-recetas'}
         </button>

@@ -84,7 +84,7 @@ export default function DashboardPage() {
         <StatCard icon={BookOpen} label={t('dashboard.totalRecipes')} value={recipes.length} color="bg-gold-600" to="/recipes" />
         <StatCard icon={TrendingUp} label={t('dashboard.activeRecipes')} value={activeRecipes.length} color="bg-emerald-500" to="/recipes" />
         <StatCard icon={Tag} label={t('dashboard.categories')} value={categories.length} color="bg-blue-500" to="/categories" />
-        <StatCard icon={Package} label={t('dashboard.ingredients')} value={ingredients.length} color="bg-purple-500" to="/ingredients" />
+        <StatCard icon={Package} label={t('dashboard.ingredients')} value={ingredients.length} color="bg-gold-600" to="/ingredients" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -167,7 +167,7 @@ export default function DashboardPage() {
             </Link>
             <Link to="/ingredients/new">
               <Button className="w-full justify-start gap-3" variant="outline">
-                <Package className="h-4 w-4 text-purple-500" />
+                <Package className="h-4 w-4 text-gold-600" />
                 {t('dashboard.newIngredient')}
               </Button>
             </Link>

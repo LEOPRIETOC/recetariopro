@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '../components/ui/toast'
 import { cn } from '../lib/utils'
 
-const COLORS = ['#d97706', '#059669', '#2563eb', '#7c3aed', '#dc2626', '#0891b2', '#65a30d', '#c026d3']
+const COLORS = ['#d97706', '#059669', '#2563eb', '#C2410C', '#dc2626', '#0891b2', '#65a30d', '#EA580C']
 
 const schema = z.object({
   name: z.string().min(2),

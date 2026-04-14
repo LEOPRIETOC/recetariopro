@@ -511,13 +511,27 @@ html.dark .night-code-badge {
 
 /* Night: primary buttons */
 html.dark .night-btn-primary {
-  background: #c9a84c !important;
-  color: #0a0e0b !important;
+  background: var(--accent) !important;
+  color: #fff !important;
 }
-html.dark .night-btn-primary:hover { background: #e8c96a !important; }
+html.dark .night-btn-primary:hover { background: var(--gold2) !important; }
 
 /* Night: scrollbar */
 html.dark ::-webkit-scrollbar { width: 5px; height: 5px; }
-html.dark ::-webkit-scrollbar-track { background: #0a0e0b; }
-html.dark ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius: 9999px; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.45); }
+html.dark ::-webkit-scrollbar-track { background: #1C1917; }
+html.dark ::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.30); border-radius: 9999px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(234,88,12,0.50); }
+
+/* ── Forzar color primario global (sin morado) ────────────────────────────── */
+.btn-primary,
+[class*="bg-purple"],
+[class*="text-purple"],
+[class*="bg-violet"],
+[class*="text-violet"] {
+  --tw-bg-opacity: 1;
+}
+
+/* Accent en links activos y seleccionados */
+a.active, .active-link, [aria-current="page"] {
+  color: var(--accent);
+}

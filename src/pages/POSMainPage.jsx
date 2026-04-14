@@ -86,7 +86,7 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, o
             </span>
           )}
           {recipe.isSubRecipe && !cat && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block bg-purple-100 text-purple-700">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block" style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
               Sub-receta
             </span>
           )}

@@ -62,10 +62,9 @@ const TABS = [
 ]
 
 const ACCENT_PALETTE = [
-  '#d97706','#f59e0b','#f97316','#ef4444','#e11d48',
-  '#a855f7','#8b5cf6','#6366f1','#3b82f6','#0ea5e9',
-  '#06b6d4','#14b8a6','#10b981','#22c55e','#84cc16',
-  '#78716c',
+  '#C2410C','#EA580C','#d97706','#f59e0b','#f97316',
+  '#ef4444','#e11d48','#3b82f6','#0ea5e9','#06b6d4',
+  '#14b8a6','#10b981','#22c55e','#84cc16','#78716c',
 ]
 
 
@@ -434,8 +433,8 @@ function IngredientsTab({ restaurantId, isDark }) {
       <style>{`
         #materias-scroll-body::-webkit-scrollbar { height: 10px; width: 8px; display: block !important; }
         #materias-scroll-body::-webkit-scrollbar-track { background: ${scrollTrack}; border-radius: 4px; }
-        #materias-scroll-body::-webkit-scrollbar-thumb { background: var(--accent, #8b5cf6); border-radius: 4px; min-width: 40px; }
-        #materias-scroll-body { scrollbar-width: auto; scrollbar-color: var(--accent, #8b5cf6) ${scrollTrack}; }
+        #materias-scroll-body::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; min-width: 40px; }
+        #materias-scroll-body { scrollbar-width: auto; scrollbar-color: var(--accent) ${scrollTrack}; }
       `}</style>
 
       {/* Toolbar — never scrolls */}

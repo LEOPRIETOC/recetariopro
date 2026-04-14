@@ -37,7 +37,7 @@ function formatDate(ts) {
   return `${String(d.getDate()).padStart(2,'0')}/${MONTHS[d.getMonth()]}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-const COLORS = ['#d97706','#059669','#2563eb','#7c3aed','#dc2626','#0891b2','#65a30d','#c026d3','#f97316','#06b6d4']
+const COLORS = ['#d97706','#059669','#2563eb','#C2410C','#dc2626','#0891b2','#65a30d','#EA580C','#f97316','#06b6d4']
 
 // ── Conversion helper (change 4) ──────────────────────────────────────────────
 function getConvertedPrice(rawPrice, purchaseUnit, recipeUnit) {
@@ -400,7 +400,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                   <div className={cn('px-3 py-1 text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-800/60' : 'text-gray-400 bg-gray-50')}>Sub-recetas</div>
                   {subMatches.map((s) => (
                     <button key={s.id} type="button" onMouseDown={() => handleSelectSubrecipe(s)}
-                      className={cn('w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-purple-50 text-gray-700')}>
+                      className={cn('w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-orange-50 text-gray-700')}>
                       <span className="text-xs font-bold px-1 py-0.5 rounded" style={{ background: 'var(--accent)', color: '#fff' }}>SUB</span>
                       <span className="font-medium">{toTitleCase(s.name)}</span>
                       <span className={cn('ml-auto text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.code}</span>
