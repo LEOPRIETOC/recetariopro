@@ -1122,7 +1122,14 @@ export default function RecipeDetailPage() {
 
       {/* Title row */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => safeNavigate('/')}><ArrowLeft className="h-4 w-4" /></Button>
+        <button
+          onClick={() => safeNavigate('/')}
+          style={{ background: 'transparent', border: '1px solid var(--red, #DC2626)', borderRadius: 8, color: 'var(--red, #DC2626)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+          onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
+          onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
+        >
+          Salir
+        </button>
         <div>
           <h1 className={cn('font-display text-xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
             {isNew ? (typeFromUrl === 'subrecipe' ? 'Nueva sub-receta' : 'Nueva receta') : (watch('name') || recipe?.name || 'Cargando...')}
