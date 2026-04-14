@@ -583,7 +583,7 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
               <img src={recipe.photoURL} alt={recipe.name} />
             </div>
           ) : (
-            <div className="print-no-photo">Sin foto</div>
+            <div className="print-no-photo">🍽</div>
           )}
 
           <div className="print-menu-box">
