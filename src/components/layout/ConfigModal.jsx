@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink } from 'lucide-react'
+import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal } from 'lucide-react'
 import { ImportTab } from '../ImportTab'
 import * as XLSX from 'xlsx'
 import {
@@ -44,21 +44,24 @@ import { Switch } from '../ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Badge } from '../ui/badge'
 
+const PARAM_TABS = [
+  { id: 'ingredients',   icon: Package,   label: 'Materias primas' },
+  { id: 'mp_categories', icon: FolderOpen, label: 'Categorías MP' },
+  { id: 'units',         icon: Ruler,      label: 'Unidades' },
+  { id: 'categories',    icon: Tag,        label: 'Menús' },
+  { id: 'suppliers',     icon: Truck,      label: 'Proveedores' },
+  { id: 'import',        icon: FileUp,     label: 'Importación masiva' },
+  { id: 'recipes',       icon: FileText,   label: 'Gestión recetas' },
+]
+
 const TABS = [
-  { id: 'ingredients', icon: Package, label: 'Materias primas' },
-  { id: 'mp_categories', icon: FolderOpen, label: 'Categorías' },
-  { id: 'units', icon: Ruler, label: 'Unidades' },
-  { id: 'categories', icon: Tag, label: 'Menús' },
-  { id: 'suppliers', icon: Truck, label: 'Proveedores' },
-  { id: 'import', icon: FileUp, label: 'Importación masiva' },
-  { id: 'sales', icon: ShoppingCart, label: 'Ventas' },
-  { id: 'analytics', icon: BarChart3, label: 'Análisis BCG' },
-  { id: 'recipes', icon: FileText, label: 'Gestión recetas' },
-  { id: 'versions', icon: History, label: 'Historial versiones' },
-  { id: 'users', icon: Users, label: 'Usuarios' },
-  { id: 'appearance', icon: Settings, label: 'Personalización', masterOnly: true },
-  { id: 'subscription', icon: CreditCard, label: 'Suscripción' },
-  { id: 'restaurants_link', icon: Store, label: 'Restaurantes', masterOnly: true },
+  { id: 'sales',            icon: ShoppingCart, label: 'Ventas' },
+  { id: 'analytics',        icon: BarChart3,    label: 'Análisis BCG' },
+  { id: 'versions',         icon: History,      label: 'Historial versiones' },
+  { id: 'users',            icon: Users,        label: 'Usuarios' },
+  { id: 'appearance',       icon: Settings,     label: 'Personalización', masterOnly: true },
+  { id: 'subscription',     icon: CreditCard,   label: 'Suscripción' },
+  { id: 'restaurants_link', icon: Store,        label: 'Restaurantes', masterOnly: true },
 ]
 
 const ACCENT_PALETTE = [
@@ -2063,14 +2066,46 @@ export function ConfigModal() {
   const navigate = useNavigate()
   const isDark = theme === 'night'
 
+  const PARAM_IDS = PARAM_TABS.map(t => t.id)
+  const [paramOpen, setParamOpen] = useState(() => {
+    try { return localStorage.getItem('config_param_open') !== 'false' } catch { return true }
+  })
+
+  const toggleParam = () => setParamOpen(v => {
+    const next = !v
+    try { localStorage.setItem('config_param_open', String(next)) } catch {}
+    return next
+  })
+
   if (!configOpen) return null
+
+  const visibleParamTabs = PARAM_TABS.filter(() => canEdit)
 
   const tabs = TABS.filter((t) => {
     if (t.masterOnly) return isMaster
     if (['users', 'subscription'].includes(t.id)) return canManageUsers
     if (['analytics'].includes(t.id)) return canEdit
-    return canEdit // usuarios no ven config en absoluto, pero por seguridad filtramos
+    return canEdit
   })
+
+  const tabBtn = (id, Icon, label, indent = false, extra = null) => (
+    <button key={id} onClick={() => {
+      if (id === 'restaurants_link') { closeConfig(); navigate('/restaurants') }
+      else setConfigTab(id)
+    }} className={cn(
+      'flex items-center gap-2.5 py-2 rounded-xl text-sm font-medium transition-all text-left w-full',
+      indent ? 'px-3 pl-7' : 'px-3',
+      configTab === id
+        ? 'text-white shadow-sm'
+        : isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-white hover:text-gray-900'
+    )}
+    style={configTab === id ? { backgroundColor: 'var(--accent)' } : {}}
+    >
+      <Icon className={cn('flex-shrink-0', indent ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+      <span className={indent ? 'text-xs' : ''}>{label}</span>
+      {extra}
+    </button>
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2083,7 +2118,7 @@ export function ConfigModal() {
         isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'
       )}>
         {/* Left tabs */}
-        <div className={cn('w-52 flex-shrink-0 flex flex-col border-r p-3 gap-1', isDark ? 'border-gray-800 bg-gray-950' : 'border-gray-100 bg-gray-50')}>
+        <div className={cn('w-52 flex-shrink-0 flex flex-col border-r p-3 gap-1 overflow-y-auto', isDark ? 'border-gray-800 bg-gray-950' : 'border-gray-100 bg-gray-50')}>
           {/* Header with close button */}
           <div className="px-2 pb-3 pt-1 flex items-center justify-between">
             <p className={cn('font-display text-base font-bold', isDark ? 'text-white' : 'text-gray-900')}>Configuración</p>
@@ -2098,23 +2133,38 @@ export function ConfigModal() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          {tabs.map(({ id, icon: Icon, label }) => (
-            <button key={id} onClick={() => {
-              if (id === 'restaurants_link') { closeConfig(); navigate('/restaurants') }
-              else setConfigTab(id)
-            }} className={cn(
-              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all text-left',
-              configTab === id
-                ? 'text-white shadow-sm'
-                : isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-white hover:text-gray-900'
-            )}
-            style={configTab === id ? { backgroundColor: 'var(--accent, #d97706)' } : {}}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {label}
-              {id === 'restaurants_link' && <ExternalLink className="h-3 w-3 ml-auto opacity-50" />}
-            </button>
-          ))}
+
+          {/* ── Parametrización (expandible) ── */}
+          {canEdit && (
+            <>
+              <button
+                onClick={toggleParam}
+                className={cn(
+                  'flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all text-left w-full',
+                  PARAM_IDS.includes(configTab)
+                    ? isDark ? 'text-white bg-gray-800' : 'text-gray-900 bg-white'
+                    : isDark ? 'text-gray-400 hover:bg-gray-800 hover:text-white' : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4 flex-shrink-0" />
+                <span className="flex-1">Parametrización</span>
+                <span style={{ transition: 'transform 0.2s', display: 'inline-flex', transform: paramOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </span>
+              </button>
+
+              {paramOpen && visibleParamTabs.map(({ id, icon: Icon, label }) =>
+                tabBtn(id, Icon, label, true)
+              )}
+            </>
+          )}
+
+          {/* ── Resto de tabs ── */}
+          {tabs.map(({ id, icon: Icon, label }) =>
+            tabBtn(id, Icon, label, false,
+              id === 'restaurants_link' ? <ExternalLink className="h-3 w-3 ml-auto opacity-50" /> : null
+            )
+          )}
         </div>
 
         {/* Content — ingredients tab gets full-height flex control, others get padding + y-scroll */}
