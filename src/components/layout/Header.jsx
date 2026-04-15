@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Menu, Bell, Sun, Moon, Leaf } from 'lucide-react'
+import { Menu, Bell, Sun, Moon, Leaf } from 'lucide-react'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
-import { Input } from '../ui/input'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
@@ -23,10 +26,69 @@ const languages = [
 
 export function Header({ title }) {
   const { t, i18n } = useTranslation()
-  const { sidebarOpen, toggleSidebar, theme, setTheme, language, setLanguage, globalSearch, setGlobalSearch } = useAppStore()
+  const navigate = useNavigate()
+  const { sidebarOpen, toggleSidebar, theme, setTheme, language, setLanguage, currentRestaurant } = useAppStore()
 
   const isDark = theme === 'night'
   const isEarth = theme === 'earth'
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+
+  const handleGlobalSearch = async (query) => {
+    if (!query || query.length < 2 || !currentRestaurant?.id) {
+      setSearchResults([])
+      setSearchOpen(false)
+      return
+    }
+
+    setSearching(true)
+    try {
+      const snap = await getDocs(
+        collection(db, 'restaurants', currentRestaurant.id, 'recipes')
+      )
+      const queryLower = query.toLowerCase()
+      const results = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(r =>
+          r.active !== false && (
+            r.name?.toLowerCase().includes(queryLower) ||
+            r.code?.toLowerCase().includes(queryLower) ||
+            r.reference?.toLowerCase().includes(queryLower) ||
+            r.ingredients?.some(ing =>
+              ing.ingredientName?.toLowerCase().includes(queryLower)
+            )
+          )
+        )
+        .slice(0, 10)
+      setSearchResults(results)
+      setSearchOpen(true)
+    } catch (err) {
+      console.error('[search]', err)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleGlobalSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, currentRestaurant?.id])
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!e.target.closest('.search-container')) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   return (
     <header
@@ -55,19 +117,146 @@ export function Header({ title }) {
       )}
 
       {/* Search */}
-      <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
-          <Input
-            placeholder={t('common.search') + '...'}
-            value={globalSearch}
-            onChange={(e) => setGlobalSearch(e.target.value)}
-            className={cn(
-              'pl-9 h-8 text-sm',
-              isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : ''
-            )}
-          />
-        </div>
+      <div className="search-container" style={{ position: 'relative', flex: 1, maxWidth: 500 }}>
+        <input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Buscar recetas, códigos, ingredientes..."
+          onFocus={e => {
+            e.target.style.borderColor = 'var(--accent)'
+            if (searchQuery.length > 1) setSearchOpen(true)
+          }}
+          onBlur={e => {
+            e.target.style.borderColor = 'var(--b1)'
+          }}
+          style={{
+            width: '100%',
+            background: 'var(--bg3)',
+            border: '1px solid var(--b1)',
+            borderRadius: 10,
+            padding: '9px 36px 9px 36px',
+            color: 'var(--text)',
+            fontFamily: 'inherit',
+            fontSize: '0.85rem',
+            outline: 'none',
+          }}
+        />
+
+        {/* Ícono lupa */}
+        <span style={{
+          position: 'absolute', left: 12, top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--t3)', fontSize: '0.9rem',
+          pointerEvents: 'none',
+        }}>🔍</span>
+
+        {/* Spinner */}
+        {searching && (
+          <span style={{
+            position: 'absolute', right: 12, top: '50%',
+            transform: 'translateY(-50%)',
+            color: 'var(--t3)', fontSize: '0.75rem',
+          }}>...</span>
+        )}
+
+        {/* Dropdown resultados */}
+        {searchOpen && searchResults.length > 0 && (
+          <div style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0, right: 0,
+            background: 'var(--bg2)',
+            border: '1px solid var(--b2)',
+            borderRadius: 12,
+            boxShadow: 'var(--sh)',
+            zIndex: 1000,
+            overflow: 'hidden',
+            maxHeight: 400,
+            overflowY: 'auto',
+          }}>
+            {searchResults.map(recipe => (
+              <div
+                key={recipe.id}
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchOpen(false)
+                  navigate(`/recipes/${recipe.id}`)
+                }}
+                style={{
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--b1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'background 0.15s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* Foto o emoji */}
+                <div style={{
+                  width: 40, height: 40, borderRadius: 8,
+                  overflow: 'hidden', flexShrink: 0,
+                  background: 'var(--bg3)',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '1.2rem',
+                }}>
+                  {recipe.photoURL
+                    ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : '🍽'
+                  }
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '0.87rem', fontWeight: 600,
+                    color: 'var(--text)',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {recipe.name}
+                  </div>
+                  <div style={{
+                    fontSize: '0.72rem', color: 'var(--t3)',
+                    display: 'flex', gap: 8, marginTop: 2,
+                  }}>
+                    <span>{recipe.code}</span>
+                    <span>·</span>
+                    <span>{recipe.menuName || 'Sin menú'}</span>
+                    <span>·</span>
+                    <span style={{ color: recipe.isSubRecipe ? 'var(--blue, #3b82f6)' : 'var(--accent)' }}>
+                      {recipe.isSubRecipe ? 'Sub-receta' : 'Receta'}
+                    </span>
+                  </div>
+                </div>
+
+                <span style={{ color: 'var(--t3)', fontSize: '0.8rem' }}>→</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Sin resultados */}
+        {searchOpen && searchResults.length === 0 && searchQuery.length > 1 && !searching && (
+          <div style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0, right: 0,
+            background: 'var(--bg2)',
+            border: '1px solid var(--b2)',
+            borderRadius: 12,
+            boxShadow: 'var(--sh)',
+            zIndex: 1000,
+            padding: '16px',
+            textAlign: 'center',
+            color: 'var(--t3)',
+            fontSize: '0.84rem',
+          }}>
+            No se encontraron resultados para "{searchQuery}"
+          </div>
+        )}
       </div>
 
       <div className="ml-auto flex items-center gap-2">
