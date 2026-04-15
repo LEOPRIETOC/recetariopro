@@ -31,7 +31,8 @@ import {
 } from '../../services/restaurants'
 import { setMasterRole, createUserWithRole, updateUserRole } from '../../services/auth'
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { db, storage } from '../../lib/firebase'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
 } from '../../services/suppliers'
@@ -2416,6 +2417,7 @@ function UsersAdminTab({ isDark }) {
 // ── RestauranteTab ────────────────────────────────────────────────────────────
 function RestauranteTab({ currentRestaurant, isDark }) {
   const { success, error } = useToast()
+  const { setCurrentRestaurant } = useAppStore()
   const [restData, setRestData] = useState({
     name:    currentRestaurant?.name    || '',
     address: currentRestaurant?.address || '',
@@ -2423,6 +2425,8 @@ function RestauranteTab({ currentRestaurant, isDark }) {
     phone:   currentRestaurant?.phone   || '',
   })
   const [saving, setSaving] = useState(false)
+  const [logoURL, setLogoURL] = useState(currentRestaurant?.logoURL || '')
+  const [logoUploading, setLogoUploading] = useState(false)
 
   const inputStyle = {
     width: '100%',
@@ -2443,14 +2447,53 @@ function RestauranteTab({ currentRestaurant, isDark }) {
     display: 'block',
   }
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { error('Logo demasiado grande (máx 2MB)'); return }
+    setLogoUploading(true)
+    try {
+      const sRef = storageRef(storage, `restaurants/${currentRestaurant.id}/logo/${file.name}`)
+      await uploadBytes(sRef, file, { contentType: file.type })
+      const url = await getDownloadURL(sRef)
+      setLogoURL(url)
+      success('Logo subido ✓')
+    } catch (err) {
+      console.error(err)
+      error('Error subiendo logo')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    if (!logoURL) return
+    try {
+      // Intentar borrar de Storage (no bloquea si falla)
+      try {
+        const sRef = storageRef(storage, `restaurants/${currentRestaurant.id}/logo`)
+        await deleteObject(sRef)
+      } catch { /* ignorar */ }
+      setLogoURL('')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   const handleSaveRestaurant = async () => {
     if (!restData.name.trim()) { error('El nombre es obligatorio'); return }
     setSaving(true)
     try {
-      await updateDoc(
-        doc(db, 'restaurants', currentRestaurant.id),
-        { name: restData.name.trim(), address: restData.address.trim(), contact: restData.contact.trim(), phone: restData.phone.trim(), updatedAt: serverTimestamp() }
-      )
+      const payload = {
+        name: restData.name.trim(),
+        address: restData.address.trim(),
+        contact: restData.contact.trim(),
+        phone: restData.phone.trim(),
+        logoURL: logoURL || null,
+        updatedAt: serverTimestamp(),
+      }
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), payload)
+      setCurrentRestaurant({ ...currentRestaurant, ...payload, logoURL: logoURL || null })
       success('Restaurante guardado ✓')
     } catch (err) {
       console.error(err)
@@ -2466,6 +2509,34 @@ function RestauranteTab({ currentRestaurant, isDark }) {
         Información del Restaurante
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* ── Logo ── */}
+        <div>
+          <label style={labelStyle}>Logo del restaurante</label>
+          {logoURL && (
+            <div style={{ marginBottom: 10, marginTop: 6 }}>
+              <img src={logoURL} alt="Logo"
+                style={{ height: 80, objectFit: 'contain', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, padding: 8, background: isDark ? '#1f2937' : '#f9fafb' }} />
+              <button onClick={handleRemoveLogo}
+                style={{ display: 'block', marginTop: 6, background: 'none', border: 'none', color: 'var(--red)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Quitar logo
+              </button>
+            </div>
+          )}
+          <div style={{ border: `2px dashed ${isDark ? '#374151' : '#d1d5db'}`, borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', marginTop: logoURL ? 0 : 6 }}
+            onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#d1d5db' }}
+          >
+            <input type="file" accept="image/*" onChange={handleLogoUpload}
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+            <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>🖼</div>
+            <div style={{ fontSize: '0.82rem', color: isDark ? '#9ca3af' : '#6b7280' }}>
+              {logoUploading ? 'Subiendo...' : logoURL ? 'Cambiar logo' : 'Subir logo'}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: isDark ? '#6b7280' : '#9ca3af', marginTop: 4 }}>PNG, JPG, SVG — máx 2MB</div>
+          </div>
+        </div>
+
         <div>
           <label style={labelStyle}>Nombre *</label>
           <input style={inputStyle} value={restData.name} onChange={e => setRestData({ ...restData, name: e.target.value })} />
