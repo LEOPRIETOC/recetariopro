@@ -931,6 +931,20 @@ function SortableCatItem({ cat, isDark, onEdit, onDelete, mode }) {
   )
 }
 
+async function getNextMenuCode(restaurantId) {
+  try {
+    const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'categories'))
+    const codes = snap.docs
+      .map(d => d.data().code || '')
+      .filter(c => c.startsWith('MEN'))
+      .map(c => parseInt(c.replace('MEN', '')) || 0)
+    const next = codes.length > 0 ? Math.max(...codes) + 1 : 1
+    return `MEN${String(next).padStart(3, '0')}`
+  } catch {
+    return `MEN${String(Date.now()).slice(-3)}`
+  }
+}
+
 function CategoriesTab({ restaurantId, isDark }) {
   const { success, error } = useToast()
   const [categories, setCategories] = useState([])
@@ -949,8 +963,10 @@ function CategoriesTab({ restaurantId, isDark }) {
 
   const openNew = async () => {
     setEditing(null); reset({ name: '' })
-    const code = await getNextCategoryCode(restaurantId).catch(() => '')
-    setCatCode(code); setShowForm(true)
+    setCatCode('Generando...')
+    setShowForm(true)
+    const code = await getNextMenuCode(restaurantId)
+    setCatCode(code)
   }
   const openEdit = (c) => { setEditing(c); setCatCode(c.code || ''); reset({ name: c.name }); setShowForm(true) }
 
@@ -1006,11 +1022,13 @@ function CategoriesTab({ restaurantId, isDark }) {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className={cn('p-4 rounded-xl border', isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200')}>
           <div className="row g-3 mb-3">
-            <div className="col-auto" style={{ minWidth: '100px' }}>
+            <div className="col-auto" style={{ minWidth: '120px' }}>
               <Label className="form-label">Código</Label>
-              <div className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold flex items-center', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}>
-                {catCode || '—'}
-              </div>
+              <input
+                readOnly
+                value={catCode || '—'}
+                className={cn('px-3 py-2 h-9 rounded-lg text-sm font-mono font-bold w-full border-0 outline-none', isDark ? 'bg-gray-700 text-gold-400' : 'bg-gray-100 text-gold-700')}
+              />
             </div>
             <div className="col">
               <Label className="form-label">Nombre *</Label>
