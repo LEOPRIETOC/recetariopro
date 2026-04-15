@@ -75,7 +75,7 @@ export default function RestaurantSelectorPage() {
                 recipes: recipesCount,
                 subrecipes: subrecipesCount,
                 materias: materiasSnap.size,
-                users: Object.keys(rest.members || {}).length,
+                users: Object.values(rest.members || {}).filter(m => m?.role).length,
               },
             }
           } catch {
