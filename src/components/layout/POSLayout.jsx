@@ -89,6 +89,7 @@ export function POSLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searching, setSearching] = useState(false)
   const searchTimer = useRef(null)
+  const [counts, setCounts] = useState({ recipes: 0, subrecipes: 0 })
 
   const doLogout = async () => {
     try {
@@ -135,6 +136,25 @@ export function POSLayout() {
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', accentColor || '#d97706')
   }, [accentColor])
+
+  const loadCounts = async () => {
+    if (!currentRestaurant?.id) return
+    try {
+      const snap = await getDocs(collection(db, 'restaurants', currentRestaurant.id, 'recipes'))
+      const all = snap.docs.map(d => d.data())
+      const isSub = (r) => r.isSubRecipe === true || r.type === 'subrecipe'
+      setCounts({
+        recipes: all.filter(r => !isSub(r) && r.active !== false).length,
+        subrecipes: all.filter(r => isSub(r)).length,
+      })
+    } catch (err) {
+      console.error('[counts]', err)
+    }
+  }
+
+  useEffect(() => {
+    loadCounts()
+  }, [currentRestaurant?.id])
 
   const handleSearch = async (query) => {
     setGlobalSearch(query)
@@ -309,6 +329,32 @@ export function POSLayout() {
               Sin resultados para "{globalSearch}"
             </div>
           )}
+        </div>
+
+        {/* Counts display */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`,
+          borderRadius: 10, padding: '5px 12px', flexShrink: 0,
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>
+              {counts.recipes}
+            </div>
+            <div style={{ fontSize: '0.6rem', color: isDark ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Recetas
+            </div>
+          </div>
+          <div style={{ width: 1, height: 24, background: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1rem', fontWeight: 700, color: isDark ? '#60a5fa' : '#3b82f6', lineHeight: 1 }}>
+              {counts.subrecipes}
+            </div>
+            <div style={{ fontSize: '0.6rem', color: isDark ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Sub-rec.
+            </div>
+          </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
