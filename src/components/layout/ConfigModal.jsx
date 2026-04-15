@@ -24,7 +24,7 @@ import {
   importIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
   updateCategoryOrder,
   subscribeRecipes, subscribeSalesData, importSalesData, getNextIngredientCode,
-  getNextCategoryCode,
+  getNextCategoryCode, getNextRecipeCode,
   updateRestaurantSettings, subscribeVersions, toggleRecipeActive, updateAccentColor,
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
@@ -1318,16 +1318,21 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const { success, error } = useToast()
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
+  const [units, setUnits] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [menuFilter, setMenuFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [convertModal, setConvertModal] = useState(null)
+  const [convertData, setConvertData] = useState({})
+  const [converting, setConverting] = useState(false)
 
   useEffect(() => {
     if (!restaurantId) return
     const u1 = subscribeRecipes(restaurantId, setRecipes)
     const u2 = subscribeCategories(restaurantId, setCategories)
-    return () => { u1(); u2() }
+    const u3 = subscribeUnits(restaurantId, setUnits)
+    return () => { u1(); u2(); u3() }
   }, [restaurantId])
 
   const filtered = (recipes || []).filter((r) => {
@@ -1347,6 +1352,57 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
       success(r.active !== false ? 'Desactivada' : 'Activada')
     } catch { error('Error') }
   }
+
+  const handleConfirmConvert = async (newType) => {
+    if (!convertModal) return
+    setConverting(true)
+    try {
+      const updates = { updatedAt: serverTimestamp(), isSubRecipe: newType === 'subrecipe', type: newType }
+      if (newType === 'subrecipe') {
+        if (!convertData.yieldAmount || !convertData.yieldUnit) {
+          error('Rendimiento y unidad son requeridos'); setConverting(false); return
+        }
+        updates.categoryId = null
+        updates.menuCode = 'SUBRECETA'
+        updates.yieldAmount = parseFloat(convertData.yieldAmount)
+        updates.yieldUnit = convertData.yieldUnit
+        const nextCode = await getNextRecipeCode(restaurantId, 'subrecipe')
+        updates.code = nextCode
+      } else {
+        if (!convertData.categoryId) {
+          error('Debes seleccionar un menú'); setConverting(false); return
+        }
+        updates.categoryId = convertData.categoryId
+        updates.menuCode = convertData.menuCode || ''
+        updates.yieldAmount = null
+        updates.yieldUnit = null
+        const nextCode = await getNextRecipeCode(restaurantId, 'recipe')
+        updates.code = nextCode
+      }
+      await updateDoc(doc(db, 'restaurants', restaurantId, 'recipes', convertModal.id), updates)
+      success(`Convertida a ${newType === 'recipe' ? 'receta' : 'sub-receta'} ✓`)
+      setConvertModal(null)
+      setConvertData({})
+    } catch (err) { console.error(err); error('Error al convertir') } finally { setConverting(false) }
+  }
+
+  const btnStyle = (accent) => ({
+    border: 'none', borderRadius: 8, padding: '9px 20px',
+    fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+    cursor: 'pointer', background: accent ? 'var(--accent)' : (isDark ? '#374151' : '#f3f4f6'),
+    color: accent ? '#fff' : (isDark ? '#d1d5db' : '#374151'),
+  })
+
+  const inputStyle = {
+    width: '100%', padding: '9px 12px', borderRadius: 8,
+    border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+    background: isDark ? '#1f2937' : '#fff',
+    color: isDark ? '#f9fafb' : 'var(--text)',
+    fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const isSubRecipe = convertModal?.isSubRecipe
 
   return (
     <div className="space-y-4">
@@ -1383,7 +1439,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
           <table className="w-full text-sm">
             <thead className={cn('text-xs uppercase tracking-wider sticky top-0', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
               <tr>
-                {['Nombre','Código','Menú','Tipo','Estado','Creación',''].map((h) => (
+                {['Nombre','Código','Menú','Tipo','Estado','Creación','Acciones'].map((h) => (
                   <th key={h} className="text-left px-3 py-2">{h}</th>
                 ))}
               </tr>
@@ -1410,11 +1466,19 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                       {r.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}
                     </td>
                     <td className="px-3 py-2.5">
-                      <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`) }}
-                        className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                        style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-                        Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`) }}
+                          className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => { setConvertModal(r); setConvertData({}) }}
+                          className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                          style={{ borderColor: isDark ? '#4b5563' : '#d1d5db', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                          {r.isSubRecipe ? '→ Receta' : '→ Sub'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -1423,6 +1487,70 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
           </table>
         </div>
       </div>
+
+      {/* ── Convert Modal ── */}
+      {convertModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: isDark ? '#1f2937' : '#fff', borderRadius: 16, padding: 28, width: 'min(440px, 90vw)', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.15rem', fontWeight: 700, margin: 0, color: isDark ? '#f9fafb' : '#111827' }}>
+              {isSubRecipe ? 'Convertir a Receta' : 'Convertir a Sub-receta'}
+            </h3>
+            <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '0.85rem', margin: 0 }}>
+              {isSubRecipe
+                ? 'Esta sub-receta pasará a ser una receta. Debes asignarle un menú.'
+                : 'Esta receta pasará a ser una sub-receta y podrá usarse como ingrediente en otras recetas.'}
+            </p>
+            <div style={{ fontWeight: 600, color: isDark ? '#f9fafb' : '#111', fontSize: '0.9rem' }}>{convertModal.name}</div>
+
+            {!isSubRecipe ? (
+              /* Receta → Sub-receta: pedir rendimiento */
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Rendimiento *</label>
+                  <input type="number" min="0" step="0.001" placeholder="Ej: 1000"
+                    value={convertData.yieldAmount || ''}
+                    onChange={e => setConvertData(d => ({ ...d, yieldAmount: e.target.value }))}
+                    style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Unidad *</label>
+                  <select value={convertData.yieldUnit || ''} onChange={e => setConvertData(d => ({ ...d, yieldUnit: e.target.value }))} style={inputStyle}>
+                    <option value="">-- Seleccionar</option>
+                    {(units || []).map(u => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              /* Sub-receta → Receta: pedir menú */
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Menú *</label>
+                <select
+                  value={convertData.categoryId || ''}
+                  onChange={e => {
+                    const cat = (categories || []).find(c => c.id === e.target.value)
+                    setConvertData(d => ({ ...d, categoryId: e.target.value, menuCode: cat?.code || '', menuName: cat?.name || '' }))
+                  }}
+                  style={inputStyle}
+                >
+                  <option value="">-- Seleccionar menú</option>
+                  {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button onClick={() => { setConvertModal(null); setConvertData({}) }} style={btnStyle(false)}>Cancelar</button>
+              <button
+                onClick={() => handleConfirmConvert(isSubRecipe ? 'recipe' : 'subrecipe')}
+                disabled={converting}
+                style={{ ...btnStyle(true), opacity: converting ? 0.6 : 1, cursor: converting ? 'not-allowed' : 'pointer' }}
+              >
+                {converting ? 'Convirtiendo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
