@@ -2033,6 +2033,8 @@ function UsersAdminTab({ isDark }) {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState(null)
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('users-view-mode') || 'list')
+  const setView = (mode) => { setViewMode(mode); localStorage.setItem('users-view-mode', mode) }
 
   // ── Create form state ──
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'usuario' })
@@ -2152,9 +2154,20 @@ function UsersAdminTab({ isDark }) {
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, margin: 0 }}>Usuarios</h2>
           <p style={{ fontSize: '0.78rem', color: t3, marginTop: 2 }}>{users.length} miembro{users.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
-          <Plus className="h-3.5 w-3.5" /> Nuevo usuario
-        </Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Toggle Grid/Lista */}
+          <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
+            <button onClick={() => setView('grid')}
+              style={{ background: viewMode === 'grid' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--accent)' : t2, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
+            >⊞</button>
+            <button onClick={() => setView('list')}
+              style={{ background: viewMode === 'list' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : t2, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
+            >☰</button>
+          </div>
+          <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
+            <Plus className="h-3.5 w-3.5" /> Nuevo usuario
+          </Button>
+        </div>
       </div>
 
       {/* Create form */}
@@ -2186,7 +2199,7 @@ function UsersAdminTab({ isDark }) {
         </div>
       )}
 
-      {/* Table */}
+      {/* Users — loading / empty / list / grid */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
           <div style={{ width: 28, height: 28, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -2194,7 +2207,8 @@ function UsersAdminTab({ isDark }) {
         </div>
       ) : users.length === 0 ? (
         <p style={{ color: t3, textAlign: 'center', padding: '32px 0', fontSize: '0.88rem' }}>No hay usuarios registrados.</p>
-      ) : (
+      ) : viewMode === 'list' ? (
+        /* ── Vista Lista ── */
         <div style={{ border: `1px solid ${borderCol}`, borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
             <thead>
@@ -2219,20 +2233,14 @@ function UsersAdminTab({ isDark }) {
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {canCreateAdmin && u.uid !== user?.uid && (
-                          <button
-                            title="Editar rol"
-                            onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
-                            style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}
-                          >
+                          <button title="Editar" onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
+                            style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}>
                             <Pencil className="h-3 w-3" />
                           </button>
                         )}
                         {canDelete(role) && u.uid !== user?.uid && (
-                          <button
-                            title="Eliminar del restaurante"
-                            onClick={() => handleDelete(u)}
-                            style={{ background: 'rgba(192,72,72,0.10)', border: '1px solid rgba(192,72,72,0.25)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: '#c04848', display: 'flex', alignItems: 'center' }}
-                          >
+                          <button title="Eliminar" onClick={() => handleDelete(u)}
+                            style={{ background: 'rgba(192,72,72,0.10)', border: '1px solid rgba(192,72,72,0.25)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: '#c04848', display: 'flex', alignItems: 'center' }}>
                             <Trash2 className="h-3 w-3" />
                           </button>
                         )}
@@ -2243,6 +2251,51 @@ function UsersAdminTab({ isDark }) {
               })}
             </tbody>
           </table>
+        </div>
+      ) : (
+        /* ── Vista Grid ── */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+          {users.map((u) => {
+            const role = u.role || 'usuario'
+            const roleBg = role === 'master' ? 'rgba(0,0,0,0.3)' : role === 'superadmin' ? 'rgba(234,88,12,0.15)' : role === 'admin' ? 'rgba(22,163,74,0.15)' : 'rgba(100,100,100,0.15)'
+            const roleColor = role === 'master' ? 'var(--accent)' : role === 'superadmin' ? 'var(--accent)' : role === 'admin' ? 'var(--green)' : t2
+            const roleLabel = role === 'master' ? 'Master' : role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Usuario'
+            return (
+              <div key={u.uid || u.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${borderCol}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center', transition: 'all 0.2s' }}
+                onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = borderCol }}
+              >
+                {/* Avatar */}
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: isDark ? 'rgba(201,168,76,0.1)' : 'rgba(201,168,76,0.08)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent)' }}>
+                  {u.name?.[0]?.toUpperCase() || '?'}
+                </div>
+                {/* Info */}
+                <div style={{ width: '100%' }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: ink, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || '—'}</div>
+                  <div style={{ fontSize: '0.7rem', color: t3, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: roleBg, color: roleColor }}>{roleLabel}</span>
+                </div>
+                {/* Acciones */}
+                <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+                  {canCreateAdmin && u.uid !== user?.uid && (
+                    <button onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
+                      style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '7px', cursor: 'pointer' }}>
+                      Editar
+                    </button>
+                  )}
+                  {canDelete(role) && u.uid !== user?.uid && (
+                    <button onClick={() => handleDelete(u)}
+                      style={{ background: 'transparent', border: '1px solid rgba(192,72,72,0.5)', borderRadius: 6, color: '#c04848', fontFamily: 'inherit', fontSize: '0.75rem', padding: '7px 9px', cursor: 'pointer' }}>
+                      ✕
+                    </button>
+                  )}
+                  {(!canCreateAdmin || u.uid === user?.uid) && canDelete(role) === false && (
+                    <div style={{ flex: 1, fontSize: '0.72rem', color: t3, padding: '7px 0' }}>—</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
