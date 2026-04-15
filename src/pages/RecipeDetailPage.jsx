@@ -1386,16 +1386,6 @@ export default function RecipeDetailPage() {
                   </div>
                 )}
 
-                {/* menuCode — shown for all recipes */}
-                {!isSubRecipe && (
-                  <div className="space-y-1.5">
-                    <Label>Código Menú</Label>
-                    <Input
-                      {...register('menuCode')}
-                      placeholder="Ej: BAR01, ONI01, COMP01"
-                    />
-                  </div>
-                )}
 
                 {isSubRecipe && (
                   <>
