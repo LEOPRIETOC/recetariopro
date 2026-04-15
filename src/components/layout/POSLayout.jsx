@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
 import { logoutUser } from '../../services/auth'
 import { signOut } from 'firebase/auth'
-import { auth } from '../../lib/firebase'
+import { auth, db } from '../../lib/firebase'
+import { collection, getDocs } from 'firebase/firestore'
 import {
   DndContext, PointerSensor, useSensor, useSensors, closestCenter,
 } from '@dnd-kit/core'
@@ -84,6 +85,10 @@ export function POSLayout() {
 
   const [localCategories, setLocalCategories] = useState([])
   const [showSalirModal, setShowSalirModal] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const searchTimer = useRef(null)
 
   const doLogout = async () => {
     try {
@@ -131,6 +136,50 @@ export function POSLayout() {
     document.documentElement.style.setProperty('--accent', accentColor || '#d97706')
   }, [accentColor])
 
+  const handleSearch = async (query) => {
+    setGlobalSearch(query)
+    if (!query || query.length < 2 || !currentRestaurant?.id) {
+      setSearchResults([])
+      setSearchOpen(false)
+      return
+    }
+    setSearching(true)
+    try {
+      const snap = await getDocs(collection(db, 'restaurants', currentRestaurant.id, 'recipes'))
+      const q = query.toLowerCase()
+      const results = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(r =>
+          r.active !== false && (
+            r.name?.toLowerCase().includes(q) ||
+            r.code?.toLowerCase().includes(q) ||
+            r.ingredients?.some(i => i.ingredientName?.toLowerCase().includes(q))
+          )
+        )
+        .slice(0, 10)
+      setSearchResults(results)
+      setSearchOpen(true)
+    } catch (err) {
+      console.error('[pos-search]', err)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => handleSearch(globalSearch), 300)
+    return () => clearTimeout(searchTimer.current)
+  }, [globalSearch, currentRestaurant?.id])
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!e.target.closest('.pos-search-container')) setSearchOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return
     const oldIndex = localCategories.findIndex((c) => c.id === active.id)
@@ -170,21 +219,96 @@ export function POSLayout() {
         )}
 
         {/* Global search */}
-        <div className="flex-1 max-w-lg relative">
-          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
+        <div className="pos-search-container flex-1 max-w-lg" style={{ position: 'relative' }}>
+          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 z-10', isDark ? 'text-gray-500' : 'text-gray-400')} style={{ pointerEvents: 'none' }} />
           <input
             type="text"
-            placeholder={t('common.search') + '...'}
+            placeholder="Buscar recetas, códigos, ingredientes..."
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
+            onFocus={() => globalSearch.length > 1 && setSearchOpen(true)}
+            onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
             className={cn(
-              'w-full pl-9 pr-4 h-8 text-sm rounded-lg border outline-none transition-colors',
-              'focus:ring-2 focus:border-transparent',
+              'w-full pl-9 pr-8 h-8 text-sm rounded-lg border outline-none transition-colors',
               isDark
-                ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500'
-                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400'
+                ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-amber-500'
+                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-amber-400'
             )}
           />
+          {searching && (
+            <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: isDark ? '#6b7280' : '#9ca3af' }}>…</span>
+          )}
+
+          {/* Dropdown resultados */}
+          {searchOpen && searchResults.length > 0 && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+              background: isDark ? '#1f2937' : '#fff',
+              border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+              borderRadius: 12, zIndex: 9999,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              maxHeight: 380, overflowY: 'auto',
+            }}>
+              {searchResults.map(recipe => (
+                <div
+                  key={recipe.id}
+                  onMouseDown={() => {
+                    setGlobalSearch('')
+                    setSearchOpen(false)
+                    navigate(`/recipes/${recipe.id}`)
+                  }}
+                  style={{
+                    padding: '9px 14px', cursor: 'pointer',
+                    borderBottom: `1px solid ${isDark ? '#374151' : '#f3f4f6'}`,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: 'transparent', transition: 'background 0.12s',
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = isDark ? '#374151' : '#f9fafb'}
+                  onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 7, overflow: 'hidden', flexShrink: 0,
+                    background: isDark ? '#374151' : '#f3f4f6',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
+                  }}>
+                    {recipe.photoURL
+                      ? <img src={recipe.photoURL} alt={recipe.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : '🍽'
+                    }
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {recipe.name}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: isDark ? '#6b7280' : '#9ca3af', display: 'flex', gap: 6, marginTop: 2 }}>
+                      <span>{recipe.code}</span>
+                      <span>·</span>
+                      <span>{recipe.menuName || 'Sin menú'}</span>
+                      <span>·</span>
+                      <span style={{ color: recipe.isSubRecipe ? '#60a5fa' : 'var(--accent)' }}>
+                        {recipe.isSubRecipe ? 'Sub-receta' : 'Receta'}
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ color: isDark ? '#4b5563' : '#d1d5db', fontSize: '0.8rem' }}>→</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Sin resultados */}
+          {searchOpen && searchResults.length === 0 && globalSearch.length > 1 && !searching && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+              background: isDark ? '#1f2937' : '#fff',
+              border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+              borderRadius: 12, zIndex: 9999,
+              padding: '14px', textAlign: 'center',
+              color: isDark ? '#6b7280' : '#9ca3af', fontSize: '0.82rem',
+            }}>
+              Sin resultados para "{globalSearch}"
+            </div>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
