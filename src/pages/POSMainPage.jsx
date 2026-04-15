@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Plus, ToggleLeft, ToggleRight, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
@@ -17,10 +17,9 @@ import {
 } from '../services/restaurants'
 import { SUBRECIPES_CATEGORY_ID } from '../components/layout/POSLayout'
 import { cn, formatNumber, calculateMargin } from '../lib/utils'
-import { Badge } from '../components/ui/badge'
 import { useToast } from '../components/ui/toast'
 
-// ── Sortable columns hook ──────────────────────────────────────────────────
+// ── Sortable data hook ─────────────────────────────────────────────────────────
 function useSortableData(data) {
   const [sortKey, setSortKey] = useState('order')
   const [sortDir, setSortDir] = useState('asc')
@@ -38,17 +37,10 @@ function useSortableData(data) {
     return sortDir === 'asc' ? cmp : -cmp
   }), [data, sortKey, sortDir])
 
-  const SortIcon = ({ k }) => {
-    if (sortKey !== k) return <span className="opacity-20 ml-1 text-xs">↕</span>
-    return sortDir === 'asc'
-      ? <ChevronUp className="inline h-3 w-3 ml-1" style={{ color: 'var(--accent)' }} />
-      : <ChevronDown className="inline h-3 w-3 ml-1" style={{ color: 'var(--accent)' }} />
-  }
-
-  return { sorted, requestSort, sortKey, sortDir, SortIcon }
+  return { sorted, requestSort, sortKey, sortDir }
 }
 
-// ── Column constants ──────────────────────────────────────────────────────────
+// ── Column defaults ────────────────────────────────────────────────────────────
 const MENU_DEFAULT_COLS = [
   { id: 'foto',         label: 'Foto',         visible: true, sortable: false },
   { id: 'codigo',       label: 'Código',        visible: true, sortable: true  },
@@ -70,11 +62,26 @@ const SUB_DEFAULT_COLS = [
   { id: 'verificacion', label: 'Verificación',   visible: true, sortable: true  },
 ]
 
-const MENU_FIELD_MAP   = { codigo: 'code', nombre: 'name', costo: 'costPerPortion', precio: 'salePrice', margen: 'salePrice', creacion: 'createdAt', verificacion: 'verified' }
-const SUB_FIELD_MAP    = { codigo: 'code', nombre: 'name', rendimiento: 'yield',    costo: 'costPerPortion', creacion: 'createdAt', verificacion: 'verified' }
+const MENU_FIELD_MAP = { codigo: 'code', nombre: 'name', costo: 'costPerPortion', precio: 'salePrice', margen: 'salePrice', creacion: 'createdAt', verificacion: 'verified' }
+const SUB_FIELD_MAP  = { codigo: 'code', nombre: 'name', rendimiento: 'yieldAmount', costo: 'costPerPortion', creacion: 'createdAt', verificacion: 'verified' }
 
-// ── Recipe Card (sortable) ────────────────────────────────────────────────────
-function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, onToggle }) {
+function loadCols(key, defaults) {
+  try {
+    const saved = localStorage.getItem(key)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      const merged = parsed
+        .filter(c => defaults.find(d => d.id === c.id))
+        .map(c => ({ ...defaults.find(d => d.id === c.id), visible: c.visible }))
+      defaults.forEach(d => { if (!merged.find(c => c.id === d.id)) merged.push(d) })
+      return merged
+    }
+  } catch {}
+  return defaults
+}
+
+// ── Recipe Card (grid) ─────────────────────────────────────────────────────────
+function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: recipe.id })
   const cat = categories?.find((c) => c.id === recipe?.categoryId)
@@ -96,13 +103,10 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, o
         )}
         style={isDark ? {} : { borderTopColor: 'var(--accent)', borderTopWidth: 2 }}
       >
-        {/* Photo or color strip */}
-        {recipe.photoURL ? (
-          <img src={recipe.photoURL} alt={recipe.name || ''} className="w-full h-36 object-cover" />
-        ) : (
-          <div className="w-full h-2" style={{ backgroundColor: 'var(--accent)', opacity: 0.25 }} />
-        )}
-
+        {recipe.photoURL
+          ? <img src={recipe.photoURL} alt={recipe.name || ''} className="w-full h-36 object-cover" />
+          : <div className="w-full h-2" style={{ backgroundColor: 'var(--accent)', opacity: 0.25 }} />
+        }
         <div className="p-3">
           {cat && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
@@ -111,7 +115,8 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, o
             </span>
           )}
           {recipe.isSubRecipe && !cat && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block" style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
+              style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
               Sub-receta
             </span>
           )}
@@ -131,20 +136,18 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, o
           )}
         </div>
       </div>
-
-      {/* Drag handle */}
       {canEdit && (
         <div {...attributes} {...listeners}
-          className={cn('absolute top-2 left-2 p-1 rounded-lg cursor-grab opacity-0 group-hover:opacity-100 transition-opacity', isDark ? 'bg-gray-800 text-gray-500' : 'bg-white/80 text-gray-400')}>
+          className={cn('absolute top-2 left-2 p-1 rounded-lg cursor-grab opacity-0 group-hover:opacity-100 transition-opacity',
+            isDark ? 'bg-gray-800 text-gray-500' : 'bg-white/80 text-gray-400')}>
           <GripVertical className="h-3.5 w-3.5" />
         </div>
       )}
-
-      {/* Status toggle */}
       {canEdit && (
         <button
           onClick={(e) => { e.stopPropagation(); onToggle(recipe) }}
-          className={cn('absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg', isDark ? 'bg-gray-800' : 'bg-white/80')}
+          className={cn('absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg',
+            isDark ? 'bg-gray-800' : 'bg-white/80')}
         >
           {recipe.active !== false
             ? <ToggleRight className="h-4 w-4 text-emerald-500" />
@@ -155,7 +158,84 @@ function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, o
   )
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// ── renderCell helper ──────────────────────────────────────────────────────────
+function renderCell(colId, recipe) {
+  switch (colId) {
+    case 'foto':
+      return (
+        <td key={colId} style={{ padding: '8px 12px' }}>
+          {recipe.photoURL
+            ? <img src={recipe.photoURL} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+            : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
+          }
+        </td>
+      )
+    case 'codigo':
+      return (
+        <td key={colId} style={{ padding: '8px 12px' }}>
+          <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 10px', borderRadius: 6, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+            {recipe.code || '—'}
+          </span>
+        </td>
+      )
+    case 'nombre':
+      return (
+        <td key={colId} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {recipe.name}
+        </td>
+      )
+    case 'costo':
+      return (
+        <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
+          {recipe.costPerPortion ? `$${Number(recipe.costPerPortion).toLocaleString('es-CO')}` : '—'}
+        </td>
+      )
+    case 'precio':
+      return (
+        <td key={colId} style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, fontSize: '0.84rem' }}>
+          {recipe.salePrice ? `$${Number(recipe.salePrice).toLocaleString('es-CO')}` : '—'}
+        </td>
+      )
+    case 'margen': {
+      const costo = recipe.costPerPortion || 0
+      const precio = recipe.salePrice || 0
+      const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
+      return (
+        <td key={colId} style={{ padding: '8px 12px' }}>
+          {margen !== null
+            ? <span style={{ fontSize: '0.82rem', fontWeight: 600, color: margen >= 60 ? 'var(--green)' : margen >= 40 ? 'var(--orange)' : 'var(--red)' }}>{margen}%</span>
+            : <span style={{ color: 'var(--t3)' }}>—</span>}
+        </td>
+      )
+    }
+    case 'rendimiento':
+      return (
+        <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
+          {recipe.yieldAmount ? `${recipe.yieldAmount} ${recipe.yieldUnit || ''}` : '—'}
+        </td>
+      )
+    case 'creacion':
+      return (
+        <td key={colId} style={{ padding: '8px 12px', color: 'var(--t3)', fontSize: '0.78rem' }}>
+          {recipe.createdAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
+        </td>
+      )
+    case 'verificacion':
+      return (
+        <td key={colId} style={{ padding: '8px 12px' }}>
+          {recipe.verified
+            ? <span style={{ color: 'var(--green)', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                ✓ {recipe.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+              </span>
+            : <span style={{ color: 'var(--t3)', fontSize: '0.78rem' }}>Sin verificar</span>}
+        </td>
+      )
+    default:
+      return <td key={colId} />
+  }
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────────
 export default function POSMainPage() {
   const navigate = useNavigate()
   const { currentRestaurant, theme, showCosts, selectedCategory, globalSearch } = useAppStore()
@@ -168,23 +248,8 @@ export default function POSMainPage() {
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('pos-main-view-mode') || 'grid')
   const [activeId, setActiveId] = useState(null)
 
-  // ── Reorderable columns ───────────────────────────────────────────────────
-  const loadCols = (key, defaults) => {
-    try {
-      const saved = localStorage.getItem(key)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        const merged = parsed
-          .filter(c => defaults.find(d => d.id === c.id))
-          .map(c => ({ ...defaults.find(d => d.id === c.id), visible: c.visible }))
-        defaults.forEach(d => { if (!merged.find(c => c.id === d.id)) merged.push(d) })
-        return merged
-      }
-    } catch {}
-    return defaults
-  }
-  const [menuColumns,   setMenuColumns]   = useState(() => loadCols('menu-columns-order',      MENU_DEFAULT_COLS))
-  const [subColumns,    setSubColumns]    = useState(() => loadCols('subrecipe-columns-order',  SUB_DEFAULT_COLS))
+  const [menuColumns, setMenuColumns] = useState(() => loadCols('menu-columns-order', MENU_DEFAULT_COLS))
+  const [subColumns,  setSubColumns]  = useState(() => loadCols('subrecipe-columns-order', SUB_DEFAULT_COLS))
   const [dragCol,  setDragCol]  = useState(null)
   const [dragOver, setDragOver] = useState(null)
 
@@ -200,41 +265,32 @@ export default function POSMainPage() {
     return () => { u1(); u2() }
   }, [currentRestaurant?.id])
 
-  const { sorted: sortedRecipes, requestSort, sortKey, sortDir, SortIcon } = useSortableData(recipes)
+  const { sorted: sortedRecipes, requestSort, sortKey, sortDir } = useSortableData(recipes)
 
   const isSubSection = selectedCategory === SUBRECIPES_CATEGORY_ID
 
   const filtered = useMemo(() => {
     const isSub = (r) => r.isSubRecipe === true || r.type === 'subrecipe'
     return (sortedRecipes || []).filter((r) => {
-      // Sub-recetas section: only sub-recipes; other sections: no sub-recipes
       if (isSubSection && !isSub(r)) return false
       if (!isSubSection && isSub(r)) return false
-      // Only show active recipes in main view
       if (r.active === false) return false
-      // Category filter
       if (!isSubSection && selectedCategory && r.categoryId !== selectedCategory) return false
-      // Global search
       const q = (globalSearch || '').toLowerCase()
-      if (q) {
-        return r.name?.toLowerCase()?.includes(q) ||
-          r.code?.toLowerCase()?.includes(q) ||
-          (r.ingredients || []).some((i) => i.description?.toLowerCase()?.includes(q))
-      }
+      if (q) return r.name?.toLowerCase()?.includes(q) || r.code?.toLowerCase()?.includes(q) || (r.ingredients || []).some(i => i.description?.toLowerCase()?.includes(q))
       return true
     })
   }, [sortedRecipes, selectedCategory, globalSearch, isSubSection])
 
   const handleToggle = async (recipe) => {
-    try {
-      await toggleRecipeActive(currentRestaurant.id, recipe.id, !recipe.active)
-    } catch { error('Error') }
+    try { await toggleRecipeActive(currentRestaurant.id, recipe.id, !recipe.active) }
+    catch { error('Error') }
   }
 
   const handleDragEnd = async ({ active, over }) => {
     if (!over || active.id === over.id) return
-    const oldIndex = (recipes || []).findIndex((r) => r.id === active.id)
-    const newIndex = (recipes || []).findIndex((r) => r.id === over.id)
+    const oldIndex = (recipes || []).findIndex(r => r.id === active.id)
+    const newIndex = (recipes || []).findIndex(r => r.id === over.id)
     const reordered = [...(recipes || [])]
     const [moved] = reordered.splice(oldIndex, 1)
     reordered.splice(newIndex, 0, moved)
@@ -244,11 +300,12 @@ export default function POSMainPage() {
   }
 
   const reorderCols = (setter, storageKey, fromId, toId) => {
-    if (fromId === toId) return
+    if (!fromId || fromId === toId) return
     setter(prev => {
       const cols = [...prev]
       const fi = cols.findIndex(c => c.id === fromId)
       const ti = cols.findIndex(c => c.id === toId)
+      if (fi < 0 || ti < 0) return prev
       const [removed] = cols.splice(fi, 1)
       cols.splice(ti, 0, removed)
       localStorage.setItem(storageKey, JSON.stringify(cols))
@@ -256,83 +313,22 @@ export default function POSMainPage() {
     })
   }
 
-  const renderCell = (colId, recipe, isDark) => {
-    switch (colId) {
-      case 'foto':
-        return (
-          <td key={colId} style={{ padding: '8px 12px' }}>
-            {recipe.photoURL
-              ? <img src={recipe.photoURL} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
-              : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
-            }
-          </td>
-        )
-      case 'codigo':
-        return (
-          <td key={colId} style={{ padding: '8px 12px' }}>
-            <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 10px', borderRadius: 6, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-              {recipe.code || '—'}
-            </span>
-          </td>
-        )
-      case 'nombre':
-        return (
-          <td key={colId} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {recipe.name}
-          </td>
-        )
-      case 'costo':
-        return (
-          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
-            {recipe.costPerPortion ? `$${Number(recipe.costPerPortion).toLocaleString('es-CO')}` : '—'}
-          </td>
-        )
-      case 'precio':
-        return (
-          <td key={colId} style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, fontSize: '0.84rem' }}>
-            {recipe.salePrice ? `$${Number(recipe.salePrice).toLocaleString('es-CO')}` : '—'}
-          </td>
-        )
-      case 'margen': {
-        const costo = recipe.costPerPortion || 0
-        const precio = recipe.salePrice || 0
-        const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
-        return (
-          <td key={colId} style={{ padding: '8px 12px' }}>
-            {margen !== null
-              ? <span style={{ fontSize: '0.82rem', fontWeight: 600, color: margen >= 60 ? 'var(--green)' : margen >= 40 ? 'var(--orange)' : 'var(--red)' }}>{margen}%</span>
-              : <span style={{ color: 'var(--t3)' }}>—</span>}
-          </td>
-        )
-      }
-      case 'rendimiento':
-        return (
-          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
-            {recipe.yield ? `${recipe.yield} ${recipe.yieldUnit || ''}` : '—'}
-          </td>
-        )
-      case 'creacion':
-        return (
-          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t3)', fontSize: '0.78rem' }}>
-            {recipe.createdAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
-          </td>
-        )
-      case 'verificacion':
-        return (
-          <td key={colId} style={{ padding: '8px 12px' }}>
-            {recipe.verified
-              ? <span style={{ color: 'var(--green)', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>✓ {recipe.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</span>
-              : <span style={{ color: 'var(--t3)', fontSize: '0.78rem' }}>Sin verificar</span>}
-          </td>
-        )
-      default:
-        return <td key={colId} />
-    }
-  }
-
   const selectedCat = isSubSection
     ? { name: 'Sub-recetas' }
-    : (categories || []).find((c) => c.id === selectedCategory)
+    : (categories || []).find(c => c.id === selectedCategory)
+
+  // Decide which column set to use for list view
+  const activeCols      = isSubSection ? subColumns    : menuColumns
+  const setActiveCols   = isSubSection ? setSubColumns : setMenuColumns
+  const activeStorageKey = isSubSection ? 'subrecipe-columns-order' : 'menu-columns-order'
+  const activeFieldMap  = isSubSection ? SUB_FIELD_MAP : MENU_FIELD_MAP
+
+  const thBase = {
+    padding: '9px 12px', textAlign: 'left', fontSize: '0.68rem',
+    textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--t3)',
+    fontWeight: 700, background: 'var(--bg3)', borderBottom: '1px solid var(--b1)',
+    whiteSpace: 'nowrap', userSelect: 'none',
+  }
 
   return (
     <div className="space-y-4">
@@ -348,25 +344,18 @@ export default function POSMainPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View toggle */}
           <div className={cn('flex rounded-lg border overflow-hidden', isDark ? 'border-gray-700' : 'border-gray-200')}>
             <button
               onClick={() => { setViewMode('grid'); localStorage.setItem('pos-main-view-mode', 'grid') }}
               className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
               style={viewMode === 'grid' ? { backgroundColor: 'var(--accent)' } : {}}
-            >
-              Grid
-            </button>
+            >Grid</button>
             <button
               onClick={() => { setViewMode('list'); localStorage.setItem('pos-main-view-mode', 'list') }}
               className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
               style={viewMode === 'list' ? { backgroundColor: 'var(--accent)' } : {}}
-            >
-              Lista
-            </button>
+            >Lista</button>
           </div>
-
-          {/* Single context-aware create button — admin only */}
           {canEdit && selectedCategory !== null && (
             <button
               onClick={() => navigate(isSubSection ? '/recipes/new?type=subrecipe' : '/recipes/new')}
@@ -404,9 +393,9 @@ export default function POSMainPage() {
         <DndContext sensors={sensors} collisionDetection={closestCenter}
           onDragStart={({ active }) => setActiveId(active.id)}
           onDragEnd={handleDragEnd}>
-          <SortableContext items={(filtered || []).map((r) => r.id).filter(Boolean)} strategy={rectSortingStrategy}>
+          <SortableContext items={filtered.map(r => r.id).filter(Boolean)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {filtered.map((recipe) => (
+              {filtered.map(recipe => (
                 <RecipeCard
                   key={recipe.id}
                   recipe={recipe}
@@ -424,68 +413,56 @@ export default function POSMainPage() {
       )}
 
       {/* List view — columnas reordenables */}
-      {filtered.length > 0 && viewMode === 'list' && (() => {
-        const cols       = isSubSection ? subColumns    : menuColumns
-        const setCols    = isSubSection ? setSubColumns : setMenuColumns
-        const storageKey = isSubSection ? 'subrecipe-columns-order' : 'menu-columns-order'
-        const fieldMap   = isSubSection ? SUB_FIELD_MAP : MENU_FIELD_MAP
-        const thBase = {
-          padding: '9px 12px', textAlign: 'left', fontSize: '0.68rem',
-          textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--t3)',
-          fontWeight: 700, background: 'var(--bg3)', borderBottom: '1px solid var(--b1)',
-          whiteSpace: 'nowrap', userSelect: 'none',
-        }
-        return (
-          <div style={{ borderRadius: 12, border: '1px solid var(--b1)', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', maxHeight: '70vh', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-                <thead>
-                  <tr>
-                    {cols.filter(c => c.visible).map((col) => (
-                      <th
-                        key={col.id}
-                        draggable
-                        onDragStart={() => setDragCol(col.id)}
-                        onDragOver={e => { e.preventDefault(); setDragOver(col.id) }}
-                        onDrop={() => { reorderCols(setCols, storageKey, dragCol, col.id); setDragCol(null); setDragOver(null) }}
-                        onDragEnd={() => { setDragCol(null); setDragOver(null) }}
-                        onClick={() => col.sortable && requestSort(fieldMap[col.id] || col.id)}
-                        style={{
-                          ...thBase,
-                          cursor: col.sortable ? 'pointer' : 'grab',
-                          background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
-                          borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
-                        }}
-                      >
-                        {col.label}
-                        {col.sortable && sortKey === (fieldMap[col.id] || col.id) && (
-                          <span style={{ marginLeft: 4, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                        {col.sortable && sortKey !== (fieldMap[col.id] || col.id) && (
-                          <span style={{ marginLeft: 4, color: 'var(--t3)', opacity: 0.5 }}>⇅</span>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r) => (
-                    <tr
-                      key={r.id}
-                      style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
-                      onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
-                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                      onClick={() => navigate(`/recipes/${r.id}`)}
+      {filtered.length > 0 && viewMode === 'list' && (
+        <div style={{ borderRadius: 12, border: '1px solid var(--b1)', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto', maxHeight: '70vh', overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
+                <tr>
+                  {activeCols.filter(c => c.visible).map(col => (
+                    <th
+                      key={col.id}
+                      draggable
+                      onDragStart={() => setDragCol(col.id)}
+                      onDragOver={e => { e.preventDefault(); setDragOver(col.id) }}
+                      onDrop={() => { reorderCols(setActiveCols, activeStorageKey, dragCol, col.id); setDragCol(null); setDragOver(null) }}
+                      onDragEnd={() => { setDragCol(null); setDragOver(null) }}
+                      onClick={() => col.sortable && requestSort(activeFieldMap[col.id] || col.id)}
+                      style={{
+                        ...thBase,
+                        cursor: col.sortable ? 'pointer' : 'grab',
+                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
+                        borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
+                      }}
                     >
-                      {cols.filter(c => c.visible).map(col => renderCell(col.id, r, isDark))}
-                    </tr>
+                      {col.label}
+                      {col.sortable && sortKey === (activeFieldMap[col.id] || col.id) && (
+                        <span style={{ marginLeft: 4, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                      {col.sortable && sortKey !== (activeFieldMap[col.id] || col.id) && (
+                        <span style={{ marginLeft: 4, color: 'var(--t3)', opacity: 0.5 }}>⇅</span>
+                      )}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(r => (
+                  <tr
+                    key={r.id}
+                    style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
+                    onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                    onClick={() => navigate(`/recipes/${r.id}`)}
+                  >
+                    {activeCols.filter(c => c.visible).map(col => renderCell(col.id, r))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )
-      })()}
+        </div>
+      )}
     </div>
   )
 }
