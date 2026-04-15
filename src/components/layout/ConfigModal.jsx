@@ -2086,19 +2086,28 @@ function UsersAdminTab({ isDark }) {
     } finally { setSaving(false) }
   }
 
-  // ── Edit role ──
-  const [editRole, setEditRole] = useState('')
+  // ── Edit user ──
+  const [editData, setEditData] = useState({ name: '', role: '', email: '' })
   const [editSaving, setEditSaving] = useState(false)
   const handleEditSave = async () => {
     if (!editUser) return
+    if (!editData.name?.trim()) { error('El nombre es requerido'); return }
     setEditSaving(true)
     try {
-      await updateUserRole(editUser.uid, editRole, editUser.restaurantIds || [currentRestaurant.id])
-      // Also update restaurant members map
-      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
-        [`members.${editUser.uid}.role`]: editRole,
+      // Update user doc
+      await updateDoc(doc(db, 'users', editUser.uid), {
+        name: editData.name.trim(),
+        role: editData.role,
+        updatedAt: serverTimestamp(),
       })
-      success('Rol actualizado')
+      // Update role via service (handles role-specific logic)
+      await updateUserRole(editUser.uid, editData.role, editUser.restaurantIds || [currentRestaurant.id])
+      // Update members map in restaurant
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
+        [`members.${editUser.uid}.role`]: editData.role,
+        [`members.${editUser.uid}.name`]: editData.name.trim(),
+      })
+      success('Usuario actualizado')
       setEditUser(null)
       loadUsers()
     } catch { error('Error al actualizar') } finally { setEditSaving(false) }
@@ -2212,7 +2221,7 @@ function UsersAdminTab({ isDark }) {
                         {canCreateAdmin && u.uid !== user?.uid && (
                           <button
                             title="Editar rol"
-                            onClick={() => { setEditUser(u); setEditRole(role) }}
+                            onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
                             style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}
                           >
                             <Pencil className="h-3 w-3" />
@@ -2237,22 +2246,60 @@ function UsersAdminTab({ isDark }) {
         </div>
       )}
 
-      {/* Edit role modal */}
+      {/* Edit user modal */}
       {editUser && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: bg2, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 24, width: 'min(360px, 95vw)' }}>
-            <p style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', color: ink, marginBottom: 16 }}>
-              Editar rol — {editUser.name}
+          <div style={{ background: bg2, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 24, width: 'min(420px, 95vw)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', color: ink, margin: 0 }}>
+              Editar usuario
             </p>
-            <UField label="Nuevo rol">
-              <select style={uInput(isDark)} value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+
+            {/* Nombre */}
+            <UField label="Nombre *">
+              <input
+                style={uInput(isDark)}
+                value={editData.name}
+                onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
+                placeholder="Nombre completo"
+              />
+            </UField>
+
+            {/* Email — readonly */}
+            <UField label="Email">
+              <input
+                style={{ ...uInput(isDark), opacity: 0.55, cursor: 'not-allowed' }}
+                value={editData.email}
+                readOnly
+                disabled
+              />
+              <p style={{ fontSize: '0.72rem', color: t3, margin: '4px 0 0' }}>
+                El email no se puede modificar
+              </p>
+            </UField>
+
+            {/* Rol */}
+            <UField label="Rol *">
+              <select
+                style={uInput(isDark)}
+                value={editData.role}
+                onChange={e => setEditData(d => ({ ...d, role: e.target.value }))}
+              >
                 {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </UField>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+
+            {/* Contraseña — informativo */}
+            <div style={{ background: isDark ? '#1a1f1b' : '#f9fafb', border: `1px solid ${borderCol}`, borderRadius: 8, padding: '10px 12px' }}>
+              <p style={{ fontSize: '0.75rem', color: t2, margin: 0, lineHeight: 1.5 }}>
+                <strong>Contraseña:</strong> Para cambiarla, el usuario debe usar
+                &ldquo;¿Olvidaste tu contraseña?&rdquo; en el login.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button variant="outline" size="sm" onClick={() => setEditUser(null)}>Cancelar</Button>
               <Button size="sm" onClick={handleEditSave} disabled={editSaving}>
-                {editSaving ? 'Guardando...' : 'Guardar'}
+                {editSaving ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
           </div>
