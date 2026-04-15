@@ -905,3 +905,25 @@ export async function fixSubrecipeYields(restaurantId) {
     list: withoutYield,
   }
 }
+
+export async function fixMissingActiveField(restaurantId) {
+  const snap = await getDocs(
+    collection(db, 'restaurants', restaurantId, 'recipes')
+  )
+
+  const batch = writeBatch(db)
+  let fixed = 0
+
+  snap.docs.forEach(d => {
+    if (d.data().active === undefined) {
+      batch.update(
+        doc(db, 'restaurants', restaurantId, 'recipes', d.id),
+        { active: true }
+      )
+      fixed++
+    }
+  })
+
+  if (fixed > 0) await batch.commit()
+  return { fixed, total: snap.docs.length }
+}

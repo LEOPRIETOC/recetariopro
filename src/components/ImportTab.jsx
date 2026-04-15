@@ -7,7 +7,7 @@ import {
   importMenus, importSuppliers, importUnits,
   importMaterias, importRecipes, importSubrecipes,
   fixRecipeCategoryIds, exportRecipes, fixSubrecipeTypes,
-  fixSubrecipeYields, generateMateriaTemplate,
+  fixSubrecipeYields, generateMateriaTemplate, fixMissingActiveField,
 } from '../services/importService'
 
 const ORDER_STEPS = [
@@ -141,7 +141,22 @@ export function ImportTab({ restaurantId, isDark }) {
       setFixingTypes(false)
     }
   }
+  const [fixingActive, setFixingActive] = useState(false)
+  const [activeReport, setActiveReport] = useState(null)
   const [exporting, setExporting] = useState(null) // 'recipe' | 'subrecipe' | null
+
+  const handleFixActive = async () => {
+    setFixingActive(true)
+    setActiveReport(null)
+    try {
+      const result = await fixMissingActiveField(restaurantId)
+      setActiveReport(result)
+    } catch (err) {
+      setActiveReport({ fixed: 0, total: 0, error: err.message })
+    } finally {
+      setFixingActive(false)
+    }
+  }
 
   const handleExport = async (type) => {
     setExporting(type)
@@ -283,6 +298,32 @@ export function ImportTab({ restaurantId, isDark }) {
               </>
             )}
             <button onClick={() => setYieldsReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>Cerrar</button>
+          </div>
+        )}
+
+        <button
+          onClick={handleFixActive}
+          disabled={fixingActive}
+          className={cn(
+            'text-xs px-4 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-60',
+          )}
+          style={{ backgroundColor: '#6366f1' }}
+        >
+          {fixingActive ? 'Procesando...' : '🔧 Corregir campo active en recetas'}
+        </button>
+        {activeReport && (
+          <div className={cn('rounded-lg p-3 text-xs space-y-1 border', isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}>
+            {activeReport.error ? (
+              <span className="text-red-500">{activeReport.error}</span>
+            ) : (
+              <div className="flex gap-4">
+                <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>Total revisadas: {activeReport.total}</span>
+                <span className={activeReport.fixed > 0 ? 'text-green-500 font-medium' : 'text-blue-500 font-medium'}>
+                  {activeReport.fixed > 0 ? `✅ Corregidas: ${activeReport.fixed}` : '✅ Todas ya tenían active definido'}
+                </span>
+              </div>
+            )}
+            <button onClick={() => setActiveReport(null)} className={cn('text-xs hover:underline mt-1', subText)}>Cerrar</button>
           </div>
         )}
 
