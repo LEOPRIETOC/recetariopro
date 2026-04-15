@@ -30,7 +30,7 @@ import {
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
 import { setMasterRole, createUserWithRole, updateUserRole } from '../../services/auth'
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
@@ -2123,18 +2123,30 @@ function UsersAdminTab({ isDark }) {
     return false
   }
   const handleDelete = async (u) => {
-    if (!confirm(`¿Eliminar a ${u.name} del restaurante?`)) return
+    if (!window.confirm(`¿Eliminar al usuario ${u.name}?\nEsta acción no se puede deshacer.`)) return
+    const uid = u.uid || u.id
     try {
-      await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
-        [`members.${u.uid}`]: null,
+      // 1. Eliminar doc de users/
+      await deleteDoc(doc(db, 'users', uid))
+
+      // 2. Quitar de members de todos los restaurantes donde aparece
+      const restsSnap = await getDocs(collection(db, 'restaurants'))
+      const batch = writeBatch(db)
+      restsSnap.docs.forEach(restDoc => {
+        const members = restDoc.data().members || {}
+        if (members[uid]) {
+          batch.update(restDoc.ref, { [`members.${uid}`]: null })
+        }
       })
-      await updateDoc(doc(db, 'users', u.uid), {
-        restaurantIds: (u.restaurantIds || []).filter((id) => id !== currentRestaurant.id),
-        updatedAt: serverTimestamp(),
-      })
-      success('Usuario eliminado del restaurante')
-      loadUsers()
-    } catch { error('Error al eliminar') }
+      await batch.commit()
+
+      // 3. Actualizar lista local sin recargar
+      setUsers(prev => prev.filter(u2 => (u2.uid || u2.id) !== uid))
+      success('Usuario eliminado ✓')
+    } catch (err) {
+      console.error('Error eliminando usuario:', err)
+      error('Error al eliminar: ' + err.message)
+    }
   }
 
 
