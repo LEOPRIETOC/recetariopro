@@ -2117,13 +2117,18 @@ function UsersAdminTab({ isDark }) {
     } catch { error('Error al actualizar') } finally { setEditSaving(false) }
   }
 
-  // ── Delete ──
-  const canDelete = (targetRole) => {
-    if (isMaster) return true
-    if (isSuperAdmin) return ['admin', 'usuario'].includes(targetRole)
+  // ── Permisos por jerarquía ──
+  // canManage: puede editar/eliminar al usuario objetivo
+  const canManage = (targetUser) => {
+    const targetRole = targetUser?.role || 'usuario'
+    if ((targetUser?.uid || targetUser?.id) === (user?.uid)) return false // nunca a sí mismo
+    if (isMaster) return targetRole !== 'master'
+    if (isSuperAdmin) return !['master', 'superadmin'].includes(targetRole)
     if (isAdmin) return targetRole === 'usuario'
     return false
   }
+  // canDelete wrapper (kept for compat, uses canManage)
+  const canDelete = (targetUser) => canManage(targetUser)
   const handleDelete = async (u) => {
     if (!window.confirm(`¿Eliminar al usuario ${u.name}?\nEsta acción no se puede deshacer.`)) return
     const uid = u.uid || u.id
@@ -2258,13 +2263,13 @@ function UsersAdminTab({ isDark }) {
                     <td style={{ padding: '10px 14px' }}><RoleBadge role={role} /></td>
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {canCreateAdmin && u.uid !== user?.uid && (
+                        {canManage(u) && (
                           <button title="Editar" onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '', newPassword: '' }); setShowEditPassword(false) }}
                             style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}>
                             <Pencil className="h-3 w-3" />
                           </button>
                         )}
-                        {canDelete(role) && u.uid !== user?.uid && (
+                        {canManage(u) && (
                           <button title="Eliminar" onClick={() => handleDelete(u)}
                             style={{ background: 'rgba(192,72,72,0.10)', border: '1px solid rgba(192,72,72,0.25)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: '#c04848', display: 'flex', alignItems: 'center' }}>
                             <Trash2 className="h-3 w-3" />
@@ -2303,20 +2308,20 @@ function UsersAdminTab({ isDark }) {
                 </div>
                 {/* Acciones */}
                 <div style={{ display: 'flex', gap: 6, width: '100%' }}>
-                  {canCreateAdmin && u.uid !== user?.uid && (
+                  {canManage(u) && (
                     <button onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '', newPassword: '' }); setShowEditPassword(false) }}
                       style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '7px', cursor: 'pointer' }}>
                       Editar
                     </button>
                   )}
-                  {canDelete(role) && u.uid !== user?.uid && (
+                  {canManage(u) && (
                     <button onClick={() => handleDelete(u)}
                       style={{ background: 'transparent', border: '1px solid rgba(192,72,72,0.5)', borderRadius: 6, color: '#c04848', fontFamily: 'inherit', fontSize: '0.75rem', padding: '7px 9px', cursor: 'pointer' }}>
                       ✕
                     </button>
                   )}
-                  {(!canCreateAdmin || u.uid === user?.uid) && canDelete(role) === false && (
-                    <div style={{ flex: 1, fontSize: '0.72rem', color: t3, padding: '7px 0' }}>—</div>
+                  {!canManage(u) && (
+                    <div style={{ flex: 1, fontSize: '0.72rem', color: t3, padding: '7px 0', textAlign: 'center' }}>—</div>
                   )}
                 </div>
               </div>
@@ -2329,6 +2334,12 @@ function UsersAdminTab({ isDark }) {
       {editUser && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: bg2, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 24, width: 'min(420px, 95vw)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {!canManage(editUser) ? (
+              <>
+                <p style={{ color: '#c04848', fontSize: '0.88rem', margin: 0 }}>No tienes permisos para editar este usuario.</p>
+                <Button variant="outline" size="sm" onClick={() => setEditUser(null)}>Cerrar</Button>
+              </>
+            ) : (<>
             <p style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', color: ink, margin: 0 }}>
               Editar usuario
             </p>
@@ -2393,6 +2404,7 @@ function UsersAdminTab({ isDark }) {
                 {editSaving ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
+            </>)}
           </div>
         </div>
       )}
