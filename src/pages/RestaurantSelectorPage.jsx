@@ -56,22 +56,28 @@ export default function RestaurantSelectorPage() {
         return
       }
 
-      // Load counts for each restaurant
+      // Load real counts for each restaurant
       const withCounts = await Promise.all(
         rests.map(async (rest) => {
           try {
-            const [recipes, materias] = await Promise.all([
+            const [recipesSnap, materiasSnap] = await Promise.all([
               getDocs(collection(db, 'restaurants', rest.id, 'recipes')),
               getDocs(collection(db, 'restaurants', rest.id, 'materias_primas')),
             ])
+            const allRecipes = recipesSnap.docs.map(d => d.data())
+            const recipesCount = allRecipes.filter(r => !r.isSubRecipe).length
+            const subrecipesCount = allRecipes.filter(r => r.isSubRecipe).length
             return {
               ...rest,
-              recipesCount: recipes.size,
-              usersCount: Object.keys(rest.members || {}).length,
-              materiasCount: materias.size,
+              stats: {
+                recipes: recipesCount,
+                subrecipes: subrecipesCount,
+                materias: materiasSnap.size,
+                users: Object.keys(rest.members || {}).length,
+              },
             }
           } catch {
-            return { ...rest, recipesCount: '—', usersCount: '—', materiasCount: '—' }
+            return { ...rest, stats: { recipes: '—', subrecipes: '—', materias: '—', users: '—' } }
           }
         })
       )
@@ -147,11 +153,16 @@ export default function RestaurantSelectorPage() {
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, background: 'var(--bg3)', borderRadius: 10, padding: 12 }}>
-                  {[['Recetas', rest.recipesCount], ['Usuarios', rest.usersCount], ['Mat. Primas', rest.materiasCount]].map(([label, value]) => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, background: 'var(--bg3)', borderRadius: 10, padding: 12 }}>
+                  {[
+                    ['Recetas',     rest.stats?.recipes,    'var(--accent)'],
+                    ['Sub-recetas', rest.stats?.subrecipes, isDark ? '#60a5fa' : '#3b82f6'],
+                    ['Mat. Primas', rest.stats?.materias,   isDark ? '#34d399' : '#10b981'],
+                    ['Usuarios',    rest.stats?.users,      'var(--t2)'],
+                  ].map(([label, value, color]) => (
                     <div key={label} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent)' }}>{value ?? '—'}</div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color }}>{value ?? '—'}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
                     </div>
                   ))}
                 </div>
