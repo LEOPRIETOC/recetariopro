@@ -821,6 +821,9 @@ export default function RecipeDetailPage() {
   const [marginContribution, setMarginContribution] = useState(35)
   const [taxRate, setTaxRate] = useState(8)
   const [tipRate, setTipRate] = useState(10)
+  const [convertModal, setConvertModal] = useState(false)
+  const [convertData, setConvertData] = useState({})
+  const [converting, setConverting] = useState(false)
 
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -949,6 +952,38 @@ export default function RecipeDetailPage() {
     } else {
       exitToOrigin()
     }
+  }
+
+  const handleConfirmConvert = async () => {
+    if (!recipe || !currentRestaurant?.id) return
+    const newType = recipe.isSubRecipe ? 'recipe' : 'subrecipe'
+    setConverting(true)
+    try {
+      const updates = { updatedAt: serverTimestamp(), isSubRecipe: newType === 'subrecipe', type: newType }
+      if (newType === 'subrecipe') {
+        if (!convertData.yieldAmount || !convertData.yieldUnit) {
+          error('Rendimiento y unidad son requeridos'); setConverting(false); return
+        }
+        updates.categoryId = null
+        updates.menuCode = 'SUBRECETA'
+        updates.yieldAmount = parseFloat(convertData.yieldAmount)
+        updates.yieldUnit = convertData.yieldUnit
+        updates.code = await getNextRecipeCode(currentRestaurant.id, 'subrecipe')
+      } else {
+        if (!convertData.categoryId) {
+          error('Debes seleccionar un menú'); setConverting(false); return
+        }
+        updates.categoryId = convertData.categoryId
+        updates.menuCode = convertData.menuCode || ''
+        updates.yieldAmount = null
+        updates.yieldUnit = null
+        updates.code = await getNextRecipeCode(currentRestaurant.id, 'recipe')
+      }
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id, 'recipes', id), updates)
+      success(`Convertida a ${newType === 'recipe' ? 'receta' : 'sub-receta'} ✓`)
+      setConvertModal(false)
+      setConvertData({})
+    } catch (err) { console.error(err); error('Error al convertir') } finally { setConverting(false) }
   }
 
   useEffect(() => {
@@ -1708,6 +1743,26 @@ export default function RecipeDetailPage() {
               </Card>
             )}
 
+            {/* Tipo de preparación / Convertir */}
+            {!isNew && canEdit && (
+              <div style={{ background: isDark ? '#111827' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`, borderRadius: 12, padding: 16, marginTop: 4 }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', marginBottom: 4 }}>
+                  Tipo de preparación
+                </div>
+                <div style={{ fontSize: '0.75rem', color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 12 }}>
+                  {recipe?.isSubRecipe ? 'Esta preparación es una sub-receta' : 'Esta preparación es una receta de menú'}
+                </div>
+                <button
+                  onClick={() => { setConvertModal(true); setConvertData({}) }}
+                  style={{ width: '100%', background: 'transparent', border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`, borderRadius: 8, color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '9px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                  onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#d1d5db'; e.currentTarget.style.color = isDark ? '#9ca3af' : '#6b7280' }}
+                >
+                  {recipe?.isSubRecipe ? '⇄ Convertir a receta' : '⇄ Convertir a sub-receta'}
+                </button>
+              </div>
+            )}
+
             {/* Photo + Video */}
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
               <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gold-600" /> Foto y Video</CardTitle></CardHeader>
@@ -1839,6 +1894,68 @@ export default function RecipeDetailPage() {
               >
                 Guardar y salir
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal convertir receta ↔ sub-receta ── */}
+      {convertModal && recipe && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: isDark ? '#1f2937' : '#fff', borderRadius: 16, padding: 28, width: 'min(440px, 90vw)', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.15rem', fontWeight: 700, margin: 0, color: isDark ? '#f9fafb' : '#111827' }}>
+              {recipe.isSubRecipe ? 'Convertir a Receta' : 'Convertir a Sub-receta'}
+            </h3>
+            <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '0.85rem', margin: 0 }}>
+              {recipe.isSubRecipe
+                ? 'Esta sub-receta pasará a ser una receta. Debes asignarle un menú.'
+                : 'Esta receta pasará a ser una sub-receta y podrá usarse como ingrediente en otras recetas.'}
+            </p>
+            <div style={{ fontWeight: 600, color: isDark ? '#f9fafb' : '#111', fontSize: '0.9rem' }}>{recipe.name}</div>
+
+            {!recipe.isSubRecipe ? (
+              /* Receta → Sub-receta: pedir rendimiento */
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Rendimiento *</label>
+                  <input type="number" min="0" step="0.001" placeholder="Ej: 1000"
+                    value={convertData.yieldAmount || ''}
+                    onChange={e => setConvertData(d => ({ ...d, yieldAmount: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, background: isDark ? '#374151' : '#f9fafb', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Unidad *</label>
+                  <select value={convertData.yieldUnit || ''}
+                    onChange={e => setConvertData(d => ({ ...d, yieldUnit: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, background: isDark ? '#374151' : '#f9fafb', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
+                    <option value="">Seleccionar</option>
+                    {(allUnits || []).map(u => <option key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              /* Sub-receta → Receta: pedir menú */
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--t2)', display: 'block', marginBottom: 4 }}>Menú *</label>
+                <select value={convertData.categoryId || ''}
+                  onChange={e => setConvertData(d => ({ ...d, categoryId: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, background: isDark ? '#374151' : '#f9fafb', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
+                  <option value="">Seleccionar menú</option>
+                  {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button
+                onClick={() => { setConvertModal(false); setConvertData({}) }}
+                style={{ background: 'transparent', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', padding: '9px 20px', cursor: 'pointer' }}
+              >Cancelar</button>
+              <button
+                onClick={handleConfirmConvert}
+                disabled={converting}
+                style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '9px 20px', cursor: converting ? 'not-allowed' : 'pointer', opacity: converting ? 0.7 : 1 }}
+              >{converting ? 'Convirtiendo...' : 'Confirmar'}</button>
             </div>
           </div>
         </div>
