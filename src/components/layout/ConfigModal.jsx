@@ -1485,7 +1485,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                     </td>
                     <td className="px-3 py-2.5">
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`) }}
+                        <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
                           className="text-xs px-2 py-1 rounded-lg border transition-colors"
                           style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                           Editar

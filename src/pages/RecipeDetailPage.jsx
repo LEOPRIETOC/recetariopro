@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -784,7 +784,8 @@ export default function RecipeDetailPage() {
 
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { currentRestaurant, theme } = useAppStore()
+  const location = useLocation()
+  const { currentRestaurant, theme, openConfig } = useAppStore()
   const { isAdmin, canEdit, canSeeCosts, isUsuario, user: authUser } = useAuth()
   // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
@@ -934,11 +935,19 @@ export default function RecipeDetailPage() {
     return () => sub.unsubscribe()
   }, [watch])
 
+  const exitToOrigin = () => {
+    if (location?.state?.from === 'gestion') {
+      openConfig('recipes')
+    } else {
+      navigate(-1)
+    }
+  }
+
   const safeNavigate = () => {
     if (hasUnsavedChanges) {
       setShowExitModal(true)
     } else {
-      navigate(-1)
+      exitToOrigin()
     }
   }
 
@@ -1799,7 +1808,7 @@ export default function RecipeDetailPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
               <button
-                onClick={() => { setShowExitModal(false); navigate(-1) }}
+                onClick={() => { setShowExitModal(false); exitToOrigin() }}
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--red)',
@@ -1815,7 +1824,7 @@ export default function RecipeDetailPage() {
                 Salir sin guardar
               </button>
               <button
-                onClick={async () => { setShowExitModal(false); await handleSave(); navigate(-1) }}
+                onClick={async () => { setShowExitModal(false); await handleSave(); exitToOrigin() }}
                 style={{
                   background: 'var(--accent)',
                   border: 'none',
