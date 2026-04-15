@@ -60,18 +60,20 @@ export default function RestaurantSelectorPage() {
       const withCounts = await Promise.all(
         rests.map(async (rest) => {
           try {
-            const [recipesSnap, subrecipesSnap, materiasSnap] = await Promise.all([
-              getDocs(query(collection(db, 'restaurants', rest.id, 'recipes'), where('type', '==', 'recipe'))),
-              getDocs(query(collection(db, 'restaurants', rest.id, 'recipes'), where('type', '==', 'subrecipe'))),
+            const [allRecipesSnap, materiasSnap] = await Promise.all([
+              getDocs(collection(db, 'restaurants', rest.id, 'recipes')),
               getDocs(collection(db, 'restaurants', rest.id, 'materias_primas')),
             ])
-            // Filter inactive in client — imported recipes may lack the active field
-            const activeRecipes = recipesSnap.docs.filter(d => d.data().active !== false)
+            // Split in client — imported recipes may only have isSubRecipe, not type field
+            const all = allRecipesSnap.docs.map(d => d.data())
+            const isSub = (r) => r.isSubRecipe === true || r.type === 'subrecipe'
+            const recipesCount = all.filter(r => !isSub(r) && r.active !== false).length
+            const subrecipesCount = all.filter(r => isSub(r)).length
             return {
               ...rest,
               stats: {
-                recipes: activeRecipes.length,
-                subrecipes: subrecipesSnap.size,
+                recipes: recipesCount,
+                subrecipes: subrecipesCount,
                 materias: materiasSnap.size,
                 users: Object.keys(rest.members || {}).length,
               },
