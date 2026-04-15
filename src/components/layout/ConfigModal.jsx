@@ -1867,6 +1867,131 @@ function VersionsTab({ restaurantId, isDark }) {
   )
 }
 
+// ── Verificación Tab ─────────────────────────────────────────────────────────
+function VerificationTab({ restaurantId, isDark }) {
+  const [recipes, setRecipes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all') // 'all' | 'verified' | 'unverified'
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (!restaurantId) return
+    setLoading(true)
+    getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+      .then(snap => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        all.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
+        setRecipes(all)
+      })
+      .finally(() => setLoading(false))
+  }, [restaurantId])
+
+  const filtered = recipes.filter(r => {
+    if (filter === 'verified' && !r.verified) return false
+    if (filter === 'unverified' && r.verified) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return r.name?.toLowerCase().includes(q) || r.code?.toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const total = recipes.length
+  const verifiedCount = recipes.filter(r => r.verified).length
+  const pct = total > 0 ? Math.round((verifiedCount / total) * 100) : 0
+
+  const bdr = isDark ? '#1f2937' : '#e5e7eb'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const ink = isDark ? '#f9fafb' : '#111827'
+
+  const inputStyle = {
+    background: isDark ? '#1f2937' : '#fff',
+    border: `1px solid ${bdr}`,
+    borderRadius: 8, padding: '6px 12px',
+    color: ink, fontFamily: 'inherit', fontSize: '0.83rem', outline: 'none',
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+        {[
+          ['Total', total, ink],
+          ['Verificadas', `${verifiedCount} (${pct}%)`, 'var(--green, #16a34a)'],
+          ['Sin verificar', total - verifiedCount, 'var(--red, #dc2626)'],
+        ].map(([label, value, color]) => (
+          <div key={label} style={{ background: isDark ? '#1f2937' : '#f9fafb', border: `1px solid ${bdr}`, borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color }}>{value}</div>
+            <div style={{ fontSize: '0.65rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {['all', 'verified', 'unverified'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{ ...inputStyle, padding: '5px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem',
+              background: filter === f ? 'var(--accent)' : (isDark ? '#1f2937' : '#fff'),
+              color: filter === f ? '#fff' : t2,
+              border: `1px solid ${filter === f ? 'var(--accent)' : bdr}`,
+            }}>
+            {f === 'all' ? 'Todas' : f === 'verified' ? '✓ Verificadas' : '○ Sin verificar'}
+          </button>
+        ))}
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o código..."
+          style={{ ...inputStyle, flex: 1, minWidth: 160 }}
+        />
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+          <div style={{ width: 24, height: 24, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto', maxHeight: '55vh', overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <thead>
+              <tr style={{ background: isDark ? '#111827' : '#f3f4f6', position: 'sticky', top: 0 }}>
+                {['Código', 'Nombre', 'Tipo', 'Verificada', 'Por', 'Fecha verif.', 'Últ. modificación'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, fontSize: '0.72rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${bdr}`, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: t3 }}>Sin resultados</td></tr>
+              ) : filtered.map((r, i) => (
+                <tr key={r.id} style={{ borderBottom: `1px solid ${bdr}`, background: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)') }}>
+                  <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 700, fontSize: '0.78rem' }}>{r.code || '—'}</td>
+                  <td style={{ padding: '8px 12px', color: ink, fontWeight: 500, maxWidth: 200 }}>{r.name}</td>
+                  <td style={{ padding: '8px 12px', color: t2 }}>{r.isSubRecipe ? 'Sub-receta' : 'Receta'}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <span style={{ fontWeight: 700, color: r.verified ? 'var(--green, #16a34a)' : 'var(--red, #dc2626)' }}>
+                      {r.verified ? '✓ Sí' : '✗ No'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 12px', color: t2 }}>{r.verifiedBy || '—'}</td>
+                  <td style={{ padding: '8px 12px', color: t2, whiteSpace: 'nowrap' }}>
+                    {r.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO') || '—'}
+                  </td>
+                  <td style={{ padding: '8px 12px', color: t3, whiteSpace: 'nowrap' }}>
+                    {r.updatedAt?.toDate?.()?.toLocaleDateString('es-CO') || '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Personalización Tab (Appearance + Contrasts merged) ──────────────────────
 function AppearanceTab({ isDark }) {
   const { i18n } = useTranslation()
@@ -2622,6 +2747,7 @@ export function ConfigModal() {
     { key: 'sales',         label: 'Ventas',             visible: canEdit },
     { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
     { key: 'versions',      label: 'Historial',          visible: canEdit },
+    { key: 'verification',  label: 'Verificación',       visible: canEdit },
     { key: 'users',         label: 'Usuarios',           visible: canManageUsers },
     { key: 'appearance',    label: 'Personalización',    visible: isMaster },
     { key: 'subscription',  label: 'Suscripción',        visible: canManageUsers },
@@ -2745,6 +2871,7 @@ export function ConfigModal() {
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
                 {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'verification' && <VerificationTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
                 {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
                 {configTab === 'subscription' && (

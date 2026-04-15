@@ -786,8 +786,8 @@ export default function RecipeDetailPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { currentRestaurant, theme, openConfig } = useAppStore()
-  const { isAdmin, canEdit, canSeeCosts, isUsuario, user: authUser } = useAuth()
+  const { currentRestaurant, theme, openConfig, userProfile } = useAppStore()
+  const { isAdmin, canEdit, canSeeCosts, isUsuario, isMaster, user: authUser } = useAuth()
   // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
   const isDark = theme === 'night'
@@ -1018,6 +1018,40 @@ export default function RecipeDetailPage() {
   }
 
   const handlePrint = useReactToPrint({ contentRef: printRef })
+
+  const handleVerify = async () => {
+    if (!recipe || !currentRestaurant?.id) return
+    const newVerified = !recipe.verified
+    try {
+      await updateDoc(doc(db, 'restaurants', currentRestaurant.id, 'recipes', id), {
+        verified: newVerified,
+        verifiedAt: newVerified ? serverTimestamp() : null,
+        verifiedBy: newVerified ? (userProfile?.name || userProfile?.email || 'Usuario') : null,
+        verifiedById: newVerified ? authUser?.uid : null,
+        updatedAt: serverTimestamp(),
+      })
+      setRecipe(prev => ({
+        ...prev,
+        verified: newVerified,
+        verifiedBy: newVerified ? (userProfile?.name || userProfile?.email || 'Usuario') : null,
+      }))
+      await logAction({
+        restaurantId: currentRestaurant.id,
+        userId: authUser?.uid,
+        userName: userProfile?.name || userProfile?.email,
+        userRole: userProfile?.role,
+        action: 'edit',
+        module: recipe.isSubRecipe ? 'subrecipe' : 'recipe',
+        entityId: recipe.id,
+        entityName: recipe.name,
+        entityCode: recipe.code,
+        changes: [{ field: 'verificacion', before: newVerified ? 'Sin verificar' : 'Verificada', after: newVerified ? 'Verificada' : 'Sin verificar' }],
+      })
+      success(newVerified ? '✓ Receta verificada' : 'Verificación removida')
+    } catch (err) {
+      error('Error al verificar: ' + err.message)
+    }
+  }
 
   const handlePrintClick = async () => {
     document.body.setAttribute('data-rest-name', currentRestaurant?.name || 'RecetarioPro')
@@ -1311,8 +1345,30 @@ export default function RecipeDetailPage() {
           )}
         </div>
 
-        {/* DERECHA — Imprimir / Guardar / Salir */}
+        {/* DERECHA — Verificar / Imprimir / Guardar / Salir */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {!isNew && !isMaster && (
+            <button
+              onClick={handleVerify}
+              style={{
+                background: recipe?.verified ? 'rgba(22,163,74,0.15)' : 'transparent',
+                border: `1px solid ${recipe?.verified ? 'var(--green, #16a34a)' : (isDark ? '#374151' : '#e5e7eb')}`,
+                borderRadius: 8,
+                color: recipe?.verified ? 'var(--green, #16a34a)' : (isDark ? '#9ca3af' : '#6b7280'),
+                fontFamily: 'inherit',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                padding: '7px 14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {recipe?.verified ? '✓ Verificada' : '○ Verificar'}
+            </button>
+          )}
           {!isNew && (
             <button
               onClick={handlePrintClick}

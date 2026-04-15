@@ -219,6 +219,30 @@ export function RecipeReadOnlyView({ recipe, restaurantId, userId, isDark }) {
           </div>
         )}
 
+        {/* Verification badge */}
+        <div style={{
+          background: recipe?.verified ? 'rgba(22,163,74,0.10)' : 'rgba(100,100,100,0.08)',
+          border: `1px solid ${recipe?.verified ? 'rgba(22,163,74,0.30)' : bdr}`,
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          <span style={{ fontSize: '1.5rem' }}>{recipe?.verified ? '✅' : '⬜'}</span>
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: recipe?.verified ? 'var(--green, #16a34a)' : t3 }}>
+              {recipe?.verified ? 'Receta verificada' : 'Receta no verificada'}
+            </div>
+            {recipe?.verified && (
+              <div style={{ fontSize: '0.72rem', color: t3, marginTop: 2 }}>
+                Por {recipe.verifiedBy} · {recipe.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Personal notes */}
         <div style={{ marginTop: 32 }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, marginBottom: 8 }}>
