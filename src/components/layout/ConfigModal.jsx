@@ -1344,6 +1344,9 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const [convertModal, setConvertModal] = useState(null)
   const [convertData, setConvertData] = useState({})
   const [converting, setConverting] = useState(false)
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('gestion-view-mode') || 'list')
+
+  const setView = (mode) => { setViewMode(mode); localStorage.setItem('gestion-view-mode', mode) }
 
   useEffect(() => {
     if (!restaurantId) return
@@ -1424,6 +1427,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
 
   return (
     <div className="space-y-4">
+      {/* ── Filtros + toggle vista ── */}
       <div className="flex items-center gap-2 flex-wrap">
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar receta..." className={cn('flex-1 min-w-32 px-3 h-8 text-sm rounded-lg border outline-none', isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')} />
@@ -1450,61 +1454,115 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
             {(categories || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-      </div>
-      <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{filtered.length} recetas</p>
-      <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-        <div className="overflow-x-auto max-h-[60vh]">
-          <table className="w-full text-sm">
-            <thead className={cn('text-xs uppercase tracking-wider sticky top-0', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
-              <tr>
-                {['Nombre','Código','Menú','Tipo','Estado','Creación','Acciones'].map((h) => (
-                  <th key={h} className="text-left px-3 py-2">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={7} className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</td></tr>
-              ) : filtered.map((r) => {
-                const cat = (categories || []).find((c) => c.id === r.categoryId)
-                return (
-                  <tr key={r.id} className={cn('border-t', isDark ? 'border-gray-800' : 'border-gray-100')}>
-                    <td className={cn('px-3 py-2.5 font-medium max-w-48 truncate', isDark ? 'text-white' : 'text-gray-800')}>{r.name}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--accent)' }}>{r.code}</td>
-                    <td className="px-3 py-2.5 text-xs">{cat?.name || '—'}</td>
-                    <td className="px-3 py-2.5"><Badge variant="secondary" className="text-xs">{r.isSubRecipe ? 'Sub' : 'Receta'}</Badge></td>
-                    <td className="px-3 py-2.5">
-                      <button onClick={() => handleToggle(r)} className="flex items-center gap-1 text-xs">
-                        {r.active !== false
-                          ? <><ToggleRight className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600">Activa</span></>
-                          : <><ToggleLeft className="h-4 w-4 text-gray-400" /><span className={isDark ? 'text-gray-500' : 'text-gray-400'}>Inactiva</span></>}
-                      </button>
-                    </td>
-                    <td className={cn('px-3 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>
-                      {r.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
-                          className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => { setConvertModal(r); setConvertData({}) }}
-                          className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                          style={{ borderColor: isDark ? '#4b5563' : '#d1d5db', color: isDark ? '#9ca3af' : '#6b7280' }}>
-                          {r.isSubRecipe ? '→ Receta' : '→ Sub'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        {/* Toggle Grid/Lista */}
+        <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
+          <button
+            onClick={() => setView('grid')}
+            style={{ background: viewMode === 'grid' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
+          >⊞</button>
+          <button
+            onClick={() => setView('list')}
+            style={{ background: viewMode === 'list' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
+          >☰</button>
         </div>
       </div>
+      <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{filtered.length} recetas</p>
+
+      {/* ── Vista Lista ── */}
+      {viewMode === 'list' && (
+        <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+          <div className="overflow-x-auto max-h-[60vh]">
+            <table className="w-full text-sm">
+              <thead className={cn('text-xs uppercase tracking-wider sticky top-0', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
+                <tr>
+                  {['Nombre','Código','Menú','Tipo','Estado','Creación','Acciones'].map((h) => (
+                    <th key={h} className="text-left px-3 py-2">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={7} className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</td></tr>
+                ) : filtered.map((r) => {
+                  const cat = (categories || []).find((c) => c.id === r.categoryId)
+                  return (
+                    <tr key={r.id} className={cn('border-t', isDark ? 'border-gray-800' : 'border-gray-100')}>
+                      <td className={cn('px-3 py-2.5 font-medium max-w-48 truncate', isDark ? 'text-white' : 'text-gray-800')}>{r.name}</td>
+                      <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--accent)' }}>{r.code}</td>
+                      <td className="px-3 py-2.5 text-xs">{cat?.name || '—'}</td>
+                      <td className="px-3 py-2.5"><Badge variant="secondary" className="text-xs">{r.isSubRecipe ? 'Sub' : 'Receta'}</Badge></td>
+                      <td className="px-3 py-2.5">
+                        <button onClick={() => handleToggle(r)} className="flex items-center gap-1 text-xs">
+                          {r.active !== false
+                            ? <><ToggleRight className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600">Activa</span></>
+                            : <><ToggleLeft className="h-4 w-4 text-gray-400" /><span className={isDark ? 'text-gray-500' : 'text-gray-400'}>Inactiva</span></>}
+                        </button>
+                      </td>
+                      <td className={cn('px-3 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>
+                        {r.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
+                            className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                            style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => { setConvertModal(r); setConvertData({}) }}
+                            className="text-xs px-2 py-1 rounded-lg border transition-colors"
+                            style={{ borderColor: isDark ? '#4b5563' : '#d1d5db', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                            {r.isSubRecipe ? '→ Receta' : '→ Sub'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Vista Grid ── */}
+      {viewMode === 'grid' && (
+        filtered.length === 0
+          ? <p className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</p>
+          : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+              {filtered.map((r) => {
+                const cat = (categories || []).find((c) => c.id === r.categoryId)
+                return (
+                  <div key={r.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, transition: 'all 0.2s' }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  >
+                    {r.photoURL && (
+                      <img src={r.photoURL} alt={r.name}
+                        style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8 }} />
+                    )}
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700, marginBottom: 2 }}>{r.code}</div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: isDark ? '#6b7280' : '#9ca3af', marginTop: 3 }}>
+                        {r.isSubRecipe ? '⚗ Sub-receta' : '🍽 Receta'}{cat ? ` · ${cat.name}` : ''}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                      <button
+                        onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
+                        style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '6px 4px', cursor: 'pointer' }}
+                      >Editar</button>
+                      <button
+                        onClick={() => { setConvertModal(r); setConvertData({}) }}
+                        style={{ background: isDark ? '#374151' : '#f3f4f6', border: `1px solid ${isDark ? '#4b5563' : '#d1d5db'}`, borderRadius: 6, color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontSize: '0.74rem', padding: '6px 8px', cursor: 'pointer' }}
+                      >⇄</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+      )}
 
       {/* ── Convert Modal ── */}
       {convertModal && (
