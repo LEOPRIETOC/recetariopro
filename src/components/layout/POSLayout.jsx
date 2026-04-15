@@ -259,29 +259,6 @@ export function POSLayout() {
               <span className="truncate">Sub-recetas</span>
             </button>
 
-            {/* Botón Salir */}
-            <button
-              onClick={selectedCategory ? () => setSelectedCategory(null) : handleSalirClick}
-              style={{
-                width: '100%',
-                marginTop: 8,
-                background: 'transparent',
-                border: '1px solid var(--red, #DC2626)',
-                borderRadius: 8,
-                color: 'var(--red, #DC2626)',
-                fontFamily: 'inherit',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                padding: '7px 16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
-            >
-              Salir
-            </button>
-
             <div style={{ fontSize: '0.65rem', color: 'var(--t3)', padding: '4px 8px', opacity: 0.5 }}>
               v{import.meta.env.VITE_APP_VERSION || '2.10'} · {import.meta.env.VITE_BUILD_TIME || 'dev'}
             </div>
