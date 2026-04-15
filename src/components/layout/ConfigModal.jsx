@@ -2092,6 +2092,7 @@ function UsersAdminTab({ isDark }) {
   // ── Edit user ──
   const [editData, setEditData] = useState({ name: '', role: '', email: '' })
   const [editSaving, setEditSaving] = useState(false)
+  const [showEditPassword, setShowEditPassword] = useState(false)
   const handleEditSave = async () => {
     if (!editUser) return
     if (!editData.name?.trim()) { error('El nombre es requerido'); return }
@@ -2258,7 +2259,7 @@ function UsersAdminTab({ isDark }) {
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {canCreateAdmin && u.uid !== user?.uid && (
-                          <button title="Editar" onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
+                          <button title="Editar" onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '', newPassword: '' }); setShowEditPassword(false) }}
                             style={{ background: 'none', border: `1px solid ${borderCol}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: t2, display: 'flex', alignItems: 'center' }}>
                             <Pencil className="h-3 w-3" />
                           </button>
@@ -2303,7 +2304,7 @@ function UsersAdminTab({ isDark }) {
                 {/* Acciones */}
                 <div style={{ display: 'flex', gap: 6, width: '100%' }}>
                   {canCreateAdmin && u.uid !== user?.uid && (
-                    <button onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '' }) }}
+                    <button onClick={() => { setEditUser(u); setEditData({ name: u.name || '', role, email: u.email || '', newPassword: '' }); setShowEditPassword(false) }}
                       style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '7px', cursor: 'pointer' }}>
                       Editar
                     </button>
@@ -2366,13 +2367,25 @@ function UsersAdminTab({ isDark }) {
               </select>
             </UField>
 
-            {/* Contraseña — informativo */}
-            <div style={{ background: isDark ? '#1a1f1b' : '#f9fafb', border: `1px solid ${borderCol}`, borderRadius: 8, padding: '10px 12px' }}>
-              <p style={{ fontSize: '0.75rem', color: t2, margin: 0, lineHeight: 1.5 }}>
-                <strong>Contraseña:</strong> Para cambiarla, el usuario debe usar
-                &ldquo;¿Olvidaste tu contraseña?&rdquo; en el login.
+            {/* Nueva contraseña (opcional) */}
+            <UField label="Nueva contraseña (opcional)">
+              <div style={{ position: 'relative' }}>
+                <input
+                  style={{ ...uInput(isDark), paddingRight: 38 }}
+                  type={showEditPassword ? 'text' : 'password'}
+                  value={editData.newPassword || ''}
+                  onChange={e => setEditData(d => ({ ...d, newPassword: e.target.value }))}
+                  placeholder="Dejar vacío para no cambiar"
+                />
+                <button type="button" onClick={() => setShowEditPassword(v => !v)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af', fontSize: '1rem', padding: 2, lineHeight: 1 }}>
+                  {showEditPassword ? '🙈' : '👁'}
+                </button>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: t3, margin: '4px 0 0' }}>
+                Sin backend no es posible cambiar la contraseña desde aquí. El usuario debe usar &ldquo;¿Olvidaste tu contraseña?&rdquo; en el login.
               </p>
-            </div>
+            </UField>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button variant="outline" size="sm" onClick={() => setEditUser(null)}>Cancelar</Button>
