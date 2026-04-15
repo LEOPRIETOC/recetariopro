@@ -1377,6 +1377,7 @@ const GESTION_DEFAULT_COLS = [
   { id: 'foto',         label: 'Foto',         visible: true, sortable: false },
   { id: 'codigo',       label: 'Código',        visible: true, sortable: true  },
   { id: 'nombre',       label: 'Nombre',        visible: true, sortable: true  },
+  { id: 'menu',         label: 'Menú',          visible: true, sortable: true  },
   { id: 'costo',        label: 'Costo',         visible: true, sortable: true  },
   { id: 'precio',       label: 'Precio',        visible: true, sortable: true  },
   { id: 'margen',       label: 'Margen %',      visible: true, sortable: true  },
@@ -1388,6 +1389,7 @@ const GESTION_DEFAULT_COLS = [
 const GESTION_FIELD_MAP = {
   codigo:       'code',
   nombre:       'name',
+  menu:         'menuName',
   costo:        'totalCost',
   precio:       'sellingPrice',
   margen:       'sellingPrice', // computed, handled in sort override
@@ -1489,6 +1491,18 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
         return (
           <td key={colId} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {recipe.name}
+          </td>
+        )
+      case 'menu':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {recipe.menuName ? (
+              <span style={{ background: 'var(--goldBg)', border: '1px solid var(--b2)', borderRadius: 6, padding: '2px 8px', fontSize: '0.74rem', color: 'var(--t2)', whiteSpace: 'nowrap' }}>
+                {recipe.menuName}
+              </span>
+            ) : (
+              <span style={{ color: 'var(--t3)', fontSize: '0.78rem' }}>—</span>
+            )}
           </td>
         )
       case 'costo':
