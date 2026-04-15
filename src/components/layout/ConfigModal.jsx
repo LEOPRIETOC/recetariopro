@@ -2299,6 +2299,8 @@ export function ConfigModal() {
   const [section, setSection] = useState(null)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('config-view-mode') || 'grid')
 
+  useEffect(() => { if (!configOpen) setSection(null) }, [configOpen])
+
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('config-view-mode', mode) }
 
   const CARDS = [
