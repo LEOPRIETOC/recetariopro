@@ -92,7 +92,19 @@ function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       className="relative group"
+      style={{ position: 'relative' }}
     >
+      {/* Verificación badge */}
+      {recipe.verified && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8, zIndex: 10,
+          background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.30)',
+          borderRadius: '50%', width: 22, height: 22,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '0.75rem', color: 'var(--green)', fontWeight: 700,
+        }}>✓</div>
+      )}
+
       <div
         onClick={() => navigate(`/recipes/${recipe.id}`)}
         className={cn(
@@ -142,17 +154,6 @@ function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }
             isDark ? 'bg-gray-800 text-gray-500' : 'bg-white/80 text-gray-400')}>
           <GripVertical className="h-3.5 w-3.5" />
         </div>
-      )}
-      {canEdit && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggle(recipe) }}
-          className={cn('absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg',
-            isDark ? 'bg-gray-800' : 'bg-white/80')}
-        >
-          {recipe.active !== false
-            ? <ToggleRight className="h-4 w-4 text-emerald-500" />
-            : <ToggleLeft className="h-4 w-4 text-gray-400" />}
-        </button>
       )}
     </div>
   )
