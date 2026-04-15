@@ -169,8 +169,38 @@ export default function RecipesPage() {
   const [search, setSearch] = useState(globalSearch || '')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterActive, setFilterActive] = useState('all')
-  const [viewMode, setViewMode] = useState('grid')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('pos-view-mode') || 'grid')
   const [activeId, setActiveId] = useState(null)
+
+  // ── Columnas reordenables (vista lista) ──────────────────────────────────
+  const DEFAULT_LIST_COLUMNS = [
+    { id: 'foto',         label: 'Foto',       visible: true, sortable: false },
+    { id: 'codigo',       label: 'Código',     visible: true, sortable: true  },
+    { id: 'nombre',       label: 'Nombre',     visible: true, sortable: true  },
+    { id: 'costo',        label: 'Costo',      visible: true, sortable: true  },
+    { id: 'precio',       label: 'Precio',     visible: true, sortable: true  },
+    { id: 'margen',       label: 'Margen',     visible: true, sortable: true  },
+    { id: 'creacion',     label: 'Creación',   visible: true, sortable: true  },
+    { id: 'verificacion', label: 'Verificado', visible: true, sortable: true  },
+  ]
+  const [listColumns, setListColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pos-columns-order')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const merged = parsed
+          .filter(c => DEFAULT_LIST_COLUMNS.find(d => d.id === c.id))
+          .map(c => ({ ...DEFAULT_LIST_COLUMNS.find(d => d.id === c.id), visible: c.visible }))
+        DEFAULT_LIST_COLUMNS.forEach(d => { if (!merged.find(c => c.id === d.id)) merged.push(d) })
+        return merged
+      }
+    } catch {}
+    return DEFAULT_LIST_COLUMNS
+  })
+  const [dragCol, setDragCol] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
+  const [sortField, setSortField] = useState('nombre')
+  const [sortDir, setSortDir] = useState('asc')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -271,6 +301,84 @@ export default function RecipesPage() {
     reader.readAsArrayBuffer(file)
   }, [currentRestaurant?.id])
 
+  const reorderListColumns = (fromId, toId) => {
+    setListColumns(prev => {
+      const cols = [...prev]
+      const fromIdx = cols.findIndex(c => c.id === fromId)
+      const toIdx = cols.findIndex(c => c.id === toId)
+      const [moved] = cols.splice(fromIdx, 1)
+      cols.splice(toIdx, 0, moved)
+      localStorage.setItem('pos-columns-order', JSON.stringify(cols))
+      return cols
+    })
+  }
+
+  const toggleListSort = (colId) => {
+    if (sortField === colId) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(colId); setSortDir('asc') }
+  }
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    let va, vb
+    switch (sortField) {
+      case 'codigo':       va = a.code || '';                              vb = b.code || '';                              break
+      case 'costo':        va = a.costPerPortion ?? 0;                     vb = b.costPerPortion ?? 0;                     break
+      case 'precio':       va = a.salePrice ?? 0;                          vb = b.salePrice ?? 0;                          break
+      case 'margen':       va = calculateMargin(a.costPerPortion || 0, a.salePrice || 0); vb = calculateMargin(b.costPerPortion || 0, b.salePrice || 0); break
+      case 'creacion':     va = a.createdAt?.toMillis?.() ?? 0;            vb = b.createdAt?.toMillis?.() ?? 0;            break
+      case 'verificacion': va = a.verified ? 1 : 0;                        vb = b.verified ? 1 : 0;                        break
+      default:             va = a.name || '';                               vb = b.name || ''
+    }
+    if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    return sortDir === 'asc' ? va - vb : vb - va
+  })
+
+  const renderListCell = (colId, recipe, cat) => {
+    switch (colId) {
+      case 'foto':
+        return (
+          <td key={colId} className="px-4 py-2.5">
+            {recipe.photoURL
+              ? <img src={recipe.photoURL} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+              : <div className={cn('flex items-center justify-center rounded-lg', isDark ? 'bg-gray-800' : 'bg-amber-50')} style={{ width: 36, height: 36 }}>
+                  <BookOpen className="h-4 w-4 text-amber-400" />
+                </div>
+            }
+          </td>
+        )
+      case 'codigo':
+        return <td key={colId} className={cn('px-4 py-2.5 font-mono text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{recipe.code ? `#${recipe.code}` : '—'}</td>
+      case 'nombre':
+        return (
+          <td key={colId} className={cn('px-4 py-2.5 font-medium', isDark ? 'text-white' : 'text-gray-800')}>
+            <div className="max-w-xs truncate">{recipe.name}</div>
+            {cat && <div className="text-xs mt-0.5" style={{ color: cat.color || '#d97706' }}>{cat.name}</div>}
+          </td>
+        )
+      case 'costo':
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-300' : 'text-gray-700')}>{recipe.costPerPortion != null ? formatCurrency(recipe.costPerPortion) : '—'}</td>
+      case 'precio':
+        return <td key={colId} className="px-4 py-2.5 text-xs text-amber-600 font-medium">{recipe.salePrice != null ? formatCurrency(recipe.salePrice) : '—'}</td>
+      case 'margen': {
+        const m = calculateMargin(recipe.costPerPortion || 0, recipe.salePrice || 0)
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs font-medium', m >= 60 ? 'text-emerald-500' : m >= 40 ? 'text-amber-500' : 'text-red-500')}>{recipe.salePrice ? `${m.toFixed(1)}%` : '—'}</td>
+      }
+      case 'creacion':
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>{recipe.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}</td>
+      case 'verificacion':
+        return (
+          <td key={colId} className="px-4 py-2.5 text-xs">
+            {recipe.verified
+              ? <span className="text-emerald-500 font-semibold">✓ Sí</span>
+              : <span className={isDark ? 'text-gray-600' : 'text-gray-400'}>—</span>
+            }
+          </td>
+        )
+      default:
+        return <td key={colId} />
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -336,13 +444,13 @@ export default function RecipesPage() {
         </Select>
         <div className={cn('flex rounded-lg border overflow-hidden', isDark ? 'border-gray-700' : 'border-gray-200')}>
           <button
-            onClick={() => setViewMode('grid')}
+            onClick={() => { setViewMode('grid'); localStorage.setItem('pos-view-mode', 'grid') }}
             className={cn('px-3 py-2 transition-colors', viewMode === 'grid' ? 'bg-gold-600 text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
           >
             <Grid className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => { setViewMode('list'); localStorage.setItem('pos-view-mode', 'list') }}
             className={cn('px-3 py-2 transition-colors', viewMode === 'list' ? 'bg-gold-600 text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
           >
             <List className="h-4 w-4" />
@@ -420,25 +528,46 @@ export default function RecipesPage() {
           </SortableContext>
         </DndContext>
       ) : (
-        // List view
+        // List view — columnas reordenables
         <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className={cn('border-b text-xs uppercase tracking-wider', isDark ? 'border-gray-800 text-gray-500' : 'border-gray-100 text-gray-400')}>
-                  <th className="text-left px-6 py-3">Receta</th>
-                  <th className="text-left px-6 py-3">Categoría</th>
-                  <th className="text-left px-6 py-3">Porciones</th>
-                  {showCosts && <th className="text-right px-6 py-3">Costo</th>}
-                  {showCosts && <th className="text-right px-6 py-3">Precio</th>}
-                  {showCosts && <th className="text-right px-6 py-3">Margen</th>}
-                  <th className="text-center px-6 py-3">Estado</th>
+                  {listColumns.filter(c => c.visible).map((col) => (
+                    <th
+                      key={col.id}
+                      draggable
+                      onDragStart={() => setDragCol(col.id)}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(col.id) }}
+                      onDrop={() => { if (dragCol && dragCol !== col.id) reorderListColumns(dragCol, col.id); setDragCol(null); setDragOver(null) }}
+                      onDragEnd={() => { setDragCol(null); setDragOver(null) }}
+                      onClick={col.sortable ? () => toggleListSort(col.id) : undefined}
+                      className="text-left px-4 py-3"
+                      style={{
+                        cursor: col.sortable ? 'pointer' : 'grab',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                        background: dragOver === col.id ? (isDark ? '#374151' : '#f3f4f6') : undefined,
+                        borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ opacity: 0.35, fontSize: '0.65rem' }}>⠿</span>
+                        {col.label}
+                        {col.sortable && sortField === col.id && (
+                          <span style={{ color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="text-left px-4 py-3">Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((recipe) => {
+                {sortedFiltered.map((recipe) => {
                   const cat = categories.find((c) => c.id === recipe.categoryId)
-                  const margin = calculateMargin(recipe.costPerPortion || 0, recipe.salePrice || 0)
                   return (
                     <tr
                       key={recipe.id}
@@ -446,34 +575,10 @@ export default function RecipesPage() {
                         'border-b last:border-0 transition-colors cursor-pointer',
                         isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-50 hover:bg-gray-50'
                       )}
-                      onClick={() => window.location.href = `/recipes/${recipe.id}`}
+                      onClick={() => navigate(`/recipes/${recipe.id}`)}
                     >
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-3">
-                          {recipe.photoURL
-                            ? <img src={recipe.photoURL} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                            : <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', isDark ? 'bg-gray-800' : 'bg-gold-50')}>
-                                <BookOpen className="h-4 w-4 text-gold-500" />
-                              </div>
-                          }
-                          <div>
-                            <p className={cn('font-medium', isDark ? 'text-white' : 'text-gray-800')}>{recipe.name}</p>
-                            {recipe.code && <p className={cn('text-xs font-mono', isDark ? 'text-gray-600' : 'text-gray-400')}>#{recipe.code}</p>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3">
-                        {cat && <Badge variant="secondary" style={{ background: (cat.color || '#d97706') + '20', color: cat.color || '#d97706' }}>{cat.name}</Badge>}
-                      </td>
-                      <td className={cn('px-6 py-3', isDark ? 'text-gray-400' : 'text-gray-500')}>{recipe.portions}</td>
-                      {showCosts && <td className={cn('px-6 py-3 text-right', isDark ? 'text-gray-300' : 'text-gray-700')}>{formatCurrency(recipe.costPerPortion)}</td>}
-                      {showCosts && <td className="px-6 py-3 text-right text-gold-600 font-medium">{formatCurrency(recipe.salePrice)}</td>}
-                      {showCosts && (
-                        <td className={cn('px-6 py-3 text-right font-medium', margin >= 60 ? 'text-emerald-500' : margin >= 40 ? 'text-amber-500' : 'text-red-500')}>
-                          {margin.toFixed(1)}%
-                        </td>
-                      )}
-                      <td className="px-6 py-3 text-center">
+                      {listColumns.filter(c => c.visible).map(col => renderListCell(col.id, recipe, cat))}
+                      <td className="px-4 py-2.5 text-center">
                         <Badge variant={recipe.active !== false ? 'success' : 'secondary'}>
                           {recipe.active !== false ? t('common.active') : t('common.inactive')}
                         </Badge>

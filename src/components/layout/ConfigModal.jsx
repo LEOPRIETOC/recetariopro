@@ -1373,6 +1373,28 @@ function SuppliersTab({ restaurantId, isDark }) {
 }
 
 // ── Recipe Management Tab ─────────────────────────────────────────────────────
+const GESTION_DEFAULT_COLS = [
+  { id: 'foto',         label: 'Foto',         visible: true, sortable: false },
+  { id: 'codigo',       label: 'Código',        visible: true, sortable: true  },
+  { id: 'nombre',       label: 'Nombre',        visible: true, sortable: true  },
+  { id: 'costo',        label: 'Costo',         visible: true, sortable: true  },
+  { id: 'precio',       label: 'Precio',        visible: true, sortable: true  },
+  { id: 'margen',       label: 'Margen %',      visible: true, sortable: true  },
+  { id: 'creacion',     label: 'Creación',      visible: true, sortable: true  },
+  { id: 'verificacion', label: 'Verificación',  visible: true, sortable: true  },
+]
+
+// col id → recipe field name used by useTableSort
+const GESTION_FIELD_MAP = {
+  codigo:       'code',
+  nombre:       'name',
+  costo:        'totalCost',
+  precio:       'sellingPrice',
+  margen:       'sellingPrice', // computed, handled in sort override
+  creacion:     'createdAt',
+  verificacion: 'verified',
+}
+
 function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const navigate = useNavigate()
   const { success, error } = useToast()
@@ -1384,8 +1406,24 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const [menuFilter, setMenuFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('gestion-view-mode') || 'list')
-
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('gestion-view-mode', mode) }
+
+  const [columns, setColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gestion-columns-order')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const merged = parsed
+          .filter(c => GESTION_DEFAULT_COLS.find(d => d.id === c.id))
+          .map(c => ({ ...GESTION_DEFAULT_COLS.find(d => d.id === c.id), visible: c.visible }))
+        GESTION_DEFAULT_COLS.forEach(d => { if (!merged.find(c => c.id === d.id)) merged.push(d) })
+        return merged
+      }
+    } catch {}
+    return GESTION_DEFAULT_COLS
+  })
+  const [dragCol, setDragCol] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
 
   useEffect(() => {
     if (!restaurantId) return
@@ -1406,6 +1444,21 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
     return true
   })
 
+  const { sorted, toggleSort, sortField, sortDir } = useTableSort(filtered, 'name')
+
+  const reorderColumns = (fromId, toId) => {
+    if (fromId === toId) return
+    const newCols = [...columns]
+    const fromIdx = newCols.findIndex(c => c.id === fromId)
+    const toIdx = newCols.findIndex(c => c.id === toId)
+    const [removed] = newCols.splice(fromIdx, 1)
+    newCols.splice(toIdx, 0, removed)
+    setColumns(newCols)
+    localStorage.setItem('gestion-columns-order', JSON.stringify(newCols))
+  }
+
+  const handleEdit = (r) => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }
+
   const handleToggle = async (r) => {
     try {
       await toggleRecipeActive(restaurantId, r.id, !r.active)
@@ -1413,20 +1466,92 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
     } catch { error('Error') }
   }
 
-  const btnStyle = (accent) => ({
-    border: 'none', borderRadius: 8, padding: '9px 20px',
-    fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-    cursor: 'pointer', background: accent ? 'var(--accent)' : (isDark ? '#374151' : '#f3f4f6'),
-    color: accent ? '#fff' : (isDark ? '#d1d5db' : '#374151'),
-  })
+  const renderCell = (colId, recipe) => {
+    switch (colId) {
+      case 'foto':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {recipe.photoURL
+              ? <img src={recipe.photoURL} style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} alt="" />
+              : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
+            }
+          </td>
+        )
+      case 'codigo':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 10px', borderRadius: 6, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              {recipe.code || '—'}
+            </span>
+          </td>
+        )
+      case 'nombre':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {recipe.name}
+          </td>
+        )
+      case 'costo':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
+            {recipe.totalCost ? `$${Number(recipe.totalCost).toLocaleString('es-CO')}` : '—'}
+          </td>
+        )
+      case 'precio':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, fontSize: '0.84rem' }}>
+            {recipe.sellingPrice ? `$${Number(recipe.sellingPrice).toLocaleString('es-CO')}` : '—'}
+          </td>
+        )
+      case 'margen': {
+        const costo = recipe.totalCost || 0
+        const precio = recipe.sellingPrice || 0
+        const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {margen !== null ? (
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: margen >= 60 ? 'var(--green)' : margen >= 40 ? 'var(--orange)' : 'var(--red)' }}>
+                {margen}%
+              </span>
+            ) : '—'}
+          </td>
+        )
+      }
+      case 'creacion':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t3)', fontSize: '0.78rem' }}>
+            {recipe.createdAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
+          </td>
+        )
+      case 'verificacion':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {recipe.verified ? (
+              <span style={{ color: 'var(--green)', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                ✓ {recipe.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+              </span>
+            ) : (
+              <span style={{ color: 'var(--t3)', fontSize: '0.78rem' }}>Sin verificar</span>
+            )}
+          </td>
+        )
+      default:
+        return <td key={colId} />
+    }
+  }
 
-  const inputStyle = {
-    width: '100%', padding: '9px 12px', borderRadius: 8,
-    border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-    background: isDark ? '#1f2937' : '#fff',
-    color: isDark ? '#f9fafb' : 'var(--text)',
-    fontFamily: 'inherit', fontSize: '0.88rem', outline: 'none',
-    boxSizing: 'border-box',
+  const thBase = {
+    padding: '9px 12px',
+    textAlign: 'left',
+    fontSize: '0.68rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+    color: 'var(--t3)',
+    fontWeight: 700,
+    background: 'var(--bg3)',
+    borderBottom: '1px solid var(--b1)',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
   }
 
   return (
@@ -1474,47 +1599,67 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
 
       {/* ── Vista Lista ── */}
       {viewMode === 'list' && (
-        <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          <div className="overflow-x-auto max-h-[60vh]">
-            <table className="w-full text-sm">
-              <thead className={cn('text-xs uppercase tracking-wider sticky top-0', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
+        <div style={{ borderRadius: 12, border: '1px solid var(--b1)', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto', maxHeight: '60vh', overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
                 <tr>
-                  {['Nombre','Código','Menú','Tipo','Estado','Creación','Acciones'].map((h) => (
-                    <th key={h} className="text-left px-3 py-2">{h}</th>
+                  {columns.filter(c => c.visible).map((col) => (
+                    <th
+                      key={col.id}
+                      draggable
+                      onDragStart={() => setDragCol(col.id)}
+                      onDragOver={e => { e.preventDefault(); setDragOver(col.id) }}
+                      onDrop={() => { reorderColumns(dragCol, col.id); setDragCol(null); setDragOver(null) }}
+                      onDragEnd={() => { setDragCol(null); setDragOver(null) }}
+                      onClick={() => col.sortable && toggleSort(GESTION_FIELD_MAP[col.id] || col.id)}
+                      style={{
+                        ...thBase,
+                        cursor: col.sortable ? 'pointer' : 'grab',
+                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
+                        borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
+                      }}
+                    >
+                      {col.label}
+                      {col.sortable && sortField === (GESTION_FIELD_MAP[col.id] || col.id) && (
+                        <span style={{ marginLeft: 4, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                      {col.sortable && sortField !== (GESTION_FIELD_MAP[col.id] || col.id) && (
+                        <span style={{ marginLeft: 4, color: 'var(--t3)', opacity: 0.5 }}>⇅</span>
+                      )}
+                    </th>
                   ))}
+                  <th style={{ ...thBase, cursor: 'default' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</td></tr>
-                ) : filtered.map((r) => {
-                  const cat = (categories || []).find((c) => c.id === r.categoryId)
-                  return (
-                    <tr key={r.id} className={cn('border-t', isDark ? 'border-gray-800' : 'border-gray-100')}>
-                      <td className={cn('px-3 py-2.5 font-medium max-w-48 truncate', isDark ? 'text-white' : 'text-gray-800')}>{r.name}</td>
-                      <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--accent)' }}>{r.code}</td>
-                      <td className="px-3 py-2.5 text-xs">{cat?.name || '—'}</td>
-                      <td className="px-3 py-2.5"><Badge variant="secondary" className="text-xs">{r.isSubRecipe ? 'Sub' : 'Receta'}</Badge></td>
-                      <td className="px-3 py-2.5">
-                        <button onClick={() => handleToggle(r)} className="flex items-center gap-1 text-xs">
-                          {r.active !== false
-                            ? <><ToggleRight className="h-4 w-4 text-emerald-500" /><span className="text-emerald-600">Activa</span></>
-                            : <><ToggleLeft className="h-4 w-4 text-gray-400" /><span className={isDark ? 'text-gray-500' : 'text-gray-400'}>Inactiva</span></>}
-                        </button>
-                      </td>
-                      <td className={cn('px-3 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>
-                        {r.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <button onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
-                          className="text-xs px-2 py-1 rounded-lg border transition-colors"
-                          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                {sorted.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.filter(c => c.visible).length + 1}
+                      style={{ textAlign: 'center', padding: '32px 0', color: 'var(--t3)', fontSize: '0.85rem' }}>
+                      Sin resultados
+                    </td>
+                  </tr>
+                ) : sorted.map((r) => (
+                  <tr
+                    key={r.id}
+                    style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
+                    onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {columns.filter(c => c.visible).map(col => renderCell(col.id, r))}
+                    <td style={{ padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => handleEdit(r)}
+                          style={{ border: '1px solid var(--accent)', borderRadius: 6, background: 'transparent', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
                           Editar
                         </button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -1534,8 +1679,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                     onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
                   >
                     {r.photoURL && (
-                      <img src={r.photoURL} alt={r.name}
-                        style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8 }} />
+                      <img src={r.photoURL} alt={r.name} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8 }} />
                     )}
                     <div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700, marginBottom: 2 }}>{r.code}</div>
@@ -1546,7 +1690,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                       <button
-                        onClick={() => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }}
+                        onClick={() => handleEdit(r)}
                         style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '6px 4px', cursor: 'pointer' }}
                       >Editar</button>
                     </div>
