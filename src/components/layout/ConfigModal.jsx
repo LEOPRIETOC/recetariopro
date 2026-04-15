@@ -2039,6 +2039,7 @@ function UsersAdminTab({ isDark }) {
   // ── Create form state ──
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'usuario' })
   const [saving, setSaving] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const roleOptions = isMaster
     ? ['superadmin', 'admin', 'usuario']
@@ -2194,7 +2195,19 @@ function UsersAdminTab({ isDark }) {
               <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
             </UField>
             <UField label="Contraseña temporal *">
-              <input style={uInput(isDark)} type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Mín. 6 caracteres" />
+              <div style={{ position: 'relative' }}>
+                <input
+                  style={{ ...uInput(isDark), paddingRight: 38 }}
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Mín. 6 caracteres"
+                />
+                <button type="button" onClick={() => setShowPassword(v => !v)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af', fontSize: '1rem', padding: 2, lineHeight: 1 }}>
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
             </UField>
             <UField label="Rol *">
               <select style={uInput(isDark)} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
