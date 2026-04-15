@@ -48,6 +48,31 @@ function useSortableData(data) {
   return { sorted, requestSort, sortKey, sortDir, SortIcon }
 }
 
+// ── Column constants ──────────────────────────────────────────────────────────
+const MENU_DEFAULT_COLS = [
+  { id: 'foto',         label: 'Foto',         visible: true, sortable: false },
+  { id: 'codigo',       label: 'Código',        visible: true, sortable: true  },
+  { id: 'nombre',       label: 'Nombre',        visible: true, sortable: true  },
+  { id: 'costo',        label: 'Costo',         visible: true, sortable: true  },
+  { id: 'precio',       label: 'Precio',        visible: true, sortable: true  },
+  { id: 'margen',       label: 'Margen %',      visible: true, sortable: true  },
+  { id: 'creacion',     label: 'Creación',      visible: true, sortable: true  },
+  { id: 'verificacion', label: 'Verificación',  visible: true, sortable: true  },
+]
+
+const SUB_DEFAULT_COLS = [
+  { id: 'foto',         label: 'Foto',          visible: true, sortable: false },
+  { id: 'codigo',       label: 'Código',         visible: true, sortable: true  },
+  { id: 'nombre',       label: 'Nombre',         visible: true, sortable: true  },
+  { id: 'rendimiento',  label: 'Rendimiento',    visible: true, sortable: true  },
+  { id: 'costo',        label: 'Costo',          visible: true, sortable: true  },
+  { id: 'creacion',     label: 'Creación',       visible: true, sortable: true  },
+  { id: 'verificacion', label: 'Verificación',   visible: true, sortable: true  },
+]
+
+const MENU_FIELD_MAP   = { codigo: 'code', nombre: 'name', costo: 'costPerPortion', precio: 'salePrice', margen: 'salePrice', creacion: 'createdAt', verificacion: 'verified' }
+const SUB_FIELD_MAP    = { codigo: 'code', nombre: 'name', rendimiento: 'yield',    costo: 'costPerPortion', creacion: 'createdAt', verificacion: 'verified' }
+
 // ── Recipe Card (sortable) ────────────────────────────────────────────────────
 function RecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
@@ -140,8 +165,28 @@ export default function POSMainPage() {
 
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
-  const [viewMode, setViewMode] = useState('grid')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('pos-main-view-mode') || 'grid')
   const [activeId, setActiveId] = useState(null)
+
+  // ── Reorderable columns ───────────────────────────────────────────────────
+  const loadCols = (key, defaults) => {
+    try {
+      const saved = localStorage.getItem(key)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const merged = parsed
+          .filter(c => defaults.find(d => d.id === c.id))
+          .map(c => ({ ...defaults.find(d => d.id === c.id), visible: c.visible }))
+        defaults.forEach(d => { if (!merged.find(c => c.id === d.id)) merged.push(d) })
+        return merged
+      }
+    } catch {}
+    return defaults
+  }
+  const [menuColumns,   setMenuColumns]   = useState(() => loadCols('menu-columns-order',      MENU_DEFAULT_COLS))
+  const [subColumns,    setSubColumns]    = useState(() => loadCols('subrecipe-columns-order',  SUB_DEFAULT_COLS))
+  const [dragCol,  setDragCol]  = useState(null)
+  const [dragOver, setDragOver] = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -155,7 +200,7 @@ export default function POSMainPage() {
     return () => { u1(); u2() }
   }, [currentRestaurant?.id])
 
-  const { sorted: sortedRecipes, requestSort, SortIcon } = useSortableData(recipes)
+  const { sorted: sortedRecipes, requestSort, sortKey, sortDir, SortIcon } = useSortableData(recipes)
 
   const isSubSection = selectedCategory === SUBRECIPES_CATEGORY_ID
 
@@ -198,6 +243,93 @@ export default function POSMainPage() {
     setActiveId(null)
   }
 
+  const reorderCols = (setter, storageKey, fromId, toId) => {
+    if (fromId === toId) return
+    setter(prev => {
+      const cols = [...prev]
+      const fi = cols.findIndex(c => c.id === fromId)
+      const ti = cols.findIndex(c => c.id === toId)
+      const [removed] = cols.splice(fi, 1)
+      cols.splice(ti, 0, removed)
+      localStorage.setItem(storageKey, JSON.stringify(cols))
+      return cols
+    })
+  }
+
+  const renderCell = (colId, recipe, isDark) => {
+    switch (colId) {
+      case 'foto':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {recipe.photoURL
+              ? <img src={recipe.photoURL} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+              : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
+            }
+          </td>
+        )
+      case 'codigo':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 10px', borderRadius: 6, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              {recipe.code || '—'}
+            </span>
+          </td>
+        )
+      case 'nombre':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', fontWeight: 500, color: 'var(--text)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {recipe.name}
+          </td>
+        )
+      case 'costo':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
+            {recipe.costPerPortion ? `$${Number(recipe.costPerPortion).toLocaleString('es-CO')}` : '—'}
+          </td>
+        )
+      case 'precio':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, fontSize: '0.84rem' }}>
+            {recipe.salePrice ? `$${Number(recipe.salePrice).toLocaleString('es-CO')}` : '—'}
+          </td>
+        )
+      case 'margen': {
+        const costo = recipe.costPerPortion || 0
+        const precio = recipe.salePrice || 0
+        const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {margen !== null
+              ? <span style={{ fontSize: '0.82rem', fontWeight: 600, color: margen >= 60 ? 'var(--green)' : margen >= 40 ? 'var(--orange)' : 'var(--red)' }}>{margen}%</span>
+              : <span style={{ color: 'var(--t3)' }}>—</span>}
+          </td>
+        )
+      }
+      case 'rendimiento':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t2)', fontSize: '0.84rem' }}>
+            {recipe.yield ? `${recipe.yield} ${recipe.yieldUnit || ''}` : '—'}
+          </td>
+        )
+      case 'creacion':
+        return (
+          <td key={colId} style={{ padding: '8px 12px', color: 'var(--t3)', fontSize: '0.78rem' }}>
+            {recipe.createdAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
+          </td>
+        )
+      case 'verificacion':
+        return (
+          <td key={colId} style={{ padding: '8px 12px' }}>
+            {recipe.verified
+              ? <span style={{ color: 'var(--green)', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>✓ {recipe.verifiedAt?.toDate?.()?.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</span>
+              : <span style={{ color: 'var(--t3)', fontSize: '0.78rem' }}>Sin verificar</span>}
+          </td>
+        )
+      default:
+        return <td key={colId} />
+    }
+  }
+
   const selectedCat = isSubSection
     ? { name: 'Sub-recetas' }
     : (categories || []).find((c) => c.id === selectedCategory)
@@ -219,14 +351,14 @@ export default function POSMainPage() {
           {/* View toggle */}
           <div className={cn('flex rounded-lg border overflow-hidden', isDark ? 'border-gray-700' : 'border-gray-200')}>
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => { setViewMode('grid'); localStorage.setItem('pos-main-view-mode', 'grid') }}
               className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
               style={viewMode === 'grid' ? { backgroundColor: 'var(--accent)' } : {}}
             >
               Grid
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => { setViewMode('list'); localStorage.setItem('pos-main-view-mode', 'list') }}
               className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
               style={viewMode === 'list' ? { backgroundColor: 'var(--accent)' } : {}}
             >
@@ -291,66 +423,69 @@ export default function POSMainPage() {
         </DndContext>
       )}
 
-      {/* List view */}
-      {filtered.length > 0 && viewMode === 'list' && (
-        <div className={cn('rounded-2xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className={cn('text-xs uppercase tracking-wider', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
-                <tr>
-                  {[
-                    ['name','Nombre'],['code','Código'],['categoryId','Menú'],
-                    ...(showCosts ? [['salePrice','Precio'],['costPerPortion','Costo'],['margin','Margen']] : []),
-                    ['active','Estado'],['createdAt','Creación'],
-                  ].map(([k, label]) => (
-                    <th key={k} className="px-4 py-3 text-left cursor-pointer select-none" style={{ ':hover': { color: 'var(--accent)' } }} onClick={() => requestSort(k)}>
-                      {label}<SortIcon k={k} />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => {
-                  const cat = (categories || []).find((c) => c.id === r?.categoryId)
-                  const margin = calculateMargin(r?.costPerPortion || 0, r?.salePrice || 0)
-                  return (
-                    <tr key={r.id} onClick={() => navigate(`/recipes/${r.id}`)}
-                      className={cn('border-t cursor-pointer transition-colors', isDark ? 'border-gray-800 hover:bg-gray-800/50' : 'border-gray-100 hover:bg-gray-50')}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {r.photoURL
-                            ? <img src={r.photoURL} className="w-8 h-8 rounded-lg object-cover" alt="" />
-                            : <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: 'var(--accent)', opacity: 0.2 }} />}
-                          <span className={cn('font-medium', isDark ? 'text-white' : 'text-gray-800')}>{r.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--accent)' }}>{r.code}</td>
-                      <td className="px-4 py-3">{cat && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: 'var(--accent)', opacity: 0.85 }}>
-                          {cat.name}
-                        </span>
-                      )}</td>
-                      {showCosts && <>
-                        <td className="px-4 py-3 font-medium" style={{ color: 'var(--accent)' }}>{formatNumber(r.salePrice)}</td>
-                        <td className={cn('px-4 py-3', isDark ? 'text-gray-300' : 'text-gray-700')}>{formatNumber(r.costPerPortion)}</td>
-                        <td className={cn('px-4 py-3 font-medium', margin>=60?'text-emerald-500':margin>=40?'text-amber-500':'text-red-500')}>{margin.toFixed(1)}%</td>
-                      </>}
-                      <td className="px-4 py-3">
-                        <Badge variant={r.active!==false ? 'success' : 'secondary'}>
-                          {r.active!==false ? 'Activa' : 'Inactiva'}
-                        </Badge>
-                      </td>
-                      <td className={cn('px-4 py-3 text-xs', isDark?'text-gray-600':'text-gray-400')}>
-                        {r.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}
-                      </td>
+      {/* List view — columnas reordenables */}
+      {filtered.length > 0 && viewMode === 'list' && (() => {
+        const cols       = isSubSection ? subColumns    : menuColumns
+        const setCols    = isSubSection ? setSubColumns : setMenuColumns
+        const storageKey = isSubSection ? 'subrecipe-columns-order' : 'menu-columns-order'
+        const fieldMap   = isSubSection ? SUB_FIELD_MAP : MENU_FIELD_MAP
+        const thBase = {
+          padding: '9px 12px', textAlign: 'left', fontSize: '0.68rem',
+          textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--t3)',
+          fontWeight: 700, background: 'var(--bg3)', borderBottom: '1px solid var(--b1)',
+          whiteSpace: 'nowrap', userSelect: 'none',
+        }
+        return (
+          <div style={{ borderRadius: 12, border: '1px solid var(--b1)', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '70vh', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                <thead>
+                  <tr>
+                    {cols.filter(c => c.visible).map((col) => (
+                      <th
+                        key={col.id}
+                        draggable
+                        onDragStart={() => setDragCol(col.id)}
+                        onDragOver={e => { e.preventDefault(); setDragOver(col.id) }}
+                        onDrop={() => { reorderCols(setCols, storageKey, dragCol, col.id); setDragCol(null); setDragOver(null) }}
+                        onDragEnd={() => { setDragCol(null); setDragOver(null) }}
+                        onClick={() => col.sortable && requestSort(fieldMap[col.id] || col.id)}
+                        style={{
+                          ...thBase,
+                          cursor: col.sortable ? 'pointer' : 'grab',
+                          background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
+                          borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
+                        }}
+                      >
+                        {col.label}
+                        {col.sortable && sortKey === (fieldMap[col.id] || col.id) && (
+                          <span style={{ marginLeft: 4, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                        {col.sortable && sortKey !== (fieldMap[col.id] || col.id) && (
+                          <span style={{ marginLeft: 4, color: 'var(--t3)', opacity: 0.5 }}>⇅</span>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <tr
+                      key={r.id}
+                      style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
+                      onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                      onClick={() => navigate(`/recipes/${r.id}`)}
+                    >
+                      {cols.filter(c => c.visible).map(col => renderCell(col.id, r, isDark))}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
