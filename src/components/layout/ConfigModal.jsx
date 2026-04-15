@@ -2299,7 +2299,12 @@ export function ConfigModal() {
   const [section, setSection] = useState(null)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('config-view-mode') || 'grid')
 
-  useEffect(() => { if (!configOpen) setSection(null) }, [configOpen])
+  useEffect(() => {
+    if (!configOpen) {
+      setSection(null)
+      setConfigTab(null)
+    }
+  }, [configOpen])
 
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('config-view-mode', mode) }
 
@@ -2322,12 +2327,13 @@ export function ConfigModal() {
 
   const goTo = (key) => { setSection(key); setConfigTab(key) }
   const goBack = () => setSection(null)
+  const handleClose = () => { setSection(null); setConfigTab(null); closeConfig() }
 
   if (!configOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeConfig} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
       <div className={cn(
         'relative w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden',
@@ -2356,7 +2362,7 @@ export function ConfigModal() {
               </div>
             )}
             <button
-              onClick={section ? goBack : closeConfig}
+              onClick={section ? goBack : handleClose}
               style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
               onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
               onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
@@ -2425,7 +2431,7 @@ export function ConfigModal() {
                 {configTab === 'import' && <ImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
-                {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={closeConfig} />}
+                {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
                 {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
                 {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
