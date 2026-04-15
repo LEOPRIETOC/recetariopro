@@ -277,7 +277,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
 
   const subMatches = query.length > 1
     ? (allSubrecipes || [])
-        .filter((s) => canEdit || !s.pin)
+        .filter((s) => isAdmin || !s.pin)
         .filter((s) =>
           (s.name || '').toLowerCase().includes(qLow) ||
           (s.code || '').toLowerCase().includes(qLow)
