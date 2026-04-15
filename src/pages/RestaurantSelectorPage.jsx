@@ -110,7 +110,18 @@ export default function RestaurantSelectorPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "'DM Sans', sans-serif", ...css }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "'DM Sans', sans-serif", position: 'relative', ...css }}>
+
+      {isMaster && (
+        <button
+          onClick={() => navigate('/restaurants/new')}
+          style={{ position: 'absolute', top: 20, right: 20, background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s' }}
+          onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseOut={e => e.currentTarget.style.opacity = '1'}
+        >
+          + Nuevo restaurante
+        </button>
+      )}
 
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', color: 'var(--accent)', margin: '0 0 8px' }}>
@@ -189,16 +200,6 @@ export default function RestaurantSelectorPage() {
         </div>
       )}
 
-      {isMaster && (
-        <button
-          onClick={() => navigate('/restaurants/new')}
-          style={{ marginTop: 30, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '14px 32px', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s' }}
-          onMouseOver={(e) => { e.currentTarget.style.opacity = '0.85' }}
-          onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
-        >
-          + Nuevo restaurante
-        </button>
-      )}
     </div>
   )
 }
