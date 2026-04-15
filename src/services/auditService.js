@@ -21,24 +21,27 @@ export async function logAction({
   changes = [],
 }) {
   if (!restaurantId) return
+  const payload = {
+    action,
+    module,
+    entityId,
+    entityName,
+    entityCode: entityCode || null,
+    userId: userId || null,
+    userName: userName || 'Desconocido',
+    userRole: userRole || null,
+    changes,
+    timestamp: serverTimestamp(),
+  }
+  console.log('[audit] logAction →', module, action, entityName, '| restaurantId:', restaurantId)
   try {
-    await addDoc(
+    const ref = await addDoc(
       collection(db, 'restaurants', restaurantId, 'audit_logs'),
-      {
-        action,
-        module,
-        entityId,
-        entityName,
-        entityCode: entityCode || null,
-        userId: userId || null,
-        userName: userName || 'Desconocido',
-        userRole: userRole || null,
-        changes,
-        timestamp: serverTimestamp(),
-      }
+      payload
     )
+    console.log('[audit] Log guardado con ID:', ref.id)
   } catch (err) {
-    console.error('[audit] Error logging action:', err)
+    console.error('[audit] Error guardando log:', err)
   }
 }
 
@@ -128,26 +131,46 @@ export function detectIngredientChanges(before = [], after = []) {
  */
 export async function getAuditLogs(restaurantId, module = null, limitN = 100) {
   if (!restaurantId) return []
+  console.log('[audit] getAuditLogs → restaurantId:', restaurantId, '| module:', module)
   try {
-    let q
+    // Intentar query con filtro por módulo (requiere índice compuesto)
     if (module) {
-      q = query(
-        collection(db, 'restaurants', restaurantId, 'audit_logs'),
-        where('module', '==', module),
-        orderBy('timestamp', 'desc'),
-        limit(limitN)
-      )
+      try {
+        const q = query(
+          collection(db, 'restaurants', restaurantId, 'audit_logs'),
+          where('module', '==', module),
+          orderBy('timestamp', 'desc'),
+          limit(limitN)
+        )
+        const snap = await getDocs(q)
+        console.log('[audit] Logs cargados (filtrado):', snap.size)
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      } catch (indexErr) {
+        // Índice compuesto no existe aún — fallback: traer todos y filtrar en cliente
+        console.warn('[audit] Índice no disponible, usando fallback sin filtro:', indexErr.message)
+        const qAll = query(
+          collection(db, 'restaurants', restaurantId, 'audit_logs'),
+          orderBy('timestamp', 'desc'),
+          limit(500)
+        )
+        const snap = await getDocs(qAll)
+        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        const filtered = all.filter((d) => d.module === module).slice(0, limitN)
+        console.log('[audit] Logs tras filtro cliente:', filtered.length)
+        return filtered
+      }
     } else {
-      q = query(
+      const q = query(
         collection(db, 'restaurants', restaurantId, 'audit_logs'),
         orderBy('timestamp', 'desc'),
         limit(limitN)
       )
+      const snap = await getDocs(q)
+      console.log('[audit] Logs cargados (todos):', snap.size)
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
     }
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   } catch (err) {
-    console.error('[audit] Error loading logs:', err)
+    console.error('[audit] Error cargando logs:', err)
     return []
   }
 }

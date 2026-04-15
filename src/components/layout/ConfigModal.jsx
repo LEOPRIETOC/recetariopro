@@ -1811,6 +1811,7 @@ function AnalyticsTab({ restaurantId, isDark, onGoToSales }) {
 
 // ── Historial / Auditoría Tab ─────────────────────────────────────────────────
 function VersionsTab({ restaurantId, isDark }) {
+  const { userProfile } = useAppStore()
   const TABS = [
     { id: 'recipe',    label: 'Recetas' },
     { id: 'subrecipe', label: 'Sub-recetas' },
@@ -1822,14 +1823,50 @@ function VersionsTab({ restaurantId, isDark }) {
   const [activeTab, setActiveTab] = useState('recipe')
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(false)
+  const [totalInCollection, setTotalInCollection] = useState(null)
+  const [creatingTest, setCreatingTest] = useState(false)
+
+  // Verificar total de documentos en la colección (sin filtro)
+  useEffect(() => {
+    if (!restaurantId) return
+    getDocs(collection(db, 'restaurants', restaurantId, 'audit_logs'))
+      .then((snap) => {
+        console.log('[historial] Total documentos en audit_logs:', snap.size)
+        setTotalInCollection(snap.size)
+      })
+      .catch((err) => console.error('[historial] Error verificando colección:', err))
+  }, [restaurantId])
 
   useEffect(() => {
     if (!restaurantId) return
+    console.log('[historial] Cargando módulo:', activeTab, '| restaurantId:', restaurantId)
     setLoading(true)
     getAuditLogs(restaurantId, activeTab, 100)
-      .then(setLogs)
+      .then((result) => { console.log('[historial] Logs recibidos:', result.length); setLogs(result) })
       .finally(() => setLoading(false))
   }, [restaurantId, activeTab])
+
+  const handleCreateTestLog = async () => {
+    setCreatingTest(true)
+    await logAction({
+      restaurantId,
+      userId: userProfile?.uid || 'test',
+      userName: userProfile?.name || userProfile?.email || 'Test',
+      userRole: userProfile?.role || 'admin',
+      action: 'create',
+      module: activeTab,
+      entityId: 'test-' + Date.now(),
+      entityName: 'Log de prueba (' + activeTab + ')',
+      entityCode: 'TEST001',
+      changes: [{ field: 'prueba', before: 'antes', after: 'después' }],
+    })
+    // Recargar
+    const result = await getAuditLogs(restaurantId, activeTab, 100)
+    setLogs(result)
+    const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'audit_logs'))
+    setTotalInCollection(snap.size)
+    setCreatingTest(false)
+  }
 
   const actionBg = (a) => a === 'create' ? 'rgba(22,163,74,0.15)' : a === 'edit' ? 'rgba(234,88,12,0.15)' : 'rgba(220,38,38,0.15)'
   const actionColor = (a) => a === 'create' ? 'var(--green)' : a === 'edit' ? 'var(--accent)' : 'var(--red)'
@@ -1841,6 +1878,25 @@ function VersionsTab({ restaurantId, isDark }) {
 
   return (
     <div className="space-y-4">
+      {/* Diagnóstico + botón test */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: '0.75rem', color: t3 }}>
+          {totalInCollection === null ? 'Verificando colección…' : `Total en colección: ${totalInCollection} docs`}
+        </span>
+        <button
+          onClick={handleCreateTestLog}
+          disabled={creatingTest}
+          style={{
+            background: 'none', border: `1px dashed ${t3}`, borderRadius: 6,
+            padding: '4px 12px', fontSize: '0.75rem', color: t2,
+            cursor: creatingTest ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+            opacity: creatingTest ? 0.5 : 1,
+          }}
+        >
+          {creatingTest ? 'Creando…' : '+ Crear log de prueba'}
+        </button>
+      </div>
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${borderCol}`, paddingBottom: 0 }}>
         {TABS.map((tab) => (
