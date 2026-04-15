@@ -817,7 +817,6 @@ export default function RecipeDetailPage() {
   const [allRecipes, setAllRecipes] = useState([])
   const [dupErrors, setDupErrors] = useState({})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [showExitModal, setShowExitModal] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState(null)
   const [marginContribution, setMarginContribution] = useState(35)
   const [taxRate, setTaxRate] = useState(8)
@@ -948,11 +947,7 @@ export default function RecipeDetailPage() {
   }
 
   const safeNavigate = () => {
-    if (hasUnsavedChanges) {
-      setShowExitModal(true)
-    } else {
-      exitToOrigin()
-    }
+    exitToOrigin()
   }
 
   const handleConfirmConvert = async () => {
@@ -1889,62 +1884,6 @@ export default function RecipeDetailPage() {
         <PrintRecipe recipe={{ ...watch(), photoURL: photoPreview || photoURL, id, createdAt: recipe?.createdAt, version: recipe?.version }} categories={categories} allIngredients={allIngredients} restaurantName={currentRestaurant?.name} forwardRef={printRef} />
       </div>
 
-      {/* ── Unsaved changes modal ── */}
-      {showExitModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: isDark ? '#1f2937' : '#ffffff',
-            borderRadius: 16, padding: 32,
-            width: 'min(420px, 90vw)',
-            display: 'flex', flexDirection: 'column', gap: 16,
-            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
-          }}>
-            <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', fontWeight: 700, margin: 0, color: isDark ? '#f9fafb' : '#111827' }}>
-              ¿Salir sin guardar?
-            </h3>
-            <p style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '.88rem', margin: 0 }}>
-              Tienes cambios sin guardar. ¿Qué deseas hacer?
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
-              <button
-                onClick={() => { setShowExitModal(false); exitToOrigin() }}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--red)',
-                  borderRadius: 8,
-                  color: 'var(--red)',
-                  fontFamily: 'inherit',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                }}
-              >
-                Salir sin guardar
-              </button>
-              <button
-                onClick={async () => { setShowExitModal(false); await handleSave(); exitToOrigin() }}
-                style={{
-                  background: 'var(--accent)',
-                  border: 'none',
-                  borderRadius: 8,
-                  color: '#fff',
-                  fontFamily: 'inherit',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                }}
-              >
-                Guardar y salir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Modal convertir receta ↔ sub-receta ── */}
       {convertModal && recipe && (
