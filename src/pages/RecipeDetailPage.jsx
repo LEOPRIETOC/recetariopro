@@ -934,12 +934,11 @@ export default function RecipeDetailPage() {
     return () => sub.unsubscribe()
   }, [watch])
 
-  const safeNavigate = (path) => {
+  const safeNavigate = () => {
     if (hasUnsavedChanges) {
-      setPendingNavigation(path)
       setShowExitModal(true)
     } else {
-      navigate(path)
+      navigate(-1)
     }
   }
 
@@ -1280,7 +1279,7 @@ export default function RecipeDetailPage() {
             {saving ? 'Guardando...' : photoUploading ? 'Subiendo...' : 'Guardar'}
           </button>
           <button
-            onClick={() => safeNavigate('/')}
+            onClick={() => safeNavigate()}
             style={{
               background: 'transparent',
               border: '1px solid var(--red, #DC2626)',
@@ -1800,7 +1799,7 @@ export default function RecipeDetailPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
               <button
-                onClick={() => { setShowExitModal(false); navigate(pendingNavigation) }}
+                onClick={() => { setShowExitModal(false); navigate(-1) }}
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--red)',
@@ -1816,7 +1815,7 @@ export default function RecipeDetailPage() {
                 Salir sin guardar
               </button>
               <button
-                onClick={async () => { setShowExitModal(false); await handleSave(); navigate(pendingNavigation) }}
+                onClick={async () => { setShowExitModal(false); await handleSave(); navigate(-1) }}
                 style={{
                   background: 'var(--accent)',
                   border: 'none',
