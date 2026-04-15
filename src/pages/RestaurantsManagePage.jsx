@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
@@ -74,6 +74,42 @@ export default function RestaurantsManagePage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
+      const newRestId = ref.id
+
+      // ── Precargar unidades por defecto ──
+      const defaultUnits = [
+        { code: 'UND001', abbreviation: 'G',   name: 'Gramo',     equivalence: 1       },
+        { code: 'UND002', abbreviation: 'KG',  name: 'Kilogramo', equivalence: 1000    },
+        { code: 'UND003', abbreviation: 'ML',  name: 'Mililitro', equivalence: 1       },
+        { code: 'UND004', abbreviation: 'LT',  name: 'Litro',     equivalence: 1000    },
+        { code: 'UND005', abbreviation: 'UND', name: 'Unidad',    equivalence: 1       },
+        { code: 'UND006', abbreviation: 'OZ',  name: 'Onza',      equivalence: 28.35   },
+        { code: 'UND007', abbreviation: 'LB',  name: 'Libra',     equivalence: 453.59  },
+      ]
+      const batch1 = writeBatch(db)
+      defaultUnits.forEach(unit => {
+        const uRef = doc(collection(db, 'restaurants', newRestId, 'units'))
+        batch1.set(uRef, { ...unit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+      })
+      await batch1.commit()
+
+      // ── Precargar categorías de materias primas ──
+      const defaultCategories = [
+        'Abarrotes', 'Aceites', 'Bebidas', 'Carnes', 'Especias',
+        'Fruver', 'Lácteos', 'Licores', 'Mariscos', 'Salsas',
+      ]
+      const batch2 = writeBatch(db)
+      defaultCategories.forEach((name, index) => {
+        const cRef = doc(collection(db, 'restaurants', newRestId, 'mp_categories'))
+        batch2.set(cRef, {
+          code: `CAT${String(index + 1).padStart(3, '0')}`,
+          name,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      })
+      await batch2.commit()
+
       navigate('/restaurants')
     } catch (err) {
       alert('Error: ' + err.message)
