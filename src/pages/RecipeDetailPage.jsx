@@ -12,6 +12,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { logAction, detectChanges, detectIngredientChanges } from '../services/auditService'
 import { RecipeReadOnlyView } from '../components/RecipeReadOnlyView'
 import {
   getRecipe, createRecipe, updateRecipe, toggleRecipeActive,
@@ -1196,12 +1197,43 @@ export default function RecipeDetailPage() {
         console.log('Receta creada con ID:', docRef.id)
         success('Receta creada exitosamente')
         setHasUnsavedChanges(false)
+        await logAction({
+          restaurantId,
+          userId: authUser?.uid,
+          userName: authUser?.displayName || authUser?.email || 'Desconocido',
+          userRole: authUser?.role,
+          action: 'create',
+          module: safePayload.isSubRecipe ? 'subrecipe' : 'recipe',
+          entityId: docRef.id,
+          entityName: safePayload.name,
+          entityCode: safePayload.code,
+          changes: [],
+        })
         navigate(`/recipes/${docRef.id}`)
       } else {
+        const fieldChanges = detectChanges(recipe || {}, safePayload, [
+          'name', 'sellingPrice', 'preparation', 'yieldAmount', 'yieldUnit',
+        ])
+        const ingChanges = detectIngredientChanges(
+          recipe?.ingredients || [],
+          safePayload.ingredients || []
+        )
         await updateRecipe(restaurantId, id, safePayload)
         console.log('Receta actualizada:', id)
         success('Receta guardada exitosamente')
         setHasUnsavedChanges(false)
+        await logAction({
+          restaurantId,
+          userId: authUser?.uid,
+          userName: authUser?.displayName || authUser?.email || 'Desconocido',
+          userRole: authUser?.role,
+          action: 'edit',
+          module: safePayload.isSubRecipe ? 'subrecipe' : 'recipe',
+          entityId: id,
+          entityName: safePayload.name,
+          entityCode: safePayload.code,
+          changes: [...fieldChanges, ...ingChanges],
+        })
       }
     } catch (err) {
       console.error('Recipe save error:', err?.message, err?.stack)
@@ -1663,7 +1695,22 @@ export default function RecipeDetailPage() {
                     </div>
                   </div>
                   <div
-                    onClick={() => toggleRecipeActive(currentRestaurant.id, id, recipe.active === false)}
+                    onClick={async () => {
+                      const newActive = recipe.active === false
+                      await toggleRecipeActive(currentRestaurant.id, id, newActive)
+                      logAction({
+                        restaurantId: currentRestaurant.id,
+                        userId: authUser?.uid,
+                        userName: authUser?.displayName || authUser?.email || 'Desconocido',
+                        userRole: authUser?.role,
+                        action: 'edit',
+                        module: recipe?.isSubRecipe ? 'subrecipe' : 'recipe',
+                        entityId: id,
+                        entityName: recipe?.name,
+                        entityCode: recipe?.code,
+                        changes: [{ field: 'estado', before: newActive ? 'inactiva' : 'activa', after: newActive ? 'activa' : 'inactiva' }],
+                      })
+                    }}
                     style={{
                       width: 44, height: 24,
                       borderRadius: 12,

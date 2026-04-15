@@ -37,6 +37,7 @@ import {
   subscribeSuppliers, createSupplier, updateSupplier, deleteSupplier, getNextSupplierCode,
 } from '../../services/suppliers'
 import { subscribeUnits, createUnit, updateUnit, deleteUnit, getNextUnitCode, DEFAULT_UNITS } from '../../services/units'
+import { logAction, detectChanges, getAuditLogs } from '../../services/auditService'
 import { useToast } from '../ui/toast'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -131,6 +132,7 @@ function ComboInput({ value, onChange, suggestions, placeholder, isDark }) {
 // ── Ingredients Tab ──────────────────────────────────────────────────────────
 function IngredientsTab({ restaurantId, isDark }) {
   const { success, error } = useToast()
+  const { userProfile } = useAppStore()
   const [ingredients, setIngredients] = useState([])
   const [units, setUnits] = useState([])
   const [search, setSearch] = useState('')
@@ -235,9 +237,24 @@ function IngredientsTab({ restaurantId, isDark }) {
         pricePerUnit: qty > 0 ? val / qty : 0,
       }
       if (editing) {
+        const fieldChanges = detectChanges(editing, payload, [
+          'name', 'useUnit', 'quantityPerPresentation', 'value', 'pricePerUnit', 'category', 'supplier',
+        ])
         await updateIngredient(restaurantId, editing.id, payload)
+        await logAction({
+          restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email,
+          userRole: userProfile?.role, action: 'edit', module: 'materia',
+          entityId: editing.id, entityName: payload.name, entityCode: editing.code || nextCode,
+          changes: fieldChanges,
+        })
       } else {
-        await createIngredient(restaurantId, { ...payload, code: nextCode })
+        const ref = await createIngredient(restaurantId, { ...payload, code: nextCode })
+        await logAction({
+          restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email,
+          userRole: userProfile?.role, action: 'create', module: 'materia',
+          entityId: ref?.id || null, entityName: payload.name, entityCode: nextCode,
+          changes: [],
+        })
       }
       success('Guardado correctamente')
       goToList()
@@ -247,7 +264,16 @@ function IngredientsTab({ restaurantId, isDark }) {
 
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar esta materia prima?')) return
-    try { await deleteIngredient(restaurantId, id); success('Eliminado') } catch { error('Error') }
+    try {
+      const target = ingredients.find((i) => i.id === id)
+      await deleteIngredient(restaurantId, id)
+      await logAction({
+        restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email,
+        userRole: userProfile?.role, action: 'delete', module: 'materia',
+        entityId: id, entityName: target?.name, entityCode: target?.code, changes: [],
+      })
+      success('Eliminado')
+    } catch { error('Error') }
   }
 
   const handleImport = (e) => {
@@ -948,6 +974,7 @@ async function getNextMenuCode(restaurantId) {
 
 function CategoriesTab({ restaurantId, isDark }) {
   const { success, error } = useToast()
+  const { userProfile } = useAppStore()
   const [categories, setCategories] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -975,8 +1002,22 @@ function CategoriesTab({ restaurantId, isDark }) {
     setSaving(true)
     try {
       const payload = { code: catCode, name: data.name.charAt(0).toUpperCase() + data.name.slice(1).toLowerCase() }
-      if (editing) await updateCategory(restaurantId, editing.id, payload)
-      else await createCategory(restaurantId, { ...payload, order: Date.now() })
+      if (editing) {
+        const fieldChanges = detectChanges(editing, payload, ['name', 'code'])
+        await updateCategory(restaurantId, editing.id, payload)
+        await logAction({
+          restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email,
+          userRole: userProfile?.role, action: 'edit', module: 'menu',
+          entityId: editing.id, entityName: payload.name, entityCode: payload.code, changes: fieldChanges,
+        })
+      } else {
+        const ref = await createCategory(restaurantId, { ...payload, order: Date.now() })
+        await logAction({
+          restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email,
+          userRole: userProfile?.role, action: 'create', module: 'menu',
+          entityId: ref?.id || null, entityName: payload.name, entityCode: payload.code, changes: [],
+        })
+      }
       success('Guardado'); setShowForm(false); reset(); setEditing(null)
     } catch { error('Error') } finally { setSaving(false) }
   }
@@ -1055,7 +1096,7 @@ function CategoriesTab({ restaurantId, isDark }) {
                 {sortedMenus.map((cat) => (
                   <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="grid"
                     onEdit={() => openEdit(cat)}
-                    onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id) } catch {} }} />
+                    onDelete={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, cat.id); await logAction({ restaurantId, userId: userProfile?.uid, userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role, action: 'delete', module: 'menu', entityId: cat.id, entityName: cat.name, entityCode: cat.code, changes: [] }) } catch {} }} />
                 ))}
               </div>
             </>
@@ -1768,91 +1809,117 @@ function AnalyticsTab({ restaurantId, isDark, onGoToSales }) {
   )
 }
 
-// ── Versions Tab ─────────────────────────────────────────────────────────────
+// ── Historial / Auditoría Tab ─────────────────────────────────────────────────
 function VersionsTab({ restaurantId, isDark }) {
-  const { success } = useToast()
-  const [recipes, setRecipes] = useState([])
-  const [selectedId, setSelectedId] = useState('')
-  const [versions, setVersions] = useState([])
-  const [search, setSearch] = useState('')
+  const TABS = [
+    { id: 'recipe',    label: 'Recetas' },
+    { id: 'subrecipe', label: 'Sub-recetas' },
+    { id: 'materia',   label: 'Materias Primas' },
+    { id: 'menu',      label: 'Menús' },
+    { id: 'user',      label: 'Usuarios' },
+  ]
+
+  const [activeTab, setActiveTab] = useState('recipe')
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!restaurantId) return
-    return subscribeRecipes(restaurantId, setRecipes)
-  }, [restaurantId])
+    setLoading(true)
+    getAuditLogs(restaurantId, activeTab, 100)
+      .then(setLogs)
+      .finally(() => setLoading(false))
+  }, [restaurantId, activeTab])
 
-  useEffect(() => {
-    if (!restaurantId || !selectedId) { setVersions([]); return }
-    return subscribeVersions(restaurantId, selectedId, setVersions)
-  }, [restaurantId, selectedId])
+  const actionBg = (a) => a === 'create' ? 'rgba(22,163,74,0.15)' : a === 'edit' ? 'rgba(234,88,12,0.15)' : 'rgba(220,38,38,0.15)'
+  const actionColor = (a) => a === 'create' ? 'var(--green)' : a === 'edit' ? 'var(--accent)' : 'var(--red)'
+  const actionLabel = (a) => a === 'create' ? '+ Creó' : a === 'edit' ? '✏ Editó' : '✕ Eliminó'
 
-  const filtered = recipes.filter((r) => !search || r.name?.toLowerCase().includes(search.toLowerCase()) || r.code?.toLowerCase().includes(search.toLowerCase()))
+  const borderCol = isDark ? '#1f2937' : '#e5e7eb'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
 
   return (
     <div className="space-y-4">
-      <div className="grid-2">
-        {/* Recipe selector */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Seleccionar receta</Label>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar receta..."
-            className={cn('w-full px-3 h-8 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-gold-500',
-              isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200')}
-          />
-          <div className={cn('rounded-xl border overflow-hidden max-h-80 overflow-y-auto', isDark ? 'border-gray-800' : 'border-gray-200')}>
-            {filtered.length === 0 ? (
-              <p className={cn('text-center py-6 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin recetas</p>
-            ) : filtered.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedId(r.id)}
-                className={cn(
-                  'w-full text-left px-3 py-2.5 text-sm border-b last:border-0 transition-colors',
-                  selectedId === r.id
-                    ? isDark ? 'bg-gold-900/30 text-gold-300' : 'bg-gold-50 text-gold-800'
-                    : isDark ? 'border-gray-800 text-gray-300 hover:bg-gray-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'
-                )}
-              >
-                <span className="font-medium">{r.name}</span>
-                <span className={cn('ml-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{r.code} · v{r.version || 1}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${borderCol}`, paddingBottom: 0 }}>
+        {TABS.map((tab) => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: '0.82rem', fontWeight: 600, padding: '8px 14px', borderRadius: '8px 8px 0 0',
+              borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--accent)' : t2,
+              transition: 'all 0.15s',
+            }}
+          >{tab.label}</button>
+        ))}
+      </div>
 
-        {/* Versions list */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">
-            {selectedId ? `${versions.length} versiones guardadas` : 'Selecciona una receta'}
-          </Label>
-          <div className={cn('rounded-xl border overflow-hidden max-h-96 overflow-y-auto', isDark ? 'border-gray-800' : 'border-gray-200')}>
-            {!selectedId ? (
-              <div className={cn('text-center py-12', isDark ? 'text-gray-600' : 'text-gray-400')}>
-                <History className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Selecciona una receta para ver su historial</p>
-              </div>
-            ) : versions.length === 0 ? (
-              <p className={cn('text-center py-6 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin versiones guardadas</p>
-            ) : versions.map((v) => (
-              <div key={v.id} className={cn('flex items-center justify-between p-3 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-                <div>
-                  <p className={cn('text-sm font-medium', isDark ? 'text-gray-200' : 'text-gray-700')}>Versión {v.versionNumber}</p>
-                  <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                    {v.savedAt?.toDate?.()?.toLocaleString() || '—'}
-                  </p>
-                  {v.ingredients?.length > 0 && (
-                    <p className={cn('text-xs mt-0.5', isDark ? 'text-gray-600' : 'text-gray-400')}>
-                      {v.ingredients.length} ingredientes
-                    </p>
-                  )}
+      {/* Logs */}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+          <div style={{ width: 24, height: 24, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : logs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: t3 }}>
+          <History className="h-10 w-10 mx-auto mb-3 opacity-20" />
+          <p style={{ fontSize: '0.88rem' }}>Sin registros para este módulo</p>
+        </div>
+      ) : (
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+          {logs.map((log) => (
+            <div key={log.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${borderCol}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: log.changes?.length > 0 ? 10 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: actionBg(log.action), color: actionColor(log.action) }}>
+                    {actionLabel(log.action)}
+                  </span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827' }}>{log.entityName || '—'}</span>
+                  {log.entityCode && <span style={{ fontSize: '0.75rem', color: t3 }}>({log.entityCode})</span>}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+                  <div style={{ fontSize: '0.75rem', color: t2, fontWeight: 500 }}>{log.userName}</div>
+                  <div style={{ fontSize: '0.7rem', color: t3 }}>
+                    {log.timestamp?.toDate?.()?.toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '—'}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Cambios */}
+              {log.changes?.length > 0 && (
+                <div style={{ background: isDark ? '#111827' : '#f9fafb', borderRadius: 6, padding: '8px 10px' }}>
+                  {log.changes.map((change, i) => (
+                    <div key={i} style={{ fontSize: '0.78rem', color: t2, padding: '3px 0', borderBottom: i < log.changes.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
+                      {change.field === 'ingrediente' ? (
+                        <span>
+                          <span style={{ color: change.action === 'added' ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
+                            {change.action === 'added' ? '+ ' : '- '}
+                          </span>
+                          {change.item}
+                        </span>
+                      ) : (
+                        <span>
+                          <strong style={{ color: isDark ? '#e5e7eb' : '#374151' }}>{change.field}</strong>
+                          {change.item && <span style={{ color: t3 }}> ({change.item})</span>}
+                          {change.before !== undefined && (
+                            <>
+                              <span style={{ color: 'var(--red)', marginLeft: 6 }}>{String(change.before)}</span>
+                              <span style={{ color: t3, margin: '0 4px' }}>→</span>
+                              <span style={{ color: 'var(--green)' }}>{String(change.after)}</span>
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -2026,7 +2093,7 @@ const uInput = (isDark) => ({
 
 // ── Users Admin Tab ───────────────────────────────────────────────────────────
 function UsersAdminTab({ isDark }) {
-  const { currentRestaurant, user } = useAppStore()
+  const { currentRestaurant, user, userProfile } = useAppStore()
   const { isMaster, isSuperAdmin, isAdmin, canCreateAdmin } = useAuth()
   const { success, error } = useToast()
 
@@ -2081,6 +2148,12 @@ function UsersAdminTab({ isDark }) {
         { ...form, restaurantIds: [currentRestaurant.id] },
         user?.uid
       )
+      await logAction({
+        restaurantId: currentRestaurant.id, userId: userProfile?.uid,
+        userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role,
+        action: 'create', module: 'user', entityName: form.name,
+        changes: [{ field: 'rol', after: form.role }],
+      })
       success(`Usuario "${form.name}" creado`)
       setForm({ name: '', email: '', password: '', role: 'usuario' })
       setShowCreate(false)
@@ -2111,6 +2184,14 @@ function UsersAdminTab({ isDark }) {
       await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
         [`members.${editUser.uid}.role`]: editData.role,
         [`members.${editUser.uid}.name`]: editData.name.trim(),
+      })
+      const changes = []
+      if (editUser.name !== editData.name.trim()) changes.push({ field: 'nombre', before: editUser.name, after: editData.name.trim() })
+      if (editUser.role !== editData.role) changes.push({ field: 'rol', before: editUser.role, after: editData.role })
+      await logAction({
+        restaurantId: currentRestaurant.id, userId: userProfile?.uid,
+        userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role,
+        action: 'edit', module: 'user', entityId: editUser.uid, entityName: editData.name.trim(), changes,
       })
       success('Usuario actualizado')
       setEditUser(null)
@@ -2150,6 +2231,11 @@ function UsersAdminTab({ isDark }) {
 
       // 3. Actualizar lista local sin recargar
       setUsers(prev => prev.filter(u2 => (u2.uid || u2.id) !== uid))
+      await logAction({
+        restaurantId: currentRestaurant.id, userId: userProfile?.uid,
+        userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role,
+        action: 'delete', module: 'user', entityId: uid, entityName: u.name, changes: [],
+      })
       success('Usuario eliminado ✓')
     } catch (err) {
       console.error('Error eliminando usuario:', err)
