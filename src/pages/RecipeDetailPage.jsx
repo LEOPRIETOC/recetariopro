@@ -1335,26 +1335,14 @@ export default function RecipeDetailPage() {
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
               <CardHeader><CardTitle>Información básica</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* Code + (Item) + Reference — same row; Item hidden for sub-recipes */}
-                <div style={{ display: 'grid', gridTemplateColumns: isSubRecipe ? '140px 1fr' : '140px 1fr 1fr', gap: '12px' }}>
+                {/* Code + Reference */}
+                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px' }}>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Código</Label>
                     <div className={cn('px-3 py-2 rounded-lg text-sm font-mono font-bold h-9 flex items-center', isDark ? 'bg-gray-800 text-gold-400' : 'bg-gold-50 text-gold-700')}>
                       {codeLoading ? '...' : (watch('code') || '—')}
                     </div>
                   </div>
-                  {!isSubRecipe && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Item</Label>
-                      <Input
-                        {...register('item')}
-                        placeholder="SKU / cód. interno"
-                        className="h-9"
-                        onBlur={(e) => checkRecipeDup('item', e.target.value)}
-                      />
-                      {dupErrors.item && <p className="text-xs text-amber-500">{dupErrors.item}</p>}
-                    </div>
-                  )}
                   <div className="space-y-1.5">
                     <Label className="text-xs">Referencia</Label>
                     <Input
