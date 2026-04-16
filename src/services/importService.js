@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
 import { db } from '../lib/firebase'
-import { toTitleCase } from '../lib/utils'
+import { toUpperCase, toTitleCase } from '../utils/textUtils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -283,7 +283,7 @@ export async function importUnits(restaurantId, rows, onProgress) {
     const eq = parseFloat(eqRaw?.replace(',', '.'))
     if (!eqRaw || isNaN(eq)) { result.errors.push(`Fila ${n}: EQUIVALENCIA debe ser un número`); return }
 
-    const data = { code, abbreviation: medida, name: toTitleCase(desc), equivalence: eq, updatedAt: serverTimestamp() }
+    const data = { code, abbreviation: toUpperCase(medida), name: toTitleCase(desc), equivalence: eq, updatedAt: serverTimestamp() }
     const key = code.toUpperCase()
 
     if (existing[key]) {
@@ -353,7 +353,7 @@ export async function importMaterias(restaurantId, rows, onProgress) {
 
     const data = {
       reference,
-      name: toTitleCase(name),
+      name: toUpperCase(name),
       useUnit,
       purchaseUnit: purchaseUnit || null,
       quantityPerPresentation: qty,
@@ -432,7 +432,7 @@ export async function importSubrecipes(restaurantId, rows, onProgress) {
 
     const docData = {
       reference,
-      name: name.toUpperCase(),
+      name: toUpperCase(name),
       type,
       isSubRecipe: true,
       active: true,
@@ -523,7 +523,7 @@ export async function importRecipes(restaurantId, rows, onProgress) {
 
     const docData = {
       reference,
-      name: name.toUpperCase(),
+      name: toUpperCase(name),
       type,
       active: true,
       categoryId: catMatch.id,
