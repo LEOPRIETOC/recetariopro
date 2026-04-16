@@ -495,175 +495,124 @@ footer{background:var(--ink);padding:32px 5vw;display:flex;align-items:center;ju
 </section>
 
 <!-- PRICING -->
-<section id="precios" class="pricing" style="padding: 80px 20px; background: var(--bg)">
-  <div style="max-width: 900px; margin: 0 auto; text-align: center">
-
+<section class="pricing" id="pricing">
+  <div class="pricing-inner">
     <div class="section-eyebrow reveal" style="color:var(--gold);text-align:center">PRECIOS</div>
-    <h2 style="font-family: 'Playfair Display', serif; font-size: 2.5rem; margin-bottom: 8px">
-      Simple. Sin sorpresas.
-    </h2>
-    <p style="color: var(--t2); margin-bottom: 48px; font-size: 1rem">
-      Elige el plan que mejor se adapte a tu restaurante
+    <h2 class="reveal">Simple. Sin sorpresas.</h2>
+    <p class="prices-sub reveal">
+      Paga mensual o anual — 2 meses gratis en plan anual
     </p>
 
-    <div class="planes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 700px; margin: 0 auto">
+    <div class="billing-toggle reveal">
+      <button class="toggle-btn active" id="btn-mensual"
+              onclick="setBilling('mensual')">Mensual</button>
+      <button class="toggle-btn" id="btn-anual"
+              onclick="setBilling('anual')">
+        Anual <span class="save-badge">2 meses gratis</span>
+      </button>
+    </div>
 
-      <!-- PLAN MENSUAL -->
-      <div style="
-        background: var(--bg2);
-        border: 1px solid var(--b1);
-        border-radius: 20px;
-        padding: 36px 28px;
-        text-align: center;
-        position: relative;
-      ">
-        <div style="
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: var(--t2);
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          margin-bottom: 16px
-        ">Plan Mensual</div>
+    <div class="plans-grid reveal reveal-delay-1">
 
-        <div style="
-          font-family: 'Playfair Display', serif;
-          font-size: 3rem;
-          font-weight: 700;
-          color: var(--text);
-          line-height: 1
-        ">$89.900</div>
-        <div style="color: var(--t3); font-size: 0.82rem; margin-top: 6px; margin-bottom: 24px">
-          COP / mes
+      <!-- EMPRENDEDOR -->
+      <div class="plan-card">
+        <div class="plan-icon">🌱</div>
+        <div class="plan-name">Emprendedor</div>
+        <div class="plan-price">
+          <span class="price-mensual">$59.900</span>
+          <span class="price-anual" style="display:none">$49.900</span>
+          <span class="price-period">/mes</span>
         </div>
-
-        <ul style="list-style: none; padding: 0; margin: 0 0 28px 0; text-align: left">
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Recetas ilimitadas
-          </li>
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Hasta 10 usuarios
-          </li>
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Importación masiva
-          </li>
-          <li style="padding: 7px 0; font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Soporte incluido
-          </li>
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $119.400
+        </div>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 50 recetas</li>
+          <li class="feat-yes">3 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-no">Sub-recetas</li>
+          <li class="feat-no">Costo automático</li>
+          <li class="feat-no">Fotos de recetas</li>
+          <li class="feat-no">Videos de recetas</li>
+          <li class="feat-no">Analítica BCG</li>
+          <li class="feat-no">Top sells por categoría</li>
         </ul>
-
-        <a href="https://app.inom.pro" style="
-          display: block;
-          background: var(--text);
-          color: var(--bg);
-          border-radius: 10px;
-          padding: 13px;
-          font-weight: 700;
-          font-size: 0.92rem;
-          text-decoration: none;
-          transition: opacity 0.2s
-        " onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">
-          Comenzar ahora
+        <a href="https://app.inom.pro" class="plan-btn">
+          Comenzar gratis
         </a>
       </div>
 
-      <!-- PLAN ANUAL -->
-      <div style="
-        background: var(--bg2);
-        border: 2px solid var(--gold);
-        border-radius: 20px;
-        padding: 36px 28px;
-        text-align: center;
-        position: relative;
-      ">
-        <!-- Badge 2 meses gratis -->
-        <div style="
-          position: absolute;
-          top: -14px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #F59E0B;
-          color: #111;
-          font-size: 0.72rem;
-          font-weight: 700;
-          padding: 4px 14px;
-          border-radius: 20px;
-          white-space: nowrap;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15)
-        ">
-          🎁 2 meses gratis
+      <!-- BÁSICO -->
+      <div class="plan-card featured">
+        <div class="plan-badge">Más popular</div>
+        <div class="plan-icon">🍳</div>
+        <div class="plan-name">Básico</div>
+        <div class="plan-price">
+          <span class="price-mensual">$99.900</span>
+          <span class="price-anual" style="display:none">$82.900</span>
+          <span class="price-period">/mes</span>
         </div>
-
-        <div style="
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: var(--gold);
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          margin-bottom: 16px
-        ">Plan Anual</div>
-
-        <div style="
-          font-family: 'Playfair Display', serif;
-          font-size: 3rem;
-          font-weight: 700;
-          color: var(--gold);
-          line-height: 1
-        ">$69.900</div>
-        <div style="color: var(--t3); font-size: 0.82rem; margin-top: 6px; margin-bottom: 4px">
-          COP / mes · facturado anual
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $203.400
         </div>
-        <div style="
-          font-size: 0.78rem;
-          color: var(--t3);
-          text-decoration: line-through;
-          margin-bottom: 20px
-        ">
-          Antes $89.900/mes
-        </div>
-
-        <ul style="list-style: none; padding: 0; margin: 0 0 28px 0; text-align: left">
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Todo del plan mensual
-          </li>
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> 2 meses gratis
-          </li>
-          <li style="padding: 7px 0; border-bottom: 1px solid var(--b1); font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Soporte prioritario
-          </li>
-          <li style="padding: 7px 0; font-size: 0.86rem; color: var(--t2); display: flex; align-items: center; gap: 8px">
-            <span style="color: var(--green)">✓</span> Acceso a nuevas funciones
-          </li>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 120 recetas</li>
+          <li class="feat-yes">5 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-yes">Sub-recetas</li>
+          <li class="feat-yes">Costo automático</li>
+          <li class="feat-yes">Fotos de recetas</li>
+          <li class="feat-no">Videos de recetas</li>
+          <li class="feat-no">Analítica BCG</li>
+          <li class="feat-no">Top sells por categoría</li>
         </ul>
+        <a href="https://app.inom.pro" class="plan-btn primary">
+          Comenzar gratis
+        </a>
+      </div>
 
-        <a href="https://app.inom.pro" style="
-          display: block;
-          background: var(--gold);
-          color: #fff;
-          border-radius: 10px;
-          padding: 13px;
-          font-weight: 700;
-          font-size: 0.92rem;
-          text-decoration: none;
-          transition: opacity 0.2s
-        " onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">
-          Comenzar ahora
+      <!-- PRO -->
+      <div class="plan-card">
+        <div class="plan-icon">👨‍🍳</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">
+          <span class="price-mensual">$149.900</span>
+          <span class="price-anual" style="display:none">$124.900</span>
+          <span class="price-period">/mes</span>
+        </div>
+        <div class="plan-anual-note" style="display:none">
+          Facturado anualmente · Ahorras $299.400
+        </div>
+        <ul class="plan-features">
+          <li class="feat-yes">Hasta 500 recetas</li>
+          <li class="feat-yes">20 usuarios</li>
+          <li class="feat-yes">Impresión PDF</li>
+          <li class="feat-yes">Importar desde Excel</li>
+          <li class="feat-yes">Exportar a Excel</li>
+          <li class="feat-yes">Costo manual de recetas</li>
+          <li class="feat-yes">Sub-recetas</li>
+          <li class="feat-yes">Costo automático</li>
+          <li class="feat-yes">Fotos de recetas</li>
+          <li class="feat-yes">Videos de recetas</li>
+          <li class="feat-yes">Analítica BCG *</li>
+          <li class="feat-yes">Top sells por categoría *</li>
+        </ul>
+        <p class="plan-note">
+          * Requiere cargar información de ventas al sistema
+          para generar los análisis.
+        </p>
+        <a href="https://app.inom.pro" class="plan-btn">
+          Comenzar gratis
         </a>
       </div>
 
     </div>
-
-    <style>
-      @media (max-width: 600px) {
-        #precios .planes-grid {
-          grid-template-columns: 1fr !important;
-        }
-      }
-    </style>
-
   </div>
 </section>
 
