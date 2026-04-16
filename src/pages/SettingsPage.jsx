@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { normalizeExistingData } from '../services/importService'
 import { useTranslation } from 'react-i18next'
 import { Sun, Moon, Globe, DollarSign, Eye, EyeOff } from 'lucide-react'
 
@@ -17,10 +18,11 @@ import { cn } from '../lib/utils'
 export default function SettingsPage() {
   const { t, i18n } = useTranslation()
   const { theme, setTheme, language, setLanguage, showCosts, setShowCosts, currentRestaurant } = useAppStore()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isMaster } = useAuth()
   const { success, error } = useToast()
   const isDark = theme === 'night'
   const [saving, setSaving] = useState(false)
+  const [normalizing, setNormalizing] = useState(false)
 
   const themes = [
     { value: 'day', icon: Sun, label: t('settings.themes.day'), preview: 'bg-white border-gray-200' },
@@ -179,6 +181,44 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isMaster && currentRestaurant && (
+        <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
+          <CardHeader>
+            <CardTitle>Herramientas de datos</CardTitle>
+            <CardDescription>Solo visible para master</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>
+                  🔡 Normalizar formato de textos
+                </p>
+                <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                  Convierte recetas y MP a MAYÚSCULAS, categorías a Title Case
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={normalizing}
+                onClick={async () => {
+                  setNormalizing(true)
+                  try {
+                    const { fixed } = await normalizeExistingData(currentRestaurant.id)
+                    success(`${fixed} registros normalizados correctamente`)
+                  } catch {
+                    error('Error al normalizar')
+                  }
+                  setNormalizing(false)
+                }}
+              >
+                {normalizing ? 'Normalizando...' : 'Ejecutar'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>

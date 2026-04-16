@@ -525,7 +525,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                   <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Nombre *</label>
                   <input
                     value={quickAddData.name || ''}
-                    onChange={e => setQuickAddData(d => ({ ...d, name: e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1) }))}
+                    onChange={e => setQuickAddData(d => ({ ...d, name: e.target.value.toUpperCase() }))}
                     style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`, background: isDark ? '#111827' : '#fff', color: isDark ? '#f9fafb' : 'var(--text)', fontFamily: 'inherit', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>

@@ -369,8 +369,8 @@ function IngredientsTab({ restaurantId, isDark }) {
                 {...register('name')}
                 placeholder="Harina de trigo"
                 className={errors.name || dupErrors.name ? 'border-red-400' : ''}
-                onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1)) }}
-                onBlur={(e) => { const v = toTitleCase(e.target.value); setValue('name', v); checkDuplicate('name', v) }}
+                onChange={(e) => { const v = e.target.value.toUpperCase(); setValue('name', v) }}
+                onBlur={(e) => { const v = e.target.value.toUpperCase(); setValue('name', v); checkDuplicate('name', v) }}
               />
               {(errors.name || dupErrors.name) && <p className="text-xs text-red-500">{errors.name?.message || dupErrors.name}</p>}
             </div>
@@ -851,7 +851,7 @@ function MpCategoriesTab({ restaurantId, isDark }) {
               <Label className="form-label">Nombre *</Label>
               <Input
                 {...register('name')}
-                onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()); setDupError(null) }}
+                onChange={(e) => { const v = toTitleCase(e.target.value); setValue('name', v); setDupError(null) }}
                 onBlur={(e) => checkDup(e.target.value)}
                 className={errors.name || dupError ? 'border-red-400' : ''}
                 placeholder="Nombre de la categoría"
@@ -1075,7 +1075,7 @@ function CategoriesTab({ restaurantId, isDark }) {
             <div className="col">
               <Label className="form-label">Nombre *</Label>
               <Input {...register('name')}
-                onChange={(e) => { const v = e.target.value; setValue('name', v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()) }}
+                onChange={(e) => { setValue('name', toTitleCase(e.target.value)) }}
                 className={errors.name ? 'border-red-400' : ''} placeholder="Nombre del menú" />
               {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
@@ -2508,7 +2508,7 @@ function UsersAdminTab({ isDark }) {
           <p style={{ fontSize: '0.82rem', fontWeight: 600, color: ink, marginBottom: 14 }}>Crear nuevo usuario</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
             <UField label="Nombre completo *">
-              <input style={uInput(isDark)} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: María García" />
+              <input style={uInput(isDark)} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: toTitleCase(e.target.value) }))} placeholder="Ej: María García" />
             </UField>
             <UField label="Correo *">
               <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
@@ -2662,7 +2662,7 @@ function UsersAdminTab({ isDark }) {
               <input
                 style={uInput(isDark)}
                 value={editData.name}
-                onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
+                onChange={e => setEditData(d => ({ ...d, name: toTitleCase(e.target.value) }))}
                 placeholder="Nombre completo"
               />
             </UField>
@@ -2851,7 +2851,7 @@ function RestauranteTab({ currentRestaurant, isDark }) {
 
         <div>
           <label style={labelStyle}>Nombre *</label>
-          <input style={inputStyle} value={restData.name} onChange={e => setRestData({ ...restData, name: e.target.value })} />
+          <input style={inputStyle} value={restData.name} onChange={e => setRestData({ ...restData, name: toTitleCase(e.target.value) })} />
         </div>
         <div>
           <label style={labelStyle}>Dirección</label>

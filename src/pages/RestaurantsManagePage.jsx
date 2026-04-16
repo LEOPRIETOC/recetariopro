@@ -4,6 +4,7 @@ import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/f
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { toTitleCase } from '../lib/utils'
 
 export default function RestaurantsManagePage() {
   const navigate = useNavigate()
@@ -31,7 +32,7 @@ export default function RestaurantsManagePage() {
     ? { '--bg': '#0a0e0b', '--bg2': '#111712', '--bg3': '#181f19', '--b1': 'rgba(255,255,255,0.06)', '--b2': 'rgba(255,255,255,0.10)', '--text': '#f0ece4', '--t2': '#8a8578', '--t3': '#4a4840' }
     : { '--bg': '#f9fafb', '--bg2': '#ffffff', '--bg3': '#f3f4f6', '--b1': '#e5e7eb', '--b2': '#d1d5db', '--text': '#111827', '--t2': '#374151', '--t3': '#9ca3af' }
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: k === 'name' ? toTitleCase(e.target.value) : e.target.value }))
 
   const validate = () => {
     const e = {}

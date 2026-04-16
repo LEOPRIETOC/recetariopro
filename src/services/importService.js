@@ -927,3 +927,53 @@ export async function fixMissingActiveField(restaurantId) {
   if (fixed > 0) await batch.commit()
   return { fixed, total: snap.docs.length }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NORMALIZAR TEXTOS EXISTENTES EN FIRESTORE
+// ─────────────────────────────────────────────────────────────────────────────
+export async function normalizeExistingData(restaurantId) {
+  const batch = writeBatch(db)
+  let fixed = 0
+
+  // Normalizar recetas → MAYÚSCULAS
+  const recipesSnap = await getDocs(
+    collection(db, 'restaurants', restaurantId, 'recipes')
+  )
+  recipesSnap.docs.forEach(d => {
+    const data = d.data()
+    const newName = data.name?.toUpperCase()
+    if (newName && newName !== data.name) {
+      batch.update(d.ref, { name: newName })
+      fixed++
+    }
+  })
+
+  // Normalizar materias primas → MAYÚSCULAS
+  const mpSnap = await getDocs(
+    collection(db, 'restaurants', restaurantId, 'materias_primas')
+  )
+  mpSnap.docs.forEach(d => {
+    const data = d.data()
+    const newName = data.name?.toUpperCase()
+    if (newName && newName !== data.name) {
+      batch.update(d.ref, { name: newName })
+      fixed++
+    }
+  })
+
+  // Normalizar menús (categorías) → Title Case
+  const catsSnap = await getDocs(
+    collection(db, 'restaurants', restaurantId, 'categories')
+  )
+  catsSnap.docs.forEach(d => {
+    const data = d.data()
+    const newName = toTitleCase(data.name || '')
+    if (newName && newName !== data.name) {
+      batch.update(d.ref, { name: newName })
+      fixed++
+    }
+  })
+
+  await batch.commit()
+  return { fixed }
+}

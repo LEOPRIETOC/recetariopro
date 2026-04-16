@@ -4,7 +4,7 @@ import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
 import { createUserWithRole, updateUserRole, deactivateUser, sendUserPasswordReset } from '../services/auth'
-import { cn } from '../lib/utils'
+import { cn, toTitleCase } from '../lib/utils'
 import { useToast } from '../components/ui/toast'
 import { UserPlus, Pencil, MailCheck, Power, Trash2, X, ChevronDown } from 'lucide-react'
 
@@ -116,7 +116,7 @@ function CreateUserModal({ onClose, onCreated, restaurants, creator }) {
   return (
     <Modal title="Crear nuevo usuario" onClose={onClose}>
       <Field label="Nombre completo *">
-        <input style={inputStyle} value={form.name} onChange={set('name')} placeholder="Ej: María García" />
+        <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: toTitleCase(e.target.value) }))} placeholder="Ej: María García" />
       </Field>
       <Field label="Correo electrónico *">
         <input style={inputStyle} type="email" value={form.email} onChange={set('email')} placeholder="correo@ejemplo.com" />
