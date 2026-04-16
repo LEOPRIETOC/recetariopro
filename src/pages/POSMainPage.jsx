@@ -97,12 +97,22 @@ function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }
       {/* Verificación badge */}
       {recipe.verified && (
         <div style={{
-          position: 'absolute', top: 8, right: 8, zIndex: 10,
-          background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.30)',
-          borderRadius: '50%', width: 22, height: 22,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.75rem', color: 'var(--green)', fontWeight: 700,
-        }}>✓</div>
+          position: 'absolute',
+          top: -8, right: 8,
+          background: '#F59E0B',
+          color: '#111',
+          fontSize: '0.62rem',
+          fontWeight: 700,
+          padding: '2px 8px',
+          borderRadius: 20,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+          whiteSpace: 'nowrap',
+          zIndex: 10,
+        }}>
+          ✓ Verificado
+        </div>
       )}
 
       <div
