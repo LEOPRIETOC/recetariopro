@@ -1,7 +1,4 @@
 import { useEffect, useState, useRef } from 'react'
-
-const isDev = window.location.hostname.includes('dev.app.inom.pro') ||
-              window.location.hostname === 'localhost'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
@@ -26,6 +23,9 @@ import { ConfigModal } from './ConfigModal'
 
 // Special virtual ID for the Sub-recetas section
 export const SUBRECIPES_CATEGORY_ID = '__subrecipes__'
+
+const isDev = window.location.hostname.includes('dev.app.inom.pro') ||
+              window.location.hostname === 'localhost'
 
 // ── Sortable category button ─────────────────────────────────────────────────
 function SortableCategoryButton({ cat, isActive, isDark, onClick }) {
