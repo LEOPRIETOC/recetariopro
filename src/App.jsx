@@ -34,6 +34,12 @@ function ThemeProvider({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    console.log('APP ENV:', import.meta.env.VITE_APP_ENV)
+    console.log('ALL ENV:', import.meta.env)
+    console.log('HOSTNAME:', window.location.hostname)
+  }, [])
+
   return (
     <ThemeProvider>
       <BrowserRouter>

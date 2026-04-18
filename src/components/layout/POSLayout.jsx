@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 
-const isDev = import.meta.env.VITE_APP_ENV === 'dev'
+const isDev = window.location.hostname.includes('dev.app.inom.pro') ||
+              window.location.hostname === 'localhost'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
