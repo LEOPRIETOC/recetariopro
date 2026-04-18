@@ -221,7 +221,10 @@ export function POSLayout() {
   }, [])
 
   return (
-    <div className={cn('flex flex-col h-screen overflow-hidden', bg, isDev ? 'app-dev' : 'app-prod')}>
+    <div
+      className={cn('flex flex-col h-screen overflow-hidden', bg)}
+      style={isDev ? { outline: '4px solid #F59E0B', outlineOffset: '-4px' } : undefined}
+    >
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}
