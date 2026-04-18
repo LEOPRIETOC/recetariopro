@@ -24,7 +24,7 @@ import { ConfigModal } from './ConfigModal'
 // Special virtual ID for the Sub-recetas section
 export const SUBRECIPES_CATEGORY_ID = '__subrecipes__'
 
-const isDev = window.location.hostname.includes('dev.app.inom.pro') ||
+const isDev = window.location.hostname.includes('dev') ||
               window.location.hostname === 'localhost'
 
 // ── Sortable category button ─────────────────────────────────────────────────
@@ -221,24 +221,7 @@ export function POSLayout() {
   }, [])
 
   return (
-    <div className={cn('flex flex-col h-screen overflow-hidden', bg)}>
-
-      {/* Banner ambiente dev */}
-      {(window.location.hostname.includes('dev') ||
-        window.location.hostname === 'localhost') && (
-        <div style={{
-          background: '#F59E0B',
-          color: '#111',
-          textAlign: 'center',
-          padding: '8px',
-          fontSize: '0.82rem',
-          fontWeight: 700,
-          width: '100%',
-          zIndex: 99999,
-        }}>
-          ⚠️ AMBIENTE DE PRUEBAS — Los cambios aquí NO afectan producción
-        </div>
-      )}
+    <div className={cn('flex flex-col h-screen overflow-hidden', bg, isDev ? 'app-dev' : 'app-prod')}>
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}

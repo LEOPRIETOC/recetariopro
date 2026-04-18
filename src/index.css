@@ -559,3 +559,9 @@ a.active, .active-link, [aria-current="page"] {
     display: block !important;
   }
 }
+
+/* Dev environment indicator */
+.app-dev {
+  --bg: #1a0a2e !important;
+  --bg2: #2d1a4a !important;
+}
