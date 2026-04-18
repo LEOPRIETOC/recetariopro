@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
+
+const isDev = import.meta.env.VITE_APP_ENV === 'dev'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
@@ -213,8 +215,30 @@ export function POSLayout() {
   const sideBg = isDark ? 'night-panel-bg border-r' : 'bg-white border-gray-200'
   const headerBg = isDark ? 'night-panel-bg border-b' : 'bg-white border-gray-200'
 
+  useEffect(() => {
+    document.title = isDev ? '⚠️ DEV — RecetarioPro' : 'RecetarioPro'
+  }, [])
+
   return (
     <div className={cn('flex flex-col h-screen overflow-hidden', bg)}>
+
+      {/* ── Dev banner ─────────────────────────────────────────────────────── */}
+      {isDev && (
+        <div style={{
+          background: '#F59E0B',
+          color: '#111',
+          textAlign: 'center',
+          padding: '6px',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+          letterSpacing: '0.05em',
+          zIndex: 99999,
+          flexShrink: 0,
+          width: '100%',
+        }}>
+          ⚠️ AMBIENTE DE PRUEBAS — Los cambios aquí NO afectan producción
+        </div>
+      )}
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}
