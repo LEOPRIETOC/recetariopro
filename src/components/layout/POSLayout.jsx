@@ -223,8 +223,24 @@ export function POSLayout() {
   return (
     <div className={cn('flex flex-col h-screen overflow-hidden', bg)}>
 
-      {/* ── Dev banner ─────────────────────────────────────────────────────── */}
-      {isDev && (
+      {/* ── Dev banner (sin condición — test) ──────────────────────────────── */}
+      <div style={{
+        background: '#F59E0B',
+        color: '#111',
+        textAlign: 'center',
+        padding: '8px',
+        fontSize: '0.82rem',
+        fontWeight: 700,
+        width: '100%',
+        position: 'sticky',
+        top: 0,
+        zIndex: 99999,
+      }}>
+        ⚠️ AMBIENTE DE PRUEBAS
+      </div>
+
+      {/* ── Dev banner (con condición — desactivado temporalmente) ─────────── */}
+      {false && isDev && (
         <div style={{
           background: '#F59E0B',
           color: '#111',
