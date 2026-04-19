@@ -520,6 +520,25 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
             </span>
           )}
         </td>
+        {/* Referencia */}
+        <td style={{ padding: '5px 8px' }}>
+          {(() => {
+            const ref = watch(`ingredients.${index}.reference`) || ''
+            if (!ref) return <span style={{ color: 'var(--t3)', fontSize: '0.72rem' }}>—</span>
+            const isSub = ref.includes('SUB') || ref.includes('BARSB') || ref.includes('ONISUB')
+            return (
+              <span style={{
+                fontSize: '0.72rem', fontWeight: 700,
+                padding: '2px 8px', borderRadius: 6,
+                background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
+                color: isSub ? '#2563eb' : '#16a34a',
+                whiteSpace: 'nowrap',
+              }}>
+                {ref}
+              </span>
+            )
+          })()}
+        </td>
         {/* Delete */}
         <td style={{ padding: '5px 4px', textAlign: 'center' }}>
           <button type="button" onClick={() => remove(index)}
@@ -1607,7 +1626,7 @@ export default function RecipeDetailPage() {
                   <>
                     {/* Header — overflow-x hidden (no scrollbar), synced by JS */}
                     <div id="ing-scroll-head" style={{ overflowX: 'hidden' }}>
-                      <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                         <colgroup>
                           <col style={{ width: '240px' }} />
                           <col style={{ width: '90px' }} />
@@ -1615,6 +1634,7 @@ export default function RecipeDetailPage() {
                           <col style={{ width: '80px' }} />
                           <col style={{ width: '90px' }} />
                           <col style={{ width: '120px' }} />
+                          <col style={{ width: '100px' }} />
                           <col style={{ width: '40px' }} />
                         </colgroup>
                         <thead>
@@ -1626,6 +1646,7 @@ export default function RecipeDetailPage() {
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Desp.%</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo U.</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo Total</th>
+                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Referencia</th>
                             <th style={{ padding: '8px 4px' }} />
                           </tr>
                         </thead>
@@ -1633,7 +1654,7 @@ export default function RecipeDetailPage() {
                     </div>
                     {/* Body — overflow-x scroll (scrollbar appears at bottom of rows) */}
                     <div id="ing-scroll-body" style={{ overflowX: 'scroll', scrollbarWidth: 'auto' }}>
-                      <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                         <colgroup>
                           <col style={{ width: '240px' }} />
                           <col style={{ width: '90px' }} />
@@ -1641,6 +1662,7 @@ export default function RecipeDetailPage() {
                           <col style={{ width: '80px' }} />
                           <col style={{ width: '90px' }} />
                           <col style={{ width: '120px' }} />
+                          <col style={{ width: '100px' }} />
                           <col style={{ width: '40px' }} />
                         </colgroup>
                         <tbody>
