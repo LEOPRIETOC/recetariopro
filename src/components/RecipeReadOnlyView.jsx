@@ -196,6 +196,21 @@ export function RecipeReadOnlyView({ recipe, restaurantId, userId, isDark }) {
                   <span style={{ fontWeight: 700, color: ink, minWidth: 48 }}>{ing.quantity || ''}</span>
                   <span style={{ color: t3, minWidth: 40 }}>{ing.unit || ''}</span>
                   <span style={{ color: isDark ? '#d1d5db' : '#374151', flex: 1 }}>{ing.name || ing.ingredientName || ''}</span>
+                  {(() => {
+                    const isSub = ing.type === 'subrecipe' ||
+                      ing.reference?.startsWith('ONISUB') ||
+                      ing.reference?.startsWith('BARSB')
+                    return (
+                      <span style={{
+                        fontSize: '0.62rem', fontWeight: 700,
+                        padding: '1px 5px', borderRadius: 3, flexShrink: 0,
+                        background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
+                        color: isSub ? '#2563eb' : '#16a34a',
+                      }}>
+                        {isSub ? 'Sub-receta' : 'MP'}
+                      </span>
+                    )
+                  })()}
                 </li>
               ))}
             </ul>

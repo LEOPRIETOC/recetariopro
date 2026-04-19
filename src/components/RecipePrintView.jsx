@@ -211,6 +211,9 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
                 const qty = ing.quantity ? `${ing.quantity} ` : ''
                 const unit = ing.unit ? `${ing.unit.toLowerCase()} de ` : ''
                 const name = ing.description || ing.ingredientName || '—'
+                const isSub = ing.type === 'subrecipe' ||
+                  ing.reference?.startsWith('ONISUB') ||
+                  ing.reference?.startsWith('BARSB')
                 return (
                   <div key={i} style={{
                     fontSize: 11,
@@ -221,7 +224,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
                     alignItems: 'baseline',
                     gap: 4,
                   }}>
-                    <span style={{ color: '#c9a84c', flexShrink: 0 }}>•</span>
+                    <span style={{ color: isSub ? '#2563eb' : '#16a34a', flexShrink: 0 }}>•</span>
                     <span>{qty}{unit}<strong style={{ color: '#111' }}>{name}</strong></span>
                   </div>
                 )

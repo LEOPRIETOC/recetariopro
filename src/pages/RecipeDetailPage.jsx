@@ -402,7 +402,23 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
             className={cn('w-full px-2 h-7 text-sm rounded-lg border outline-none focus:ring-1 focus:ring-gold-500',
               isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200 text-gray-900')}
           />
-          {/* Fixed-position dropdown — escapes overflow:scroll container */}
+            {/* Badge tipo ingrediente */}
+          {query && (
+            <span style={{
+              display: 'inline-block',
+              marginTop: 2,
+              fontSize: '0.62rem',
+              fontWeight: 700,
+              padding: '1px 5px',
+              borderRadius: 3,
+              background: rowType === 'subrecipe' ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
+              color: rowType === 'subrecipe' ? '#2563eb' : '#16a34a',
+              whiteSpace: 'nowrap',
+            }}>
+              {rowType === 'subrecipe' ? 'Sub-receta' : 'MP'}
+            </span>
+          )}
+        {/* Fixed-position dropdown — escapes overflow:scroll container */}
           {showSuggestions && dropRect && (ingMatches.length > 0 || subMatches.length > 0 || noMatch) && (
             <div className={cn('rounded-xl border shadow-xl overflow-hidden max-h-52 overflow-y-auto',
               isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}
