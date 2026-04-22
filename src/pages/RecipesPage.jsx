@@ -389,7 +389,7 @@ export default function RecipesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className={cn('font-display text-2xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
-            {t('recipes.title')}
+            Recetas v3.0 TEST
           </h1>
           <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>
             {filtered.length} de {recipes.length} recetas
