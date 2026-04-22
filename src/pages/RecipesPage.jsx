@@ -29,12 +29,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useToast } from '../components/ui/toast'
 import { cn, formatCurrency, calculateMargin } from '../lib/utils'
 
-function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, isDark, onToggle }) {
+function SortableRecipeCard({ recipe, categories, canSeeCosts, isAdmin, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: recipe.id })
 
   const category = categories.find((c) => c.id === recipe.categoryId)
-  const margin = calculateMargin(recipe.costPerPortion || 0, recipe.salePrice || 0)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -112,25 +111,30 @@ function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, i
               )}
             </div>
 
-            {showCosts && (
-              <div className={cn('mt-3 pt-3 border-t grid grid-cols-3 gap-2', isDark ? 'border-gray-800' : 'border-gray-100')}>
-                <div>
-                  <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>Costo</p>
-                  <p className={cn('text-xs font-semibold', isDark ? 'text-gray-300' : 'text-gray-700')}>
-                    {formatCurrency(recipe.costPerPortion)}
-                  </p>
+            {canSeeCosts && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: '1px solid var(--b1)',
+              }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--t3)', marginBottom: 2 }}>Costo</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--t2)' }}>
+                    {recipe.totalCost
+                      ? `$${Number(recipe.totalCost).toLocaleString('es-CO')}`
+                      : '—'}
+                  </div>
                 </div>
-                <div>
-                  <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>Precio</p>
-                  <p className={cn('text-xs font-semibold text-gold-600')}>
-                    {formatCurrency(recipe.salePrice)}
-                  </p>
-                </div>
-                <div>
-                  <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>Margen</p>
-                  <p className={cn('text-xs font-semibold', margin >= 60 ? 'text-emerald-500' : margin >= 40 ? 'text-amber-500' : 'text-red-500')}>
-                    {margin.toFixed(0)}%
-                  </p>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--t3)', marginBottom: 2 }}>Precio</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent)' }}>
+                    {recipe.sellingPrice
+                      ? `$${Number(recipe.sellingPrice).toLocaleString('es-CO')}`
+                      : '—'}
+                  </div>
                 </div>
               </div>
             )}
@@ -159,8 +163,8 @@ function SortableRecipeCard({ recipe, categories, showCosts, isAdmin, canEdit, i
 
 export default function RecipesPage() {
   const { t } = useTranslation()
-  const { currentRestaurant, theme, globalSearch, showCosts } = useAppStore()
-  const { isAdmin, canEdit } = useAuth()
+  const { currentRestaurant, theme, globalSearch } = useAppStore()
+  const { isAdmin, canEdit, canSeeCosts } = useAuth()
   const { success, error } = useToast()
   const isDark = theme === 'night'
 
@@ -322,9 +326,9 @@ export default function RecipesPage() {
     let va, vb
     switch (sortField) {
       case 'codigo':       va = a.code || '';                              vb = b.code || '';                              break
-      case 'costo':        va = a.costPerPortion ?? 0;                     vb = b.costPerPortion ?? 0;                     break
-      case 'precio':       va = a.salePrice ?? 0;                          vb = b.salePrice ?? 0;                          break
-      case 'margen':       va = calculateMargin(a.costPerPortion || 0, a.salePrice || 0); vb = calculateMargin(b.costPerPortion || 0, b.salePrice || 0); break
+      case 'costo':        va = a.totalCost ?? 0;                          vb = b.totalCost ?? 0;                          break
+      case 'precio':       va = a.sellingPrice ?? 0;                       vb = b.sellingPrice ?? 0;                       break
+      case 'margen':       va = calculateMargin(a.totalCost || 0, a.sellingPrice || 0); vb = calculateMargin(b.totalCost || 0, b.sellingPrice || 0); break
       case 'creacion':     va = a.createdAt?.toMillis?.() ?? 0;            vb = b.createdAt?.toMillis?.() ?? 0;            break
       case 'verificacion': va = a.verified ? 1 : 0;                        vb = b.verified ? 1 : 0;                        break
       default:             va = a.name || '';                               vb = b.name || ''
@@ -356,12 +360,12 @@ export default function RecipesPage() {
           </td>
         )
       case 'costo':
-        return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-300' : 'text-gray-700')}>{recipe.costPerPortion != null ? formatCurrency(recipe.costPerPortion) : '—'}</td>
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-300' : 'text-gray-700')}>{recipe.totalCost != null ? `$${Number(recipe.totalCost).toLocaleString('es-CO')}` : '—'}</td>
       case 'precio':
-        return <td key={colId} className="px-4 py-2.5 text-xs text-amber-600 font-medium">{recipe.salePrice != null ? formatCurrency(recipe.salePrice) : '—'}</td>
+        return <td key={colId} className="px-4 py-2.5 text-xs text-amber-600 font-medium">{recipe.sellingPrice != null ? `$${Number(recipe.sellingPrice).toLocaleString('es-CO')}` : '—'}</td>
       case 'margen': {
-        const m = calculateMargin(recipe.costPerPortion || 0, recipe.salePrice || 0)
-        return <td key={colId} className={cn('px-4 py-2.5 text-xs font-medium', m >= 60 ? 'text-emerald-500' : m >= 40 ? 'text-amber-500' : 'text-red-500')}>{recipe.salePrice ? `${m.toFixed(1)}%` : '—'}</td>
+        const m = calculateMargin(recipe.totalCost || 0, recipe.sellingPrice || 0)
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs font-medium', m >= 60 ? 'text-emerald-500' : m >= 40 ? 'text-amber-500' : 'text-red-500')}>{recipe.sellingPrice ? `${m.toFixed(1)}%` : '—'}</td>
       }
       case 'creacion':
         return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>{recipe.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}</td>
@@ -517,7 +521,7 @@ export default function RecipesPage() {
                   key={recipe.id}
                   recipe={recipe}
                   categories={categories}
-                  showCosts={showCosts}
+                  canSeeCosts={canSeeCosts}
                   isAdmin={isAdmin}
                   canEdit={canEdit}
                   isDark={isDark}
@@ -534,7 +538,7 @@ export default function RecipesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className={cn('border-b text-xs uppercase tracking-wider', isDark ? 'border-gray-800 text-gray-500' : 'border-gray-100 text-gray-400')}>
-                  {listColumns.filter(c => c.visible).map((col) => (
+                  {listColumns.filter(c => c.visible && (canSeeCosts || !['costo','precio','margen'].includes(c.id))).map((col) => (
                     <th
                       key={col.id}
                       draggable
@@ -577,7 +581,7 @@ export default function RecipesPage() {
                       )}
                       onClick={() => navigate(`/recipes/${recipe.id}`)}
                     >
-                      {listColumns.filter(c => c.visible).map(col => renderListCell(col.id, recipe, cat))}
+                      {listColumns.filter(c => c.visible && (canSeeCosts || !['costo','precio','margen'].includes(c.id))).map(col => renderListCell(col.id, recipe, cat))}
                       <td className="px-4 py-2.5 text-center">
                         <Badge variant={recipe.active !== false ? 'success' : 'secondary'}>
                           {recipe.active !== false ? t('common.active') : t('common.inactive')}
