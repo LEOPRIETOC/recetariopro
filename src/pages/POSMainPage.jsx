@@ -318,6 +318,7 @@ export default function POSMainPage() {
 
   const { sorted: sortedRecipes, requestSort, sortKey, sortDir } = useSortableData(recipes)
 
+
   const isSubSection = selectedCategory === SUBRECIPES_CATEGORY_ID
 
   const filtered = useMemo(() => {

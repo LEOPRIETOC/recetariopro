@@ -840,22 +840,6 @@ export default function RecipeDetailPage() {
     return () => { isMountedRef.current = false }
   }, [])
 
-  // LOG TEMPORAL — ver estructura de ingredientes en Firestore
-  useEffect(() => {
-    if (recipe?.ingredients?.length > 0) {
-      console.log('=== INGREDIENTES ===')
-      recipe.ingredients.forEach(ing => {
-        console.log({
-          name: ing.ingredientName,
-          reference: ing.reference,
-          ingredientType: ing.ingredientType,
-          ingredientId: ing.ingredientId,
-          type: ing.type,
-        })
-      })
-    }
-  }, [recipe])
-
   const [allRecipes, setAllRecipes] = useState([])
   const [dupErrors, setDupErrors] = useState({})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
