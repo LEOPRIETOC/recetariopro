@@ -1757,6 +1757,40 @@ export default function RecipeDetailPage() {
               </CardContent>
             </Card>
 
+            {/* ── Precio de venta ── */}
+            <div style={{
+              background: isDark ? '#111827' : 'var(--bg2)',
+              border: `1px solid ${isDark ? '#1f2937' : 'var(--b1)'}`,
+              borderRadius: 12,
+              padding: 16,
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Precio de venta
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--t2)' }}>$</span>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  {...register('sellingPrice', { valueAsNumber: true })}
+                  placeholder="0"
+                  style={{
+                    flex: 1,
+                    background: isDark ? '#1f2937' : '#fff',
+                    border: `1px solid ${isDark ? '#374151' : 'var(--b1)'}`,
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+            </div>
+
             {/* ── Estado de la receta toggle ── */}
             {!isNew && recipe && canEdit && (
               <div style={{
