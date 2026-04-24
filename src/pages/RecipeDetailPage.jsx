@@ -225,6 +225,15 @@ function toTitleCase(str) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
+const getIngBadge = (ref) => {
+  const r = (ref || '').toUpperCase().trim()
+  if (r.startsWith('ONISUB') || r.startsWith('BARSB'))
+    return { color: 'var(--blue)', bg: 'rgba(37,99,235,0.12)', label: r }
+  if (r.startsWith('MP') || r.startsWith('ONI'))
+    return { color: 'var(--green)', bg: 'rgba(22,163,74,0.12)', label: r }
+  return { color: 'var(--t2)', bg: 'var(--bg3)', label: r || '—' }
+}
+
 function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, nameInputRef, isAdmin }) {
   const [query, setQuery] = useState(toTitleCase(field.description || field.ingredientName || ''))
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -523,26 +532,16 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
         {/* Referencia */}
         <td style={{padding:'8px 10px'}}>
           {(() => {
-            const ref = watch(`ingredients.${index}.reference`) || ''
-            const refUp = ref.toUpperCase().trim()
-            const isSub = refUp.startsWith('ONISUB') ||
-              refUp.startsWith('BARSB') ||
-              refUp.startsWith('SUB0')
+            const badge = getIngBadge(watch(`ingredients.${index}.reference`))
             return (
-              <div style={{display:'flex',flexDirection:'column',gap:3}}>
-                <span style={{
-                  fontSize:'0.72rem',fontWeight:700,
-                  padding:'2px 8px',borderRadius:6,
-                  background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
-                  color: isSub ? 'var(--blue)' : 'var(--green)',
-                  whiteSpace:'nowrap',
-                }}>
-                  {ref || '—'}
-                </span>
-                <span style={{fontSize:'0.65rem',color:isSub?'var(--blue)':'var(--green)',opacity:0.8}}>
-                  {isSub ? 'Sub-receta' : 'MP'}
-                </span>
-              </div>
+              <span style={{
+                fontSize:'0.7rem',fontWeight:700,
+                padding:'3px 8px',borderRadius:6,
+                background:badge.bg,color:badge.color,
+                whiteSpace:'nowrap',fontFamily:'monospace',
+              }}>
+                {badge.label}
+              </span>
             )
           })()}
         </td>
