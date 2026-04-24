@@ -521,21 +521,32 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           )}
         </td>
         {/* Referencia */}
-        <td style={{ padding: '5px 8px' }}>
+        <td style={{padding:'8px 10px'}}>
           {(() => {
             const ref = watch(`ingredients.${index}.reference`) || ''
-            if (!ref) return <span style={{ color: 'var(--t3)', fontSize: '0.72rem' }}>—</span>
-            const isSub = ref.includes('SUB') || ref.includes('BARSB') || ref.includes('ONISUB')
+            const ingType = watch(`ingredients.${index}.ingredientType`) || ''
+            const refUp = ref.toUpperCase()
+            const isSub =
+              rowType === 'subrecipe' ||
+              ingType === 'subrecipe' ||
+              refUp.startsWith('ONISUB') ||
+              refUp.startsWith('BARSB') ||
+              refUp.startsWith('SUB')
             return (
-              <span style={{
-                fontSize: '0.72rem', fontWeight: 700,
-                padding: '2px 8px', borderRadius: 6,
-                background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
-                color: isSub ? 'var(--blue)' : 'var(--green)',
-                whiteSpace: 'nowrap',
-              }}>
-                {ref}
-              </span>
+              <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                <span style={{
+                  fontSize:'0.72rem',fontWeight:700,
+                  padding:'2px 8px',borderRadius:6,
+                  background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
+                  color: isSub ? 'var(--blue)' : 'var(--green)',
+                  whiteSpace:'nowrap',
+                }}>
+                  {ref || '—'}
+                </span>
+                <span style={{fontSize:'0.65rem',color:isSub?'var(--blue)':'var(--green)',opacity:0.8}}>
+                  {isSub ? 'Sub-receta' : 'MP'}
+                </span>
+              </div>
             )
           })()}
         </td>
