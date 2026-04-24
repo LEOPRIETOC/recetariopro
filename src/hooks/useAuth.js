@@ -98,11 +98,12 @@ export function useAuth() {
     return unsubscribe
   }, [])
 
-  const isMaster       = userProfile?.role === 'master'
-  const isSuperAdmin   = userProfile?.role === 'superadmin'
-  const isAdmin        = userProfile?.role === 'admin'
-  const isChef         = userProfile?.role === 'chef'
-  const isUsuario      = userProfile?.role === 'usuario'
+  const role           = userProfile?.role?.toLowerCase() || ''
+  const isMaster       = role === 'master'
+  const isSuperAdmin   = role === 'superadmin'
+  const isAdmin        = role === 'admin'
+  const isChef         = role === 'chef'
+  const isUsuario      = role === 'usuario'
 
   // Permisos compuestos
   const canEdit             = isMaster || isSuperAdmin || isAdmin
