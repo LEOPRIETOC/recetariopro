@@ -524,14 +524,10 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
         <td style={{padding:'8px 10px'}}>
           {(() => {
             const ref = watch(`ingredients.${index}.reference`) || ''
-            const ingType = watch(`ingredients.${index}.ingredientType`) || ''
-            const refUp = ref.toUpperCase()
-            const isSub =
-              rowType === 'subrecipe' ||
-              ingType === 'subrecipe' ||
-              refUp.startsWith('ONISUB') ||
+            const refUp = ref.toUpperCase().trim()
+            const isSub = refUp.startsWith('ONISUB') ||
               refUp.startsWith('BARSB') ||
-              refUp.startsWith('SUB')
+              refUp.startsWith('SUB0')
             return (
               <div style={{display:'flex',flexDirection:'column',gap:3}}>
                 <span style={{
@@ -860,6 +856,23 @@ export default function RecipeDetailPage() {
     isMountedRef.current = true
     return () => { isMountedRef.current = false }
   }, [])
+
+  // LOG TEMPORAL — ver estructura de ingredientes en Firestore
+  useEffect(() => {
+    if (recipe?.ingredients?.length > 0) {
+      console.log('=== INGREDIENTES ===')
+      recipe.ingredients.forEach(ing => {
+        console.log({
+          name: ing.ingredientName,
+          reference: ing.reference,
+          ingredientType: ing.ingredientType,
+          ingredientId: ing.ingredientId,
+          type: ing.type,
+        })
+      })
+    }
+  }, [recipe])
+
   const [allRecipes, setAllRecipes] = useState([])
   const [dupErrors, setDupErrors] = useState({})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
