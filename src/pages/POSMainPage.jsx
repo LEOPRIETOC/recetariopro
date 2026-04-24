@@ -148,22 +148,54 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
           {recipe.code && (
             <p className={cn('text-xs font-mono mt-0.5', isDark ? 'text-gray-600' : 'text-gray-400')}>#{recipe.code}</p>
           )}
-          {canSeeCosts && (
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)'}}>
-              <div>
-                <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Costo</div>
-                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--t2)'}}>
-                  {recipe.costPerPortion ? `$${Number(recipe.costPerPortion).toLocaleString('es-CO')}` : '—'}
+          {canSeeCosts && (() => {
+            const isSub = recipe.isSubRecipe === true || recipe.type === 'subrecipe'
+            const cost = recipe.totalCost || 0
+            if (isSub) {
+              const yield_ = parseFloat(recipe.yield) || 0
+              const yieldUnit = recipe.yieldUnit || ''
+              const costPerUnit = yield_ > 0 ? cost / yield_ : 0
+              return (
+                <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)',display:'flex',flexDirection:'column',gap:4}}>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
+                    <span style={{color:'var(--t3)'}}>Costo total</span>
+                    <span style={{fontWeight:600,color:'var(--t2)'}}>
+                      {cost > 0 ? `$${cost.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
+                    </span>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
+                    <span style={{color:'var(--t3)'}}>Rendimiento</span>
+                    <span style={{fontWeight:600,color:'var(--t2)'}}>
+                      {yield_ > 0 ? `${yield_} ${yieldUnit}` : '—'}
+                    </span>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
+                    <span style={{color:'var(--t3)'}}>Costo/{yieldUnit || 'u'}</span>
+                    <span style={{fontWeight:600,color:'var(--accent)'}}>
+                      {costPerUnit > 0 ? `$${costPerUnit.toLocaleString('es-CO',{minimumFractionDigits:4,maximumFractionDigits:4})}` : '—'}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
+            const price = parseFloat(recipe.sellingPrice) || 0
+            return (
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)'}}>
+                <div>
+                  <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Costo</div>
+                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--t2)'}}>
+                    {cost > 0 ? `$${cost.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Precio</div>
+                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--accent)'}}>
+                    {price > 0 ? `$${price.toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0})}` : '—'}
+                  </div>
                 </div>
               </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Precio</div>
-                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--accent)'}}>
-                  {recipe.salePrice ? `$${Number(recipe.salePrice).toLocaleString('es-CO')}` : '—'}
-                </div>
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </div>
       </div>
       {canEdit && (
