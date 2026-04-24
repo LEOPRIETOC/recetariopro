@@ -1653,7 +1653,7 @@ export default function RecipeDetailPage() {
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Desp.%</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo U.</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo Total</th>
-                            <th style={{padding:'8px 10px',fontSize:'0.68rem',textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--t3)',fontWeight:700,background:'var(--bg3)'}}>Ref.</th>
+                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Ref.</th>
                             <th style={{ padding: '8px 4px' }} />
                           </tr>
                         </thead>
