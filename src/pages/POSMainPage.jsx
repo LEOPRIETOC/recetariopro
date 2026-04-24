@@ -81,7 +81,7 @@ function loadCols(key, defaults) {
 }
 
 // ── Recipe Card (grid) ─────────────────────────────────────────────────────────
-function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }) {
+function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: recipe.id })
   const cat = categories?.find((c) => c.id === recipe?.categoryId)
@@ -148,12 +148,20 @@ function RecipeCard({ recipe, categories, showCosts, canEdit, isDark, onToggle }
           {recipe.code && (
             <p className={cn('text-xs font-mono mt-0.5', isDark ? 'text-gray-600' : 'text-gray-400')}>#{recipe.code}</p>
           )}
-          {showCosts && (recipe.salePrice || 0) > 0 && (
-            <div className={cn('flex items-center justify-between mt-2 pt-2 border-t text-xs', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className="font-semibold" style={{ color: 'var(--accent)' }}>{formatNumber(recipe.salePrice)}</span>
-              <span className={cn('font-medium', margin >= 60 ? 'text-emerald-500' : margin >= 40 ? 'text-amber-500' : 'text-red-500')}>
-                {margin.toFixed(0)}%
-              </span>
+          {canSeeCosts && (
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)'}}>
+              <div>
+                <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Costo</div>
+                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--t2)'}}>
+                  {recipe.costPerPortion ? `$${Number(recipe.costPerPortion).toLocaleString('es-CO')}` : '—'}
+                </div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Precio</div>
+                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--accent)'}}>
+                  {recipe.salePrice ? `$${Number(recipe.salePrice).toLocaleString('es-CO')}` : '—'}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -250,7 +258,7 @@ function renderCell(colId, recipe) {
 export default function POSMainPage() {
   const navigate = useNavigate()
   const { currentRestaurant, theme, showCosts, selectedCategory, globalSearch } = useAppStore()
-  const { isAdmin, canEdit } = useAuth()
+  const { isAdmin, canEdit, canSeeCosts } = useAuth()
   const { error } = useToast()
   const isDark = theme === 'night'
 
@@ -411,7 +419,7 @@ export default function POSMainPage() {
                   key={recipe.id}
                   recipe={recipe}
                   categories={categories}
-                  showCosts={showCosts}
+                  canSeeCosts={canSeeCosts}
                   isAdmin={isAdmin}
                   canEdit={canEdit}
                   isDark={isDark}
