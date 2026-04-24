@@ -4,8 +4,8 @@
       "collectionGroup": "audit_logs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "module", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {"fieldPath": "module", "order": "ASCENDING"},
+        {"fieldPath": "timestamp", "order": "DESCENDING"}
       ]
     }
   ],

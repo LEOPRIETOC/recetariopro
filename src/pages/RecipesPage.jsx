@@ -113,24 +113,23 @@ function SortableRecipeCard({ recipe, categories, canSeeCosts, isAdmin, canEdit,
 
             {canSeeCosts && (
               <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 8,
-                paddingTop: 8,
-                borderTop: '1px solid var(--b1)',
+                display:'flex',
+                justifyContent:'space-between',
+                marginTop:8,
+                paddingTop:8,
+                borderTop:'1px solid var(--b1)'
               }}>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--t3)', marginBottom: 2 }}>Costo</div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--t2)' }}>
+                <div>
+                  <div style={{fontSize:'0.6rem',color:'var(--t3)'}}>Costo</div>
+                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--t2)'}}>
                     {recipe.totalCost
                       ? `$${Number(recipe.totalCost).toLocaleString('es-CO')}`
                       : '—'}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--t3)', marginBottom: 2 }}>Precio</div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent)' }}>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:'0.6rem',color:'var(--t3)'}}>Precio</div>
+                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--accent)'}}>
                     {recipe.sellingPrice
                       ? `$${Number(recipe.sellingPrice).toLocaleString('es-CO')}`
                       : '—'}

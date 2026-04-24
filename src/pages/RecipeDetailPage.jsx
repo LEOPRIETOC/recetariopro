@@ -531,7 +531,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 fontSize: '0.72rem', fontWeight: 700,
                 padding: '2px 8px', borderRadius: 6,
                 background: isSub ? 'rgba(37,99,235,0.12)' : 'rgba(22,163,74,0.12)',
-                color: isSub ? '#2563eb' : '#16a34a',
+                color: isSub ? 'var(--blue)' : 'var(--green)',
                 whiteSpace: 'nowrap',
               }}>
                 {ref}
@@ -1646,7 +1646,7 @@ export default function RecipeDetailPage() {
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Desp.%</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo U.</th>
                             <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo Total</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Referencia</th>
+                            <th style={{padding:'8px 10px',fontSize:'0.68rem',textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--t3)',fontWeight:700,background:'var(--bg3)'}}>Ref.</th>
                             <th style={{ padding: '8px 4px' }} />
                           </tr>
                         </thead>

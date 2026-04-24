@@ -64,7 +64,7 @@ export function Header({ title }) {
         )
         .slice(0, 10)
       setSearchResults(results)
-      setSearchOpen(true)
+      setSearchOpen(results.length > 0)
     } catch (err) {
       console.error('[search]', err)
     } finally {
