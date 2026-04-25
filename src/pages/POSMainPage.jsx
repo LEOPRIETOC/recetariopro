@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ToggleLeft, ToggleRight, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, ToggleLeft, ToggleRight, GripVertical, ChevronUp, ChevronDown, LayoutGrid, List as ListIcon } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
   useSensor, useSensors,
@@ -18,6 +18,7 @@ import {
 import { SUBRECIPES_CATEGORY_ID } from '../components/layout/POSLayout'
 import { cn, formatNumber, calculateMargin } from '../lib/utils'
 import { useToast } from '../components/ui/toast'
+import { calcRecipeTotalCost } from '../utils/costUtils'
 
 // ── Sortable data hook ─────────────────────────────────────────────────────────
 function useSortableData(data) {
@@ -130,29 +131,21 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
           : <div className="w-full h-2" style={{ backgroundColor: 'var(--accent)', opacity: 0.25 }} />
         }
         <div className="p-3">
-          {cat && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
-              style={{ background: 'var(--accent)', color: 'white', opacity: 0.85 }}>
-              {cat.name}
-            </span>
-          )}
-          {recipe.isSubRecipe && !cat && (
+          {recipe.isSubRecipe && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
               style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
               Sub-receta
             </span>
           )}
-          <h3 className={cn('font-display font-semibold text-sm leading-tight line-clamp-2', isDark ? 'text-white' : 'text-gray-900')}>
+          <h3 className={cn('font-display font-semibold text-sm leading-tight line-clamp-2', isDark ? 'text-white' : 'text-gray-900')}
+            style={{minHeight:'2.5em'}}>
             {recipe.name}
           </h3>
-          {recipe.code && (
-            <p className={cn('text-xs font-mono mt-0.5', isDark ? 'text-gray-600' : 'text-gray-400')}>#{recipe.code}</p>
-          )}
           {canSeeCosts && (() => {
             const isSub = recipe.isSubRecipe === true || recipe.type === 'subrecipe'
-            const cost = recipe.totalCost || 0
+            const cost = calcRecipeTotalCost(recipe)
             if (isSub) {
-              const yield_ = parseFloat(recipe.yield) || 0
+              const yield_ = parseFloat(recipe.yieldAmount || recipe.yield) || 0
               const yieldUnit = recipe.yieldUnit || ''
               const costPerUnit = yield_ > 0 ? cost / yield_ : 0
               return (
@@ -180,18 +173,18 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
             }
             const price = parseFloat(recipe.sellingPrice) || 0
             return (
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)'}}>
-                <div>
-                  <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Costo</div>
-                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--t2)'}}>
-                    {cost > 0 ? `$${cost.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
-                  </div>
-                </div>
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:'0.6rem',color:'var(--t3)',marginBottom:1}}>Precio</div>
-                  <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--accent)'}}>
+              <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)',display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                  <span style={{fontSize:'0.6rem',color:'var(--t3)'}}>Precio</span>
+                  <span style={{fontSize:'0.85rem',fontWeight:700,color: price > 0 ? 'var(--accent)' : 'var(--t3)'}}>
                     {price > 0 ? `$${price.toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0})}` : '—'}
-                  </div>
+                  </span>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                  <span style={{fontSize:'0.6rem',color:'var(--t3)'}}>Costo</span>
+                  <span style={{fontSize:'0.75rem',fontWeight:600,color: cost > 0 ? 'var(--t2)' : 'var(--t3)'}}>
+                    {cost > 0 ? `$${cost.toLocaleString('es-CO',{minimumFractionDigits:0,maximumFractionDigits:0})}` : '—'}
+                  </span>
                 </div>
               </div>
             )
@@ -217,7 +210,7 @@ function renderCell(colId, recipe) {
         <td key={colId} style={{ padding: '8px 12px' }}>
           {recipe.photoURL
             ? <img src={recipe.photoURL} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
-            : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
+            : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 8%, var(--bg2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
           }
         </td>
       )
@@ -378,7 +371,7 @@ export default function POSMainPage() {
   const thBase = {
     padding: '9px 12px', textAlign: 'left', fontSize: '0.68rem',
     textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--t3)',
-    fontWeight: 700, background: 'var(--bg3)', borderBottom: '1px solid var(--b1)',
+    fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 8%, var(--bg2))', borderBottom: '1px solid var(--b1)',
     whiteSpace: 'nowrap', userSelect: 'none',
   }
 
@@ -386,28 +379,26 @@ export default function POSMainPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className={cn('font-display text-xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
-            {selectedCat ? selectedCat.name : 'Recetas'}
-          </h1>
-          <p className={cn('text-sm', isDark ? 'text-gray-500' : 'text-gray-400')}>
-            {filtered.length} receta{filtered.length !== 1 ? 's' : ''}
-            {globalSearch ? ` · "${globalSearch}"` : ''}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => { setViewMode('grid'); localStorage.setItem('pos-main-view-mode', 'grid') }} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => { setViewMode('list'); localStorage.setItem('pos-main-view-mode', 'list') }} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
+          <div>
+            <h1 className={cn('font-display text-xl font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+              {selectedCat ? selectedCat.name : 'Recetas'}
+            </h1>
+            <p className={cn('text-sm', isDark ? 'text-gray-500' : 'text-gray-400')}>
+              {filtered.length} receta{filtered.length !== 1 ? 's' : ''}
+              {globalSearch ? ` · "${globalSearch}"` : ''}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className={cn('flex rounded-lg border overflow-hidden', isDark ? 'border-gray-700' : 'border-gray-200')}>
-            <button
-              onClick={() => { setViewMode('grid'); localStorage.setItem('pos-main-view-mode', 'grid') }}
-              className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
-              style={viewMode === 'grid' ? { backgroundColor: 'var(--accent)' } : {}}
-            >Grid</button>
-            <button
-              onClick={() => { setViewMode('list'); localStorage.setItem('pos-main-view-mode', 'list') }}
-              className={cn('px-2.5 py-1.5 text-xs transition-colors', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
-              style={viewMode === 'list' ? { backgroundColor: 'var(--accent)' } : {}}
-            >Lista</button>
-          </div>
           {canEdit && selectedCategory !== null && (
             <button
               onClick={() => navigate(isSubSection ? '/recipes/new?type=subrecipe' : '/recipes/new')}
@@ -483,7 +474,7 @@ export default function POSMainPage() {
                       style={{
                         ...thBase,
                         cursor: col.sortable ? 'pointer' : 'grab',
-                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
+                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'color-mix(in srgb, var(--accent) 8%, var(--bg2))',
                         borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
                       }}
                     >

@@ -1,11 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const DEFAULT_ACCENT = '#C2410C'
+export const DEFAULT_ACCENT_DAY   = '#0833A2'
+export const DEFAULT_ACCENT_NIGHT = '#EA580C'
+
+const defaultForTheme = (theme) => theme === 'night' ? DEFAULT_ACCENT_NIGHT : DEFAULT_ACCENT_DAY
 
 export const useAppStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Auth
       user: null,
       userProfile: null,
@@ -18,7 +21,14 @@ export const useAppStore = create(
 
       // Theme: 'day' | 'night'
       theme: 'day',
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => {
+        const state = get()
+        const color = theme === 'night'
+          ? (state.accentNight || DEFAULT_ACCENT_NIGHT)
+          : (state.accentDay   || DEFAULT_ACCENT_DAY)
+        document.documentElement.style.setProperty('--accent', color)
+        set({ theme, accentColor: color })
+      },
 
       // Language
       language: 'es',
@@ -28,11 +38,16 @@ export const useAppStore = create(
       showCosts: true,
       setShowCosts: (showCosts) => set({ showCosts }),
 
-      // Global accent color (replaces per-category accent)
-      accentColor: DEFAULT_ACCENT,
+      // Per-theme accent colors
+      accentDay:   DEFAULT_ACCENT_DAY,
+      accentNight: DEFAULT_ACCENT_NIGHT,
+      // accentColor = current active accent (kept for compatibility)
+      accentColor: DEFAULT_ACCENT_DAY,
       setAccentColor: (color) => {
         document.documentElement.style.setProperty('--accent', color)
-        set({ accentColor: color })
+        const theme = get().theme
+        if (theme === 'night') set({ accentNight: color, accentColor: color })
+        else                   set({ accentDay:   color, accentColor: color })
       },
 
       // Global search
@@ -43,7 +58,7 @@ export const useAppStore = create(
       selectedCategory: null,
       setSelectedCategory: (selectedCategory) => set({ selectedCategory }),
 
-      // Active/inactive filter for recipes (kept for Gestión de Recetas tab)
+      // Active/inactive filter for recipes
       activeFilter: 'active',
       setActiveFilter: (activeFilter) => set({ activeFilter }),
 
@@ -58,24 +73,28 @@ export const useAppStore = create(
       // Toast notifications
       toasts: [],
       addToast: (toast) =>
-        set((s) => ({
-          toasts: [...s.toasts, { id: Date.now(), ...toast }],
-        })),
+        set((s) => ({ toasts: [...s.toasts, { id: Date.now(), ...toast }] })),
       removeToast: (id) =>
         set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
     }),
     {
       name: 'recetario-store',
       partialize: (state) => ({
-        theme: state.theme,
-        language: state.language,
-        showCosts: state.showCosts,
+        theme:           state.theme,
+        language:        state.language,
+        showCosts:       state.showCosts,
         currentRestaurant: state.currentRestaurant,
-        accentColor: state.accentColor,
+        accentColor:     state.accentColor,
+        accentDay:       state.accentDay,
+        accentNight:     state.accentNight,
       }),
       onRehydrateStorage: () => (state) => {
-        // Apply accent CSS variable immediately when store rehydrates
-        const color = state?.accentColor || DEFAULT_ACCENT
+        if (!state) return
+        const theme = state.theme || 'day'
+        const color = theme === 'night'
+          ? (state.accentNight || DEFAULT_ACCENT_NIGHT)
+          : (state.accentDay   || DEFAULT_ACCENT_DAY)
+        state.accentColor = color
         document.documentElement.style.setProperty('--accent', color)
       },
     }

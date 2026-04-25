@@ -56,12 +56,12 @@ function SortableCategoryButton({ cat, isActive, isDark, onClick }) {
           isActive
             ? isDark ? 'rounded-r-xl font-light' : 'text-white shadow-sm rounded-xl'
             : isDark
-              ? 'rounded-xl text-gray-400 hover:bg-gray-800/40 hover:text-amber-100 font-light'
+              ? 'rounded-xl text-gray-400 hover:bg-gray-800/40 hover:text-white font-light'
               : 'rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900'
         )}
         style={isActive
           ? isDark
-            ? { background: 'rgba(201,168,76,0.08)', color: '#c9a84c', borderLeft: '2px solid #c9a84c', paddingLeft: '10px' }
+            ? { background: 'rgba(234,88,12,0.08)', color: 'var(--accent)', borderLeft: '2px solid var(--accent)', paddingLeft: '10px' }
             : { backgroundColor: 'var(--accent)' }
           : {}}
       >
@@ -137,7 +137,7 @@ export function POSLayout() {
 
   // Sync --accent CSS variable from store
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent', accentColor || '#d97706')
+    document.documentElement.style.setProperty('--accent', accentColor || '#0833A2')
   }, [accentColor])
 
   const loadCounts = async () => {
@@ -228,25 +228,14 @@ export function POSLayout() {
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
       <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}
-        style={{ opacity: recipeOpen ? 0.4 : 1, pointerEvents: recipeOpen ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
+        style={{ display: recipeOpen ? 'none' : undefined }}>
         {/* Logo */}
-        <div className="flex items-center gap-2 select-none flex-shrink-0">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
-            <ChefHat className="h-4 w-4 text-white" />
-          </div>
-          <span className={cn('font-display font-bold text-sm hidden sm:block night-logo-text', isDark ? 'text-white' : 'text-gray-900')}>
+        <div className="select-none flex-shrink-0" style={{ width: 200, paddingLeft: 16 }}>
+          <span className={cn('font-display night-logo-text', isDark ? 'text-white' : 'text-gray-900')}
+            style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>
             RecetarioPro
           </span>
         </div>
-
-        {/* Restaurant name */}
-        {currentRestaurant?.name && (
-          <span className={cn('text-xs px-2 py-1 rounded-full border flex-shrink-0 hidden md:block',
-            isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'
-          )}>
-            {currentRestaurant.name}
-          </span>
-        )}
 
         {/* Global search */}
         <div className="pos-search-container flex-1 max-w-lg" style={{ position: 'relative' }}>
@@ -261,8 +250,8 @@ export function POSLayout() {
             className={cn(
               'w-full pl-9 pr-8 h-8 text-sm rounded-lg border outline-none transition-colors',
               isDark
-                ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-amber-500'
-                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-amber-400'
+                ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-gold-500'
+                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-gold-400'
             )}
           />
           {searching && (
@@ -384,12 +373,10 @@ export function POSLayout() {
           {/* Logout */}
           <button
             onClick={handleSalirClick}
-            className={cn(
-              'flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-medium transition-colors',
-              isDark
-                ? 'border-gray-700 text-gray-400 hover:border-red-500 hover:text-red-400'
-                : 'border-gray-300 text-gray-500 hover:border-red-400 hover:text-red-500'
-            )}
+            style={{ border: '1px solid var(--accent)', color: 'var(--accent)', background: 'transparent', transition: 'all 0.2s', cursor: 'pointer' }}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium"
+            onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
           >
             <LogOut className="h-3.5 w-3.5" />
             Salir
@@ -405,7 +392,20 @@ export function POSLayout() {
           'w-[200px] flex-shrink-0 flex flex-col border-r overflow-y-auto',
           sideBg
         )}
-          style={{ opacity: recipeOpen ? 0.4 : 1, pointerEvents: recipeOpen ? 'none' : 'auto', transition: 'opacity 0.3s' }}>
+          style={{ display: recipeOpen ? 'none' : undefined }}>
+          {/* Restaurant name bar */}
+          {currentRestaurant?.name && (
+            <div style={{
+              backgroundColor: 'var(--accent)',
+              padding: '14px 16px',
+              marginBottom: 4,
+              textAlign: 'center',
+            }}>
+              <p style={{ fontSize: '1rem', fontWeight: 800, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {currentRestaurant.name}
+              </p>
+            </div>
+          )}
           <div className="p-3 space-y-1">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={localCategories.map((c) => c.id).filter(Boolean)} strategy={verticalListSortingStrategy}>

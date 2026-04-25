@@ -7,7 +7,7 @@
 @layer base {
   :root {
     --radius: 0.75rem;
-    --accent: #C2410C;
+    --accent: #0833A2;
     --red: #DC2626;
     --green: #16A34A;
     --text: #3F3F46;
@@ -32,10 +32,10 @@
     --text:        #3F3F46;
     --t2:          #6B7280;
     --t3:          #9CA3AF;
-    --accent:      #C2410C;
-    --gold:        #C2410C;
-    --gold2:       #9A3412;
-    --goldBg:      rgba(194,65,12,0.08);
+    --accent:      #0833A2;
+    --gold:        #0833A2;
+    --gold2:       #062280;
+    --goldBg:      rgba(8,51,162,0.08);
     --green:       #16A34A;
     --red:         #DC2626;
     --orange:      #D97706;
@@ -50,7 +50,7 @@
     --sub-tr-c:    #D97706;
     --sub-ex-bg:   rgba(220,38,38,0.10);
     --sub-ex-c:    #DC2626;
-    --drag-over:   rgba(194,65,12,0.10);
+    --drag-over:   rgba(8,51,162,0.10);
     --noteBg:      rgba(37,99,235,0.06);
     --noteBr:      rgba(37,99,235,0.18);
     --inactive-bg: rgba(220,38,38,0.06);
@@ -487,8 +487,8 @@ input[type=number] {
 
 /* ── Night theme: POSLayout structural overrides ───────────────────────────── */
 html.dark .night-main-bg   { background: #0a0e0b !important; }
-html.dark .night-panel-bg  { background: #0d110e !important; border-color: rgba(201,168,76,0.15) !important; }
-html.dark .night-logo-text { color: #c9a84c !important; font-size: 0.95rem !important; letter-spacing: 0.02em; }
+html.dark .night-panel-bg  { background: #0d110e !important; border-color: rgba(234,88,12,0.15) !important; }
+html.dark .night-logo-text { color: var(--accent) !important; font-size: 0.95rem !important; letter-spacing: 0.02em; }
 
 /* Night: inputs */
 html.dark input,
@@ -501,28 +501,28 @@ html.dark select {
 html.dark input:focus,
 html.dark textarea:focus,
 html.dark select:focus {
-  border-color: #c9a84c !important;
-  box-shadow: 0 0 0 2px rgba(201,168,76,0.18) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(234,88,12,0.18) !important;
 }
 html.dark input::placeholder,
 html.dark textarea::placeholder { color: #4a4840 !important; }
 
 /* Night: tables */
 html.dark .night-table-header { background: #0d110e !important; }
-html.dark .night-table-row:hover { background: rgba(201,168,76,0.04) !important; }
+html.dark .night-table-row:hover { background: rgba(234,88,12,0.04) !important; }
 html.dark .night-table-border { border-color: rgba(255,255,255,0.05) !important; }
 
 /* Night: cards on hover */
 html.dark .night-card:hover {
-  border-color: rgba(201,168,76,0.40) !important;
+  border-color: rgba(234,88,12,0.40) !important;
   box-shadow: 0 8px 40px rgba(0,0,0,0.70) !important;
 }
 
 /* Night: badges de código */
 html.dark .night-code-badge {
-  background: rgba(201,168,76,0.12) !important;
-  color: #c9a84c !important;
-  border: 1px solid rgba(201,168,76,0.25) !important;
+  background: rgba(234,88,12,0.12) !important;
+  color: var(--accent) !important;
+  border: 1px solid rgba(234,88,12,0.25) !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
 }
@@ -534,11 +534,12 @@ html.dark .night-btn-primary {
 }
 html.dark .night-btn-primary:hover { background: var(--gold2) !important; }
 
-/* Night: scrollbar */
-html.dark ::-webkit-scrollbar { width: 5px; height: 5px; }
+/* Scrollbars — siguen el color de acento dinámicamente */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 9999px; opacity: 0.6; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); filter: brightness(0.85); }
 html.dark ::-webkit-scrollbar-track { background: #1C1917; }
-html.dark ::-webkit-scrollbar-thumb { background: rgba(234,88,12,0.30); border-radius: 9999px; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(234,88,12,0.50); }
 
 /* ── Forzar color primario global (sin morado) ────────────────────────────── */
 .btn-primary,

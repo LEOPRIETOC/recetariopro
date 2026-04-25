@@ -30,6 +30,7 @@ import { useToast } from '../components/ui/toast'
 import { cn, formatNumber } from '../lib/utils'
 import { uploadRecipeFile } from '../services/storage'
 import { compressImage } from '../utils/imageUtils'
+import { getConvertedPrice } from '../utils/costUtils'
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 function formatDate(ts) {
@@ -39,18 +40,8 @@ function formatDate(ts) {
   return `${String(d.getDate()).padStart(2,'0')}/${MONTHS[d.getMonth()]}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
 }
 
-const COLORS = ['#d97706','#059669','#2563eb','#C2410C','#dc2626','#0891b2','#65a30d','#EA580C','#f97316','#06b6d4']
+const COLORS = ['#0833A2','#059669','#2563eb','#062280','#dc2626','#0891b2','#65a30d','#1D5BD4','#0A3FC8','#06b6d4']
 
-// ── Conversion helper (change 4) ──────────────────────────────────────────────
-function getConvertedPrice(rawPrice, purchaseUnit, recipeUnit) {
-  const pu = (purchaseUnit || '').toLowerCase()
-  const ru = (recipeUnit || '').toLowerCase()
-  const kgToG = (pu === 'kg' || pu === 'kilo' || pu === 'kilogramo' || pu === 'kgs') &&
-                (ru === 'g' || ru === 'gr' || ru === 'gramo' || ru === 'grs' || ru === 'gramos')
-  const ltToMl = (pu === 'lt' || pu === 'l' || pu === 'litro' || pu === 'lts' || pu === 'litros') &&
-                 (ru === 'ml' || ru === 'mililitro' || ru === 'mililitros')
-  return kgToG || ltToMl ? rawPrice / 1000 : rawPrice
-}
 
 // ── Category Combobox with quick-create (change 3) ────────────────────────────
 function CategoryCombobox({ categories, value, onChange, restaurantId, isDark }) {
@@ -857,7 +848,7 @@ export default function RecipeDetailPage() {
       name: '', code: '', categoryId: '', menuCode: '', item: '', reference: '',
       isSubRecipe: typeFromUrl === 'subrecipe',
       useManualCost: false, manualCost: 0, recipeType: typeFromUrl, ingredients: [],
-      preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '',
+      preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '', sellingPrice: 0,
     },
   })
 
@@ -930,6 +921,7 @@ export default function RecipeDetailPage() {
         manualCost: r.manualCost || 0, useManualCost: r.useManualCost || false,
         preparation: r.preparation || '', notes: r.notes || '',
         isSubRecipe: r.isSubRecipe || r.type === 'subrecipe' || false, pin: r.pin || '',
+        sellingPrice: r.sellingPrice || 0,
         yieldAmount: r.yieldAmount || r.yield || 0,
         yieldUnit: (() => {
           const raw = r.yieldUnit || ''
@@ -1217,7 +1209,11 @@ export default function RecipeDetailPage() {
         yieldAmount: data.yieldAmount || null,
         yieldUnit: data.yieldUnit || null,
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
-        totalCost: isNaN(totalCostCalc) ? 0 : totalCostCalc,
+        totalCost: (() => {
+          if (data.useManualCost) return parseFloat(data.manualCost) || 0
+          const t = cleanIngredients.reduce((s, i) => s + (i.totalCost || 0), 0)
+          return isNaN(t) ? 0 : t
+        })(),
         costSettings: { marginContribution, taxRate, tipRate },
         calculatedCosts: {
           totalCost: isNaN(totalCostCalc) ? 0 : totalCostCalc,
@@ -1288,6 +1284,8 @@ export default function RecipeDetailPage() {
           entityName: safePayload.name,
           entityCode: safePayload.code,
           changes: [...fieldChanges, ...ingChanges],
+          ingredientsBefore: recipe?.ingredients || [],
+          ingredientsAfter: safePayload.ingredients || [],
         })
       }
     } catch (err) {
@@ -1435,9 +1433,9 @@ export default function RecipeDetailPage() {
             onClick={() => safeNavigate()}
             style={{
               background: 'transparent',
-              border: '1px solid var(--red, #DC2626)',
+              border: '1px solid var(--accent)',
               borderRadius: 8,
-              color: 'var(--red, #DC2626)',
+              color: 'var(--accent)',
               fontFamily: 'inherit',
               fontSize: '0.82rem',
               fontWeight: 600,
@@ -1445,8 +1443,8 @@ export default function RecipeDetailPage() {
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
-            onMouseOver={e => { e.currentTarget.style.background = 'var(--red, #DC2626)'; e.currentTarget.style.color = '#fff' }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red, #DC2626)' }}
+            onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff' }}
+            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
           >
             Salir
           </button>

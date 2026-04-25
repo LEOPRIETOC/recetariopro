@@ -19,6 +19,8 @@ export async function logAction({
   entityName = null,
   entityCode = null,
   changes = [],
+  ingredientsBefore = null,
+  ingredientsAfter = null,
 }) {
   if (!restaurantId) return
   const payload = {
@@ -32,6 +34,8 @@ export async function logAction({
     userRole: userRole || null,
     changes,
     timestamp: serverTimestamp(),
+    ...(ingredientsBefore !== null && { ingredientsBefore }),
+    ...(ingredientsAfter  !== null && { ingredientsAfter  }),
   }
   console.log('[audit] logAction →', module, action, entityName, '| restaurantId:', restaurantId)
   try {

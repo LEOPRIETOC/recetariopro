@@ -15,10 +15,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
-import { useAppStore } from '../../store/useAppStore'
+import { useAppStore, DEFAULT_ACCENT_DAY, DEFAULT_ACCENT_NIGHT } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
 import { useTableSort } from '../../hooks/useTableSort.jsx'
 import { cn, formatNumber, toTitleCase } from '../../lib/utils'
+import { calcRecipeTotalCost } from '../../utils/costUtils'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
   importIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
@@ -67,7 +68,7 @@ const TABS = [
 ]
 
 const ACCENT_PALETTE = [
-  '#C2410C','#EA580C','#d97706','#f59e0b','#f97316',
+  '#0833A2','#EA580C','#d97706','#f59e0b','#f97316',
   '#ef4444','#e11d48','#3b82f6','#0ea5e9','#06b6d4',
   '#14b8a6','#10b981','#22c55e','#84cc16','#78716c',
 ]
@@ -138,6 +139,7 @@ function IngredientsTab({ restaurantId, isDark }) {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState(null)
   const [viewMode, setViewMode] = useState('list') // 'list' | 'create' | 'edit'
+  const [displayMode, setDisplayMode] = useState(() => localStorage.getItem('mp-display-mode') || 'list')
   const [saving, setSaving] = useState(false)
   const [nextCode, setNextCode] = useState('')
   const [dupErrors, setDupErrors] = useState({})
@@ -470,6 +472,14 @@ function IngredientsTab({ restaurantId, isDark }) {
       {/* Toolbar — never scrolls */}
       <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: `1px solid ${borderColor}` }}>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => { setDisplayMode('grid'); localStorage.setItem('mp-display-mode', 'grid') }} className="p-1.5 rounded-md transition-colors" style={displayMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+              <LayoutGrid className={cn('h-3.5 w-3.5', displayMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => { setDisplayMode('list'); localStorage.setItem('mp-display-mode', 'list') }} className="p-1.5 rounded-md transition-colors" style={displayMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+              <ListIcon className={cn('h-3.5 w-3.5', displayMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
           <div className="relative flex-1 min-w-40">
             <input
               value={search}
@@ -478,20 +488,53 @@ function IngredientsTab({ restaurantId, isDark }) {
               className={cn('w-full pl-3 pr-3 h-8 text-sm rounded-lg border outline-none', isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200 placeholder:text-gray-400')}
             />
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>
-          <label>
-            <Button variant="outline" size="sm" asChild><span className="cursor-pointer"><Upload className="h-4 w-4" /> Importar</span></Button>
-            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
-          </label>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nueva materia prima</Button>
         </div>
       </div>
+
+      {/* Grid view */}
+      {displayMode === 'grid' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          {filtered.length === 0 ? (
+            <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t3)', fontSize: '0.875rem' }}>Sin resultados</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+              {filtered.map((ing) => (
+                <div key={ing.id} className="group" style={{ background: isDark ? '#111827' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 12, overflow: 'hidden', transition: 'all 0.18s', cursor: 'pointer' }}
+                  onClick={() => openEdit(ing)}
+                  onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)' }}
+                  onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                >
+                  <div style={{ height: 4, background: 'var(--accent)' }} />
+                  <div style={{ padding: '10px 12px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.68rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'var(--accent)', color: '#fff', display: 'inline-block', marginBottom: 6 }}>{ing.code}</span>
+                    <p style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '2.4em' }}>
+                      {ing.name || ing.description}
+                    </p>
+                    {ing.category && (
+                      <p style={{ fontSize: '0.68rem', color: 'var(--t3)', marginTop: 4 }}>{ing.category}</p>
+                    )}
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${isDark ? '#374151' : '#f3f4f6'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ fontSize: '0.58rem', color: 'var(--t3)', marginBottom: 1 }}>Precio/{ing.useUnit || ing.unit || 'u'}</p>
+                        <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)' }}>
+                          {ing.pricePerUnit != null ? `$${Number(ing.pricePerUnit).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Table — fills remaining height, scrolls both axes */}
       <div
         id="materias-scroll-body"
         ref={scrollBodyRef}
-        style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto' }}
+        style={{ flex: 1, overflowX: 'scroll', overflowY: 'auto', display: displayMode === 'grid' ? 'none' : undefined }}
       >
         <table style={{ width: '100%', minWidth: '900px', tableLayout: 'auto', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: headBg }}>
@@ -668,23 +711,24 @@ function UnitsTab({ restaurantId, isDark }) {
     XLSX.writeFile(wb, 'unidades_recetariopro.xlsx')
   }
 
+  const handleDelete = async (u) => {
+    if (!confirm(`¿Eliminar "${u.name}"?`)) return
+    try { await deleteUnit(restaurantId, u.id); success('Eliminada') } catch { error('Error') }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
-            <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
-              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
-            </button>
-            <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
-              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
-            </button>
-          </div>
-          <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>{units.length} unidades</p>
+        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+            <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+          <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+            <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
         </div>
         <div className="flex gap-2">
           {units.length === 0 && <Button variant="outline" size="sm" onClick={seedDefaults}>Cargar predeterminadas</Button>}
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4" /> Exportar</Button>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nueva</Button>
         </div>
       </div>
@@ -711,9 +755,16 @@ function UnitsTab({ restaurantId, isDark }) {
               <Input {...register('equivalence')} type="number" step="any" min="0.0001" placeholder="1" className={errors.equivalence ? 'border-red-400' : ''} />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+          <div className="flex gap-2 justify-between">
+            {editing && (
+              <Button type="button" variant="outline" size="sm" onClick={() => handleDelete(editing)} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+            </div>
           </div>
         </form>
       )}
@@ -724,46 +775,41 @@ function UnitsTab({ restaurantId, isDark }) {
           <p className="text-xs">Carga las predeterminadas o crea una nueva</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
           {units.map((u) => (
-            <div key={u.id} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+            <div key={u.id} onClick={() => openEdit(u)}
+              className={cn('rounded-xl border overflow-hidden cursor-pointer', isDark ? 'border-gray-800' : 'border-gray-200')}
+              style={{ transition: 'all 0.18s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#1f2937' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
               <div className="h-1.5" style={{ background: 'var(--accent)' }} />
-              <div className="p-3">
-                <div className="flex items-start justify-between gap-1 mb-1">
-                  {u.code && <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{u.code}</span>}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                </div>
-                <p className="font-mono text-2xl font-bold leading-tight text-center my-1" style={{ color: 'var(--accent)' }}>{u.abbreviation}</p>
-                <p className={cn('text-xs text-center truncate', isDark ? 'text-gray-300' : 'text-gray-700')}>{u.name}</p>
-                <p className={cn('text-xs text-center mt-1', isDark ? 'text-gray-600' : 'text-gray-400')}>Equiv: {u.equivalence ?? 1}</p>
+              <div className="p-2.5">
+                {u.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{u.code}</span>}
+                <p className="font-mono font-bold text-base leading-tight" style={{ color: 'var(--accent)' }}>{u.abbreviation}</p>
+                <p className={cn('text-xs mt-0.5', isDark ? 'text-white' : 'text-gray-800')} style={{ lineHeight: 1.3, wordBreak: 'break-word' }}>{u.name}</p>
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-          <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#6b7280' : '#9ca3af' }}>
-            <span className="w-24 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('code')}>Código<UnitSortIcon field="code" /></span>
+          <div className={cn('flex items-center gap-3 px-3 py-2 border-b', isDark ? 'border-gray-700 text-gray-500 bg-gray-800/50' : 'border-gray-200 text-gray-400 bg-gray-50')} style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('code')}>Código<UnitSortIcon field="code" /></span>
             <span className="flex-1 cursor-pointer select-none" onClick={() => toggleUnitSort('name')}>Nombre<UnitSortIcon field="name" /></span>
-            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('abbreviation')}>Abreviatura<UnitSortIcon field="abbreviation" /></span>
-            <span className="w-24 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('equivalence')}>Equivalencia<UnitSortIcon field="equivalence" /></span>
-            <span className="w-12 flex-shrink-0" />
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('abbreviation')}>Abrev.<UnitSortIcon field="abbreviation" /></span>
+            <span className="w-20 flex-shrink-0 cursor-pointer select-none" onClick={() => toggleUnitSort('equivalence')}>Equiv.<UnitSortIcon field="equivalence" /></span>
           </div>
           {sortedUnits.map((u) => (
-            <div key={u.id} className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0', isDark ? 'border-gray-800' : 'border-gray-100')}>
-              <span className="w-24 flex-shrink-0">
-                {u.code ? <span style={{ background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', padding: '3px 8px', borderRadius: '6px', letterSpacing: '0.05em' }}>{u.code}</span> : <span className={cn('text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>—</span>}
-              </span>
+            <div key={u.id} onClick={() => openEdit(u)}
+              className={cn('flex items-center gap-3 px-3 py-2.5 border-b last:border-0 cursor-pointer', isDark ? 'border-gray-800' : 'border-gray-100')}
+              onMouseOver={e => e.currentTarget.style.background = isDark ? '#1f2937' : '#f9fafb'}
+              onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0 w-20" style={{ background: 'var(--accent)', color: '#fff' }}>{u.code || '—'}</span>
               <span className={cn('flex-1 text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{u.name}</span>
               <span className="font-mono text-xs font-bold w-20 flex-shrink-0" style={{ color: 'var(--accent)' }}>{u.abbreviation}</span>
-              <span className={cn('text-xs w-24 flex-shrink-0', isDark ? 'text-gray-400' : 'text-gray-600')}>{u.equivalence ?? 1}</span>
-              <div className="flex gap-1 w-12 flex-shrink-0 justify-end">
-                <button onClick={() => openEdit(u)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-                <button onClick={async () => { if (!confirm('¿Eliminar?')) return; try { await deleteUnit(restaurantId, u.id) } catch { } }} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-              </div>
+              <span className={cn('text-xs w-20 flex-shrink-0', isDark ? 'text-gray-400' : 'text-gray-600')}>{u.equivalence ?? 1}</span>
             </div>
           ))}
         </div>
@@ -859,9 +905,16 @@ function MpCategoriesTab({ restaurantId, isDark }) {
               {(errors.name || dupError) && <p className="text-xs text-red-500 mt-1">{errors.name?.message || dupError}</p>}
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={saving || !!dupError}>{saving ? '...' : 'Guardar'}</Button>
+          <div className="flex gap-2 justify-between">
+            {editing && (
+              <Button type="button" variant="outline" size="sm" onClick={() => handleDelete(editing)} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={saving || !!dupError}>{saving ? '...' : 'Guardar'}</Button>
+            </div>
           </div>
         </form>
       )}
@@ -873,21 +926,18 @@ function MpCategoriesTab({ restaurantId, isDark }) {
           <p className="text-xs">Crea categorías para organizar tus materias primas</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
           {categories.map((cat) => (
-            <div key={cat.id} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
+            <div key={cat.id} onClick={() => openEdit(cat)}
+              className={cn('group rounded-xl border overflow-hidden cursor-pointer', isDark ? 'border-gray-800' : 'border-gray-200')}
+              style={{ transition: 'all 0.18s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#1f2937' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
               <div className="h-1.5" style={{ background: 'var(--accent)' }} />
-              <div className="p-3">
-                <div className="flex items-start justify-between gap-1">
-                  <div className="flex-1 min-w-0">
-                    {cat.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code}</span>}
-                    <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <button onClick={() => openEdit(cat)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => handleDelete(cat)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                </div>
+              <div className="p-2.5">
+                {cat.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code}</span>}
+                <p className={cn('text-xs font-medium', isDark ? 'text-white' : 'text-gray-800')} style={{ lineHeight: 1.3, wordBreak: 'break-word' }}>{cat.name}</p>
               </div>
             </div>
           ))}
@@ -911,6 +961,7 @@ function MpCategoriesTab({ restaurantId, isDark }) {
           ))}
         </div>
       )}
+
     </div>
   )
 }
@@ -939,20 +990,15 @@ function SortableCatItem({ cat, isDark, onEdit, onDelete, mode }) {
     )
   }
   return (
-    <div ref={setNodeRef} style={style} className={cn('group rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}>
-      <div className="h-2" style={{ background: 'var(--accent)' }} />
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-1">
-          {dragHandle}
-          <div className="flex-1 min-w-0">
-            {cat.code && <p className="font-mono text-xs mb-0.5" style={{ color: 'var(--accent)' }}>{cat.code}</p>}
-            <p className={cn('text-sm font-medium truncate uppercase', isDark ? 'text-white' : 'text-gray-800')}>{cat.name}</p>
-          </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEdit} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-            <button onClick={onDelete} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-          </div>
-        </div>
+    <div ref={setNodeRef} style={style} onClick={onEdit}
+      className={cn('group rounded-xl border overflow-hidden cursor-pointer', isDark ? 'border-gray-800' : 'border-gray-200')}
+      onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#1f2937' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+    >
+      <div className="h-1.5" style={{ background: 'var(--accent)' }} />
+      <div className="p-2.5">
+        {cat.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{cat.code}</span>}
+        <p className={cn('text-xs font-medium', isDark ? 'text-white' : 'text-gray-800')} style={{ lineHeight: 1.3, wordBreak: 'break-word' }}>{cat.name}</p>
       </div>
     </div>
   )
@@ -1056,7 +1102,6 @@ function CategoriesTab({ restaurantId, isDark }) {
           </button>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCats}><Download className="h-4 w-4" /> Exportar</Button>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo menú</Button>
         </div>
       </div>
@@ -1080,9 +1125,18 @@ function CategoriesTab({ restaurantId, isDark }) {
               {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+          <div className="flex gap-2 justify-between">
+            {editing && (
+              <Button type="button" variant="outline" size="sm"
+                onClick={async () => { if (!confirm('¿Eliminar este menú?')) return; try { await deleteCategory(restaurantId, editing.id); setShowForm(false); setEditing(null) } catch {} }}
+                style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+            </div>
           </div>
         </form>
       )}
@@ -1092,7 +1146,7 @@ function CategoriesTab({ restaurantId, isDark }) {
           {viewMode === 'grid' ? (
             <>
               <p className={cn('text-sm font-medium mb-2', isDark ? 'text-gray-400' : 'text-gray-500')}>Menús registrados ({categories.length})</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
                 {sortedMenus.map((cat) => (
                   <SortableCatItem key={cat.id} cat={cat} isDark={isDark} mode="grid"
                     onEdit={() => openEdit(cat)}
@@ -1274,7 +1328,6 @@ function SuppliersTab({ restaurantId, isDark }) {
           </button>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportSup}><Download className="h-4 w-4" /> Exportar</Button>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nuevo proveedor</Button>
         </div>
       </div>
@@ -1313,9 +1366,16 @@ function SuppliersTab({ restaurantId, isDark }) {
               <Input {...register('address')} placeholder="Dirección" />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+          <div className="flex gap-2 justify-between">
+            {editing && (
+              <Button type="button" variant="outline" size="sm" onClick={() => handleDelete(editing.id)} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); reset(); setEditing(null) }}>Cancelar</Button>
+              <Button type="submit" size="sm" disabled={saving}>{saving ? '...' : 'Guardar'}</Button>
+            </div>
           </div>
         </form>
       )}
@@ -1327,20 +1387,20 @@ function SuppliersTab({ restaurantId, isDark }) {
           <p className="text-xs">Agrega proveedores para asignarlos a tus materias primas</p>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
           {suppliers.map((s) => (
-            <div key={s.id} className={cn('group rounded-xl border p-3', isDark ? 'border-gray-800' : 'border-gray-200')}>
-              <div className="flex items-start justify-between gap-1">
-                <div className="flex-1 min-w-0">
-                  {s.code && <p className="font-mono text-xs mb-0.5" style={{ color: 'var(--accent)' }}>{s.code}</p>}
-                  <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-800')}>{s.name}</p>
-                  {s.contact && <p className={cn('text-xs truncate mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.contact}</p>}
-                  {s.phone && <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.phone}</p>}
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button onClick={() => openEdit(s)} className="p-1 rounded text-gray-400 hover:text-gray-600"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-gray-400 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
+            <div key={s.id} onClick={() => openEdit(s)}
+              className={cn('rounded-xl border overflow-hidden cursor-pointer', isDark ? 'border-gray-800' : 'border-gray-200')}
+              style={{ transition: 'all 0.18s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#1f2937' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              <div style={{ height: 6, background: 'var(--accent)' }} />
+              <div style={{ padding: '10px 12px' }}>
+                {s.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{s.code}</span>}
+                <p className={cn('text-xs font-medium', isDark ? 'text-white' : 'text-gray-800')} style={{ lineHeight: 1.3, wordBreak: 'break-word' }}>{s.name}</p>
+                {s.contact && <p style={{ fontSize: '0.65rem', color: 'var(--t3)', marginTop: 3 }}>{s.contact}</p>}
+                {s.phone && <p style={{ fontSize: '0.65rem', color: 'var(--t3)' }}>{s.phone}</p>}
               </div>
             </div>
           ))}
@@ -1475,7 +1535,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
           <td key={colId} style={{ padding: '8px 12px' }}>
             {recipe.photoURL
               ? <img src={recipe.photoURL} style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} alt="" />
-              : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
+              : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 8%, var(--bg2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🍽</div>
             }
           </td>
         )
@@ -1562,7 +1622,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
     letterSpacing: '0.07em',
     color: 'var(--t3)',
     fontWeight: 700,
-    background: 'var(--bg3)',
+    background: 'color-mix(in srgb, var(--accent) 8%, var(--bg2))',
     borderBottom: '1px solid var(--b1)',
     whiteSpace: 'nowrap',
     userSelect: 'none',
@@ -1572,6 +1632,15 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
     <div className="space-y-4">
       {/* ── Filtros + toggle vista ── */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Toggle Grid/Lista — siempre a la izquierda */}
+        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+            <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+          <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+            <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+        </div>
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar receta..." className={cn('flex-1 min-w-32 px-3 h-8 text-sm rounded-lg border outline-none', isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')} />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1597,17 +1666,6 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
             {(categories || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        {/* Toggle Grid/Lista */}
-        <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
-          <button
-            onClick={() => setView('grid')}
-            style={{ background: viewMode === 'grid' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
-          >⊞</button>
-          <button
-            onClick={() => setView('list')}
-            style={{ background: viewMode === 'list' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--t2)', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
-          >☰</button>
-        </div>
       </div>
       <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{filtered.length} recetas</p>
 
@@ -1630,7 +1688,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                       style={{
                         ...thBase,
                         cursor: col.sortable ? 'pointer' : 'grab',
-                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'var(--bg3)',
+                        background: dragOver === col.id ? (isDark ? '#374151' : '#e9ecef') : 'color-mix(in srgb, var(--accent) 8%, var(--bg2))',
                         borderLeft: dragOver === col.id ? '2px solid var(--accent)' : undefined,
                       }}
                     >
@@ -1686,27 +1744,60 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
           ? <p className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</p>
           : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
               {filtered.map((r) => {
-                const cat = (categories || []).find((c) => c.id === r.categoryId)
+                const cost = calcRecipeTotalCost(r)
+                const price = parseFloat(r.sellingPrice) || 0
                 return (
-                  <div key={r.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, transition: 'all 0.2s' }}
-                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-                    onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+                  <div
+                    key={r.id}
+                    onClick={() => handleEdit(r)}
+                    style={{
+                      border: `1px solid ${isDark ? '#1f2937' : '#f3f4f6'}`,
+                      borderTop: '2px solid var(--accent)',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: r.active === false
+                        ? (isDark ? '#0d1117' : '#f5f5f5')
+                        : (isDark ? '#111827' : '#fff'),
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)' }}
+                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
                   >
-                    {r.photoURL && (
-                      <img src={r.photoURL} alt={r.name} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8 }} />
-                    )}
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700, marginBottom: 2 }}>{r.code}</div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: isDark ? '#6b7280' : '#9ca3af', marginTop: 3 }}>
-                        {r.isSubRecipe ? '⚗ Sub-receta' : '🍽 Receta'}{cat ? ` · ${cat.name}` : ''}
+                    {r.photoURL
+                      ? <img src={r.photoURL} alt={r.name || ''} style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                      : <div style={{ width: '100%', height: 8, backgroundColor: 'var(--accent)', opacity: 0.25 }} />
+                    }
+                    <div style={{ padding: 10 }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
+                        {r.isSubRecipe && (
+                          <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--goldBg)', color: 'var(--accent)' }}>
+                            Sub-receta
+                          </span>
+                        )}
+                        {r.active === false && (
+                          <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(220,38,38,0.12)', color: 'var(--red, #dc2626)' }}>
+                            Inactiva
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
-                      <button
-                        onClick={() => handleEdit(r)}
-                        style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '6px 4px', cursor: 'pointer' }}
-                      >Editar</button>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '2.5em' }}>
+                        {r.name}
+                      </div>
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--b1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Precio</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: price > 0 ? 'var(--accent)' : 'var(--t3)' }}>
+                            {price > 0 ? `$${price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Costo</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: cost > 0 ? 'var(--t2)' : 'var(--t3)' }}>
+                            {cost > 0 ? `$${cost.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )
@@ -1989,34 +2080,112 @@ function VersionsTab({ restaurantId, isDark }) {
               </div>
 
               {/* Cambios */}
-              {log.changes?.length > 0 && (
-                <div style={{ background: isDark ? '#111827' : '#f9fafb', borderRadius: 6, padding: '8px 10px' }}>
-                  {log.changes.map((change, i) => (
-                    <div key={i} style={{ fontSize: '0.78rem', color: t2, padding: '3px 0', borderBottom: i < log.changes.length - 1 ? `1px solid ${borderCol}` : 'none' }}>
-                      {change.field === 'ingrediente' ? (
-                        <span>
-                          <span style={{ color: change.action === 'added' ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
-                            {change.action === 'added' ? '+ ' : '- '}
-                          </span>
-                          {change.item}
-                        </span>
-                      ) : (
-                        <span>
-                          <strong style={{ color: isDark ? '#e5e7eb' : '#374151' }}>{change.field}</strong>
-                          {change.item && <span style={{ color: t3 }}> ({change.item})</span>}
-                          {change.before !== undefined && (
-                            <>
-                              <span style={{ color: 'var(--red)', marginLeft: 6 }}>{String(change.before)}</span>
-                              <span style={{ color: t3, margin: '0 4px' }}>→</span>
-                              <span style={{ color: 'var(--green)' }}>{String(change.after)}</span>
-                            </>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {(log.changes?.length > 0 || log.ingredientsAfter || log.ingredientsBefore) && (() => {
+                // Recipe-level field changes (name, price, etc.)
+                const fieldChanges = (log.changes || []).filter(c => c.field !== 'ingrediente' && !c.item)
+
+                // Build full ingredient table when snapshots are available
+                const hasSnapshots = log.ingredientsAfter || log.ingredientsBefore
+                const ingBefore = log.ingredientsBefore || []
+                const ingAfter  = log.ingredientsAfter  || []
+
+                const key = (ing) => ing.reference || ing.ingredientName || ing.description || ''
+
+                const allIngredients = (() => {
+                  if (!hasSnapshots) return []
+                  const seen = new Set()
+                  const rows = []
+                  // All after-ingredients first
+                  ingAfter.forEach(ing => {
+                    const k = key(ing)
+                    if (!seen.has(k)) { seen.add(k); rows.push({ k, after: ing, before: ingBefore.find(b => key(b) === k) || null }) }
+                  })
+                  // Removed (only in before)
+                  ingBefore.forEach(ing => {
+                    const k = key(ing)
+                    if (!seen.has(k)) { seen.add(k); rows.push({ k, after: null, before: ing }) }
+                  })
+                  return rows
+                })()
+
+                const fieldLabel = (f) => ({
+                  sellingPrice: 'Precio de venta',
+                  name: 'Nombre',
+                  preparation: 'Preparación',
+                  yieldAmount: 'Rendimiento',
+                  yieldUnit: 'Unidad rendimiento',
+                  totalCost: 'Costo total',
+                  manualCost: 'Costo manual',
+                }[f] ?? f)
+
+                const ingAction = ({ before, after }) => {
+                  if (!before) return { label: 'Adicionado', color: 'var(--green, #16a34a)' }
+                  if (!after)  return { label: 'Eliminado',  color: 'var(--red, #dc2626)' }
+                  const changed = before.quantity !== after.quantity || before.wasteMargin !== after.wasteMargin || before.unit !== after.unit
+                  return changed
+                    ? { label: 'Modificado', color: 'var(--accent)' }
+                    : { label: '—', color: t3 }
+                }
+
+                const ingVal = (ing) => ing ? `${ing.quantity ?? ''}${ing.unit ?? ''}${ing.wasteMargin ? ` / D:${ing.wasteMargin}%` : ''}` : '—'
+
+                const thStyle = { padding: '5px 10px', textAlign: 'left', fontWeight: 700, color: t3, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.06em' }
+                const cellStyle = (border) => ({ padding: '5px 10px', borderTop: border ? `1px solid ${borderCol}` : 'none' })
+
+                return (
+                  <div style={{ background: isDark ? '#111827' : '#f9fafb', borderRadius: 6, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
+                      <thead>
+                        <tr style={{ background: isDark ? '#0f172a' : '#f3f4f6' }}>
+                          <th style={{ ...thStyle, width: '32%' }}>Ingrediente</th>
+                          <th style={{ ...thStyle, width: '16%' }}>Acción</th>
+                          <th style={{ ...thStyle, width: '26%', color: 'var(--green, #16a34a)' }}>Nuevo</th>
+                          <th style={{ ...thStyle, width: '26%', color: 'var(--red, #dc2626)' }}>Anterior</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Recipe-level field changes */}
+                        {fieldChanges.map((change, i) => (
+                          <tr key={`f${i}`} style={{ background: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)') }}>
+                            <td style={{ ...cellStyle(true), color: isDark ? '#e5e7eb' : '#374151', fontWeight: 600, fontStyle: 'italic' }}>{fieldLabel(change.field)}</td>
+                            <td style={{ ...cellStyle(true), color: 'var(--accent)', fontWeight: 600 }}>Modificado</td>
+                            <td style={{ ...cellStyle(true), color: 'var(--green, #16a34a)' }}>{change.after != null ? String(change.after) : '—'}</td>
+                            <td style={{ ...cellStyle(true), color: 'var(--red, #dc2626)' }}>{change.before != null ? String(change.before) : '—'}</td>
+                          </tr>
+                        ))}
+                        {/* Full ingredient table */}
+                        {hasSnapshots ? allIngredients.map(({ k, before, after }, i) => {
+                          const act = ingAction({ before, after })
+                          const rowBg = (fieldChanges.length + i) % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
+                          return (
+                            <tr key={`ing${i}`} style={{ background: rowBg }}>
+                              <td style={{ ...cellStyle(true), color: isDark ? '#f9fafb' : '#111827', fontWeight: 500 }}>{after?.ingredientName || before?.ingredientName || after?.description || before?.description || k}</td>
+                              <td style={{ ...cellStyle(true), color: act.color, fontWeight: 700, fontSize: '0.72rem' }}>{act.label}</td>
+                              <td style={{ ...cellStyle(true), color: 'var(--green, #16a34a)' }}>{ingVal(after)}</td>
+                              <td style={{ ...cellStyle(true), color: 'var(--red, #dc2626)' }}>{ingVal(before)}</td>
+                            </tr>
+                          )
+                        }) : (log.changes || []).filter(c => c.field === 'ingrediente' || c.item).map((change, i) => {
+                          // Fallback for old logs without snapshots
+                          const isAdded = change.field === 'ingrediente' && change.action === 'added'
+                          const isRemoved = change.field === 'ingrediente' && change.action === 'removed'
+                          const act = isAdded ? { label: 'Adicionado', color: 'var(--green, #16a34a)' }
+                                    : isRemoved ? { label: 'Eliminado', color: 'var(--red, #dc2626)' }
+                                    : { label: 'Modificado', color: 'var(--accent)' }
+                          return (
+                            <tr key={`old${i}`} style={{ background: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)') }}>
+                              <td style={{ ...cellStyle(true), color: isDark ? '#f9fafb' : '#111827', fontWeight: 500 }}>{change.item || '—'}</td>
+                              <td style={{ ...cellStyle(true), color: act.color, fontWeight: 700, fontSize: '0.72rem' }}>{act.label}</td>
+                              <td style={{ ...cellStyle(true), color: 'var(--green, #16a34a)' }}>{isAdded ? change.item : change.after != null ? String(change.after) : '—'}</td>
+                              <td style={{ ...cellStyle(true), color: 'var(--red, #dc2626)' }}>{isRemoved ? change.item : change.before != null ? String(change.before) : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -2029,8 +2198,11 @@ function VersionsTab({ restaurantId, isDark }) {
 function VerificationTab({ restaurantId, isDark }) {
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // 'all' | 'verified' | 'unverified'
+  const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('cfg_verif_view') || 'grid')
+
+  const setView = (v) => { localStorage.setItem('cfg_verif_view', v); setViewMode(v) }
 
   useEffect(() => {
     if (!restaurantId) return
@@ -2075,40 +2247,76 @@ function VerificationTab({ restaurantId, isDark }) {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
         {[
-          ['Total', total, ink],
-          ['Verificadas', `${verifiedCount} (${pct}%)`, 'var(--green, #16a34a)'],
-          ['Sin verificar', total - verifiedCount, 'var(--red, #dc2626)'],
-        ].map(([label, value, color]) => (
-          <div key={label} style={{ background: isDark ? '#1f2937' : '#f9fafb', border: `1px solid ${bdr}`, borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.2rem', fontWeight: 700, color }}>{value}</div>
-            <div style={{ fontSize: '0.65rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
+          ['Total', total, 'var(--accent)', ink],
+          ['Verificadas', `${verifiedCount} (${pct}%)`, 'var(--green, #16a34a)', 'var(--green, #16a34a)'],
+          ['Sin verificar', total - verifiedCount, 'var(--red, #dc2626)', 'var(--red, #dc2626)'],
+        ].map(([label, value, barColor, textColor]) => (
+          <div key={label} style={{ background: isDark ? '#1f2937' : '#f9fafb', border: `1px solid ${bdr}`, borderRadius: 10, overflow: 'hidden', textAlign: 'center' }}>
+            <div style={{ height: 4, background: barColor }} />
+            <div style={{ padding: '10px 14px' }}>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: textColor }}>{value}</div>
+              <div style={{ fontSize: '0.65rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Filters + toggle */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {['all', 'verified', 'unverified'].map(f => (
+        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+            <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+          <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+            <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+        </div>
+        {[
+          { id: 'all',        label: 'Todas',          activeColor: 'var(--accent)' },
+          { id: 'verified',   label: '✓ Verificadas',  activeColor: 'var(--green, #16a34a)' },
+          { id: 'unverified', label: '✗ Sin verificar', activeColor: 'var(--red, #dc2626)' },
+        ].map(({ id: f, label, activeColor }) => (
           <button key={f} onClick={() => setFilter(f)}
             style={{ ...inputStyle, padding: '5px 12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem',
-              background: filter === f ? 'var(--accent)' : (isDark ? '#1f2937' : '#fff'),
+              background: filter === f ? activeColor : (isDark ? '#1f2937' : '#fff'),
               color: filter === f ? '#fff' : t2,
-              border: `1px solid ${filter === f ? 'var(--accent)' : bdr}`,
+              border: `1px solid ${filter === f ? activeColor : bdr}`,
             }}>
-            {f === 'all' ? 'Todas' : f === 'verified' ? '✓ Verificadas' : '○ Sin verificar'}
+            {label}
           </button>
         ))}
         <input
           value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o código..."
-          style={{ ...inputStyle, flex: 1, minWidth: 160 }}
+          placeholder="Buscar..."
+          style={{ ...inputStyle, flex: 1, minWidth: 140 }}
         />
       </div>
 
-      {/* Table */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
           <div style={{ width: 24, height: 24, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+          {filtered.length === 0 ? (
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '32px 0', color: t3 }}>Sin resultados</div>
+          ) : filtered.map(r => (
+            <div key={r.id}
+              className={cn('rounded-xl border overflow-hidden', isDark ? 'border-gray-800' : 'border-gray-200')}
+              style={{ transition: 'all 0.18s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#1f2937' : '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              <div className="h-1.5" style={{ background: 'var(--accent)' }} />
+              <div className="p-2.5">
+                {r.code && <span className="font-mono text-xs px-1.5 py-0.5 rounded inline-block mb-1" style={{ background: 'var(--accent)', color: '#fff' }}>{r.code}</span>}
+                <p className={cn('text-xs font-medium', isDark ? 'text-white' : 'text-gray-800')} style={{ lineHeight: 1.3, wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.6em' }}>{r.name}</p>
+                <p style={{ fontSize: '0.65rem', fontWeight: 700, marginTop: 4, color: r.verified ? 'var(--green, #16a34a)' : 'var(--red, #dc2626)' }}>
+                  {r.verified ? '✓ Verificada' : '✗ Sin verificar'}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div style={{ overflowX: 'auto', maxHeight: '55vh', overflowY: 'auto' }}>
@@ -2208,7 +2416,7 @@ function AppearanceTab({ isDark }) {
         <div className="flex items-center justify-between">
           <Label className="text-sm font-semibold">Color de acento</Label>
           <button
-            onClick={() => handleAccent('#C2410C')}
+            onClick={() => handleAccent(isDark ? DEFAULT_ACCENT_NIGHT : DEFAULT_ACCENT_DAY)}
             className={cn('text-xs px-3 py-1 rounded-lg border transition-colors', isDark ? 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200' : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700')}
           >
             Restablecer
@@ -2231,12 +2439,12 @@ function AppearanceTab({ isDark }) {
         <div className="flex items-center gap-3">
           <input
             type="color"
-            value={accentColor || '#C2410C'}
+            value={accentColor || '#0833A2'}
             onChange={(e) => handleAccent(e.target.value)}
             className="w-10 h-9 rounded-lg border cursor-pointer"
             style={{ borderColor: 'var(--accent)' }}
           />
-          <span className={cn('text-sm font-mono', isDark ? 'text-gray-300' : 'text-gray-700')}>{accentColor || '#C2410C'}</span>
+          <span className={cn('text-sm font-mono', isDark ? 'text-gray-300' : 'text-gray-700')}>{accentColor || '#0833A2'}</span>
         </div>
       </div>
 
@@ -2482,20 +2690,22 @@ function UsersAdminTab({ isDark }) {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, margin: 0 }}>Usuarios</h2>
-          <p style={{ fontSize: '0.78rem', color: t3, marginTop: 2 }}>{users.length} miembro{users.length !== 1 ? 's' : ''}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Toggle Grid/Lista — izquierda */}
+          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, margin: 0 }}>Usuarios</h2>
+            <p style={{ fontSize: '0.78rem', color: t3, marginTop: 2 }}>{users.length} miembro{users.length !== 1 ? 's' : ''}</p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Toggle Grid/Lista */}
-          <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
-            <button onClick={() => setView('grid')}
-              style={{ background: viewMode === 'grid' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'grid' ? 'var(--accent)' : t2, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
-            >⊞</button>
-            <button onClick={() => setView('list')}
-              style={{ background: viewMode === 'list' ? (isDark ? '#374151' : '#fff') : 'transparent', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : t2, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s' }}
-            >☰</button>
-          </div>
           <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
             <Plus className="h-3.5 w-3.5" /> Nuevo usuario
           </Button>
@@ -2816,65 +3026,71 @@ function RestauranteTab({ currentRestaurant, isDark }) {
   }
 
   return (
-    <div style={{ maxWidth: 600 }}>
-      <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', marginBottom: 20, color: isDark ? '#f9fafb' : 'var(--text)' }}>
-        Información del Restaurante
-      </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ maxWidth: 560, margin: '0 auto' }}>
 
-        {/* ── Logo ── */}
-        <div>
-          <label style={labelStyle}>Logo del restaurante</label>
-          {logoURL && (
-            <div style={{ marginBottom: 10, marginTop: 6 }}>
-              <img src={logoURL} alt="Logo"
-                style={{ height: 80, objectFit: 'contain', borderRadius: 8, border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, padding: 8, background: isDark ? '#1f2937' : '#f9fafb' }} />
-              <button onClick={handleRemoveLogo}
-                style={{ display: 'block', marginTop: 6, background: 'none', border: 'none', color: 'var(--red)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Quitar logo
+      {/* ── Card logo + nombre ── */}
+      <div className={cn('rounded-2xl border overflow-hidden mb-5', isDark ? 'border-gray-800' : 'border-gray-200')}>
+        <div style={{ height: 6, background: 'var(--accent)' }} />
+        <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20 }}>
+          {/* Logo */}
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 14, overflow: 'hidden', border: `2px dashed ${isDark ? '#374151' : '#d1d5db'}`, background: isDark ? '#1f2937' : '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseOut={e => e.currentTarget.style.borderColor = isDark ? '#374151' : '#d1d5db'}
+            >
+              <input type="file" accept="image/*" onChange={handleLogoUpload}
+                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+              {logoURL
+                ? <img src={logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
+                : <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.4rem' }}>🖼</div>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--t3)', marginTop: 2 }}>{logoUploading ? '...' : 'Logo'}</div>
+                  </div>
+              }
+            </div>
+            {logoURL && (
+              <button onClick={handleRemoveLogo} style={{ display: 'block', marginTop: 4, background: 'none', border: 'none', color: 'var(--red)', fontSize: '0.68rem', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'center' }}>
+                Quitar
               </button>
-            </div>
-          )}
-          <div style={{ border: `2px dashed ${isDark ? '#374151' : '#d1d5db'}`, borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', marginTop: logoURL ? 0 : 6 }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#d1d5db' }}
-          >
-            <input type="file" accept="image/*" onChange={handleLogoUpload}
-              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
-            <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>🖼</div>
-            <div style={{ fontSize: '0.82rem', color: isDark ? '#9ca3af' : '#6b7280' }}>
-              {logoUploading ? 'Subiendo...' : logoURL ? 'Cambiar logo' : 'Subir logo'}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: isDark ? '#6b7280' : '#9ca3af', marginTop: 4 }}>PNG, JPG, SVG — máx 2MB</div>
+            )}
           </div>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Nombre *</label>
-          <input style={inputStyle} value={restData.name} onChange={e => setRestData({ ...restData, name: toTitleCase(e.target.value) })} />
-        </div>
-        <div>
-          <label style={labelStyle}>Dirección</label>
-          <input style={inputStyle} value={restData.address} onChange={e => setRestData({ ...restData, address: e.target.value })} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Contacto</label>
-            <input style={inputStyle} value={restData.contact} onChange={e => setRestData({ ...restData, contact: e.target.value })} />
-          </div>
-          <div>
-            <label style={labelStyle}>Celular</label>
-            <input style={inputStyle} value={restData.phone} onChange={e => setRestData({ ...restData, phone: e.target.value })} />
+          {/* Nombre */}
+          <div style={{ flex: 1 }}>
+            <label style={{ ...labelStyle, marginBottom: 6 }}>Nombre del restaurante *</label>
+            <input style={{ ...inputStyle, fontSize: '1rem', fontWeight: 700 }}
+              value={restData.name}
+              onChange={e => setRestData({ ...restData, name: toTitleCase(e.target.value) })}
+              placeholder="Mi Restaurante"
+            />
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-        <button
-          onClick={handleSaveRestaurant}
-          disabled={saving}
-          style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontFamily: 'inherit', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
-        >
-          {saving ? 'Guardando...' : 'Guardar'}
+
+      {/* ── Card detalles ── */}
+      <div className={cn('rounded-2xl border overflow-hidden mb-5', isDark ? 'border-gray-800' : 'border-gray-200')}>
+        <div style={{ height: 6, background: 'var(--accent)' }} />
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Dirección</label>
+            <input style={inputStyle} value={restData.address} onChange={e => setRestData({ ...restData, address: e.target.value })} placeholder="Calle, ciudad..." />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Contacto</label>
+              <input style={inputStyle} value={restData.contact} onChange={e => setRestData({ ...restData, contact: e.target.value })} placeholder="Nombre" />
+            </div>
+            <div>
+              <label style={labelStyle}>Celular</label>
+              <input style={inputStyle} value={restData.phone} onChange={e => setRestData({ ...restData, phone: e.target.value })} placeholder="+57 300 000 0000" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={handleSaveRestaurant} disabled={saving}
+          style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 28px', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.88rem', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
     </div>
@@ -2905,11 +3121,11 @@ export function ConfigModal() {
     { key: 'sales',         label: 'Ventas',             visible: canEdit },
     { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
     { key: 'versions',      label: 'Historial',          visible: canEdit },
-    { key: 'verification',  label: 'Verificación',       visible: canEdit },
+    { key: 'verification',  label: 'Verificación',       visible: canEdit, icon: SlidersHorizontal },
     { key: 'users',         label: 'Usuarios',           visible: canManageUsers },
     { key: 'appearance',    label: 'Personalización',    visible: isMaster },
     { key: 'subscription',  label: 'Suscripción',        visible: canManageUsers },
-    { key: 'restaurante',   label: 'Restaurante',        visible: canEdit },
+    { key: 'restaurante',   label: 'Restaurante',        visible: canEdit, icon: Store },
   ].filter(c => c.visible).sort((a, b) => a.label.localeCompare(b.label, 'es'))
 
   const goTo = (key) => { setSection(key); setConfigTab(key) }
@@ -2937,13 +3153,14 @@ export function ConfigModal() {
       )}>
         {/* ── Topbar ── */}
         <div className={cn(
-          'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
+          'flex items-center px-6 py-4 border-b flex-shrink-0',
           isDark ? 'border-gray-800' : 'border-gray-100'
-        )}>
-          <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+        )} style={{ position: 'relative' }}>
+          <h2 className={cn('font-display text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}
+            style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>
             {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
           </h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
             {/* Grid/Lista toggle — solo en el home del modal */}
             {!section && (
               <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
@@ -2959,9 +3176,9 @@ export function ConfigModal() {
             )}
             <button
               onClick={section ? goBack : handleClose}
-              style={{ background: 'transparent', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseOver={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff' }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)' }}
+              style={{ background: 'transparent', border: '1px solid var(--accent)', borderRadius: 8, color: 'var(--accent)', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseOver={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)' }}
             >
               Salir
             </button>
@@ -2974,18 +3191,41 @@ export function ConfigModal() {
             /* GRID / LISTA */
             <div className="flex-1 overflow-y-auto p-6">
               {viewMode === 'grid' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 12 }}>
-                  {CARDS.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => goTo(key)}
-                      style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 12, padding: '24px 16px', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, transition: 'all 0.18s', fontFamily: 'inherit' }}
-                      onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--sh)' }}
-                      onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b1)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
-                    >
-                      <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em', lineHeight: 1.3 }}>{label}</span>
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 12 }}>
+                  {CARDS.map(({ key, label }) => {
+                    const allTabs = [...PARAM_TABS, ...TABS]
+                    const tabDef = allTabs.find(t => t.id === key)
+                    const Icon = tabDef?.icon
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => goTo(key)}
+                        className="group"
+                        style={{
+                          background: isDark ? '#111827' : '#fff',
+                          border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          transition: 'all 0.18s',
+                          fontFamily: 'inherit',
+                          padding: 0,
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+                        onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb' }}
+                      >
+                        <div style={{ height: 6, background: 'var(--accent)', width: '100%' }} />
+                        <div style={{ padding: '12px 14px', minHeight: '3.2em', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {label}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>

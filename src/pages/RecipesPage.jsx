@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Filter, BookOpen, Grid, List, ToggleLeft, ToggleRight, GripVertical, Upload } from 'lucide-react'
+import { Plus, Search, Filter, BookOpen, LayoutGrid, List as ListIcon, ToggleLeft, ToggleRight, GripVertical, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -414,7 +414,15 @@ export default function RecipesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className={cn('flex items-center gap-1 rounded-lg border p-0.5')} style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <button onClick={() => { setViewMode('grid'); localStorage.setItem('pos-view-mode', 'grid') }} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
+            <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+          <button onClick={() => { setViewMode('list'); localStorage.setItem('pos-view-mode', 'list') }} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Lista">
+            <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+          </button>
+        </div>
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -445,20 +453,6 @@ export default function RecipesPage() {
             <SelectItem value="inactive">{t('common.inactive')}</SelectItem>
           </SelectContent>
         </Select>
-        <div className={cn('flex rounded-lg border overflow-hidden', isDark ? 'border-gray-700' : 'border-gray-200')}>
-          <button
-            onClick={() => { setViewMode('grid'); localStorage.setItem('pos-view-mode', 'grid') }}
-            className={cn('px-3 py-2 transition-colors', viewMode === 'grid' ? 'bg-gold-600 text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
-          >
-            <Grid className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => { setViewMode('list'); localStorage.setItem('pos-view-mode', 'list') }}
-            className={cn('px-3 py-2 transition-colors', viewMode === 'list' ? 'bg-gold-600 text-white' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-50')}
-          >
-            <List className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
       {/* Category quick filters */}
