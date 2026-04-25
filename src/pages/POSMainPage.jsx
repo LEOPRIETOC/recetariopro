@@ -91,9 +91,8 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative' }}
       className="relative group"
-      style={{ position: 'relative' }}
     >
       {/* Verificación badge */}
       {recipe.verified && (
