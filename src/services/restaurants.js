@@ -294,10 +294,11 @@ export async function checkMpCategoryInUse(restaurantId, categoryName) {
 // ── Restaurant settings ────────────────────────────────────────────────────────
 
 export async function updateRestaurantSettings(restaurantId, settings) {
-  return updateDoc(doc(db, 'restaurants', restaurantId), {
-    settings,
-    updatedAt: serverTimestamp(),
-  })
+  const updates = { updatedAt: serverTimestamp() }
+  for (const [key, value] of Object.entries(settings)) {
+    updates[`settings.${key}`] = value
+  }
+  return updateDoc(doc(db, 'restaurants', restaurantId), updates)
 }
 
 export async function updateAccentColor(restaurantId, color) {

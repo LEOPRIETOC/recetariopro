@@ -1460,6 +1460,7 @@ const GESTION_FIELD_MAP = {
 function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const navigate = useNavigate()
   const { success, error } = useToast()
+  const { currentRestaurant } = useAppStore()
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
   const [units, setUnits] = useState([])
@@ -1472,9 +1473,11 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
 
   const [columns, setColumns] = useState(() => {
     try {
-      const saved = localStorage.getItem('gestion-columns-order')
-      if (saved) {
-        const parsed = JSON.parse(saved)
+      // Intentar cargar desde Firestore (en currentRestaurant) o fallback a localStorage
+      const fromFirestore = currentRestaurant?.settings?.gestionColumnsOrder
+      const raw = fromFirestore || localStorage.getItem('gestion-columns-order')
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
         const merged = parsed
           .filter(c => GESTION_DEFAULT_COLS.find(d => d.id === c.id))
           .map(c => ({ ...GESTION_DEFAULT_COLS.find(d => d.id === c.id), visible: c.visible }))
@@ -1517,6 +1520,9 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
     newCols.splice(toIdx, 0, removed)
     setColumns(newCols)
     localStorage.setItem('gestion-columns-order', JSON.stringify(newCols))
+    if (restaurantId) {
+      updateRestaurantSettings(restaurantId, { gestionColumnsOrder: JSON.stringify(newCols) }).catch(() => {})
+    }
   }
 
   const handleEdit = (r) => { onClose(); navigate(`/recipes/${r.id}`, { state: { from: 'gestion' } }) }

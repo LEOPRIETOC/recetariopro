@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { normalizeExistingData } from '../services/importService'
 import { useTranslation } from 'react-i18next'
 import { Sun, Moon, Globe, DollarSign, Eye, EyeOff } from 'lucide-react'
@@ -23,6 +23,17 @@ export default function SettingsPage() {
   const isDark = theme === 'night'
   const [saving, setSaving] = useState(false)
   const [normalizing, setNormalizing] = useState(false)
+  const mounted = useRef(false)
+
+  // Auto-guardar preferencias en Firestore al cambiar (skip primera renderización)
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
+    if (!currentRestaurant?.id) return
+    const timer = setTimeout(() => {
+      updateRestaurantSettings(currentRestaurant.id, { showCosts, theme, language }).catch(() => {})
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [theme, language, showCosts])
 
   const themes = [
     { value: 'day', icon: Sun, label: t('settings.themes.day'), preview: 'bg-white border-gray-200' },

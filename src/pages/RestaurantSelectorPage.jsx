@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore'
+import { useTranslation } from 'react-i18next'
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
 
 export default function RestaurantSelectorPage() {
   const navigate = useNavigate()
-  const { user, userProfile, setCurrentRestaurant, setAccentColor, theme } = useAppStore()
+  const { user, userProfile, setCurrentRestaurant, setAccentColor, setTheme, setLanguage, setShowCosts, theme } = useAppStore()
+  const { i18n } = useTranslation()
   const { isMaster } = useAuth()
   const isDark = theme === 'night'
 
@@ -94,6 +96,10 @@ export default function RestaurantSelectorPage() {
   const enterRestaurant = (rest) => {
     setCurrentRestaurant(rest)
     if (rest.accentColor) setAccentColor(rest.accentColor)
+    const s = rest.settings || {}
+    if (s.theme) setTheme(s.theme)
+    if (s.language) { setLanguage(s.language); i18n.changeLanguage(s.language) }
+    if (typeof s.showCosts === 'boolean') setShowCosts(s.showCosts)
     navigate('/')
   }
 
