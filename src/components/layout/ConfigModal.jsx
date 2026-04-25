@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal } from 'lucide-react'
-import { ImportTab } from '../ImportTab'
+import BulkImportTab from '../BulkImportTab'
 import * as XLSX from 'xlsx'
 import {
   DndContext as DndCtx, PointerSensor as PtrSensor, useSensor as useSen, useSensors as useSens, closestCenter as closestCtr,
@@ -3270,7 +3270,7 @@ export function ConfigModal() {
                 {configTab === 'units' && <UnitsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'categories' && <CategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'suppliers' && <SuppliersTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-                {configTab === 'import' && <ImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'import' && <BulkImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
