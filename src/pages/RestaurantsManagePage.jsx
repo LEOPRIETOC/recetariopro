@@ -27,20 +27,11 @@ export default function RestaurantsManagePage() {
   })
   const [errors, setErrors] = useState({})
 
-  const css = isDark
-    ? { '--bg': '#0a0e0b', '--bg2': '#111712', '--bg3': '#181f19', '--b1': 'rgba(255,255,255,0.06)', '--b2': 'rgba(255,255,255,0.10)', '--text': '#f0ece4', '--t2': '#8a8578', '--t3': '#4a4840' }
-    : { '--bg': '#f9fafb', '--bg2': '#ffffff', '--bg3': '#f3f4f6', '--b1': '#e5e7eb', '--b2': '#d1d5db', '--text': '#111827', '--t2': '#374151', '--t3': '#9ca3af' }
-
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const validate = () => {
+  const handleCreate = async () => {
     const e = {}
     if (!form.name.trim()) e.name = 'Requerido'
-    return e
-  }
-
-  const handleCreate = async () => {
-    const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     if (!user?.uid) return
 
@@ -53,9 +44,7 @@ export default function RestaurantsManagePage() {
         phone: form.phone.trim(),
         city: form.city.trim(),
         ownerId: user.uid,
-        members: {
-          [user.uid]: { role: 'master', joinedAt: serverTimestamp() },
-        },
+        members: { [user.uid]: { role: 'master', joinedAt: serverTimestamp() } },
         subscription: {
           plan: form.subPlan,
           status: form.subStatus,
@@ -64,48 +53,33 @@ export default function RestaurantsManagePage() {
           maxUsers: Number(form.maxUsers),
           maxRecipes: Number(form.maxRecipes),
         },
-        settings: {
-          showCosts: true,
-          currency: 'USD',
-          theme: 'day',
-          language: 'es',
-        },
+        settings: { showCosts: true, currency: 'USD', theme: 'day', language: 'es' },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
       const newRestId = ref.id
 
-      // Precargar unidades por defecto
       const defaultUnits = [
-        { code: 'UND001', abbreviation: 'G',   name: 'Gramo',     equivalence: 1       },
-        { code: 'UND002', abbreviation: 'KG',  name: 'Kilogramo', equivalence: 1000    },
-        { code: 'UND003', abbreviation: 'ML',  name: 'Mililitro', equivalence: 1       },
-        { code: 'UND004', abbreviation: 'LT',  name: 'Litro',     equivalence: 1000    },
-        { code: 'UND005', abbreviation: 'UND', name: 'Unidad',    equivalence: 1       },
-        { code: 'UND006', abbreviation: 'OZ',  name: 'Onza',      equivalence: 28.35   },
-        { code: 'UND007', abbreviation: 'LB',  name: 'Libra',     equivalence: 453.59  },
+        { code: 'UND001', abbreviation: 'G',   name: 'Gramo',     equivalence: 1      },
+        { code: 'UND002', abbreviation: 'KG',  name: 'Kilogramo', equivalence: 1000   },
+        { code: 'UND003', abbreviation: 'ML',  name: 'Mililitro', equivalence: 1      },
+        { code: 'UND004', abbreviation: 'LT',  name: 'Litro',     equivalence: 1000   },
+        { code: 'UND005', abbreviation: 'UND', name: 'Unidad',    equivalence: 1      },
+        { code: 'UND006', abbreviation: 'OZ',  name: 'Onza',      equivalence: 28.35  },
+        { code: 'UND007', abbreviation: 'LB',  name: 'Libra',     equivalence: 453.59 },
       ]
       const batch1 = writeBatch(db)
       defaultUnits.forEach(unit => {
-        const uRef = doc(collection(db, 'restaurants', newRestId, 'units'))
-        batch1.set(uRef, { ...unit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+        batch1.set(doc(collection(db, 'restaurants', newRestId, 'units')),
+          { ...unit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
       })
       await batch1.commit()
 
-      // Precargar categorías de materias primas
-      const defaultCategories = [
-        'Abarrotes', 'Aceites', 'Bebidas', 'Carnes', 'Especias',
-        'Fruver', 'Lácteos', 'Licores', 'Mariscos', 'Salsas',
-      ]
+      const defaultCategories = ['Abarrotes','Aceites','Bebidas','Carnes','Especias','Fruver','Lácteos','Licores','Mariscos','Salsas']
       const batch2 = writeBatch(db)
-      defaultCategories.forEach((name, index) => {
-        const cRef = doc(collection(db, 'restaurants', newRestId, 'mp_categories'))
-        batch2.set(cRef, {
-          code: `CAT${String(index + 1).padStart(3, '0')}`,
-          name,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
+      defaultCategories.forEach((name, i) => {
+        batch2.set(doc(collection(db, 'restaurants', newRestId, 'mp_categories')),
+          { code: `CAT${String(i + 1).padStart(3, '0')}`, name, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
       })
       await batch2.commit()
 
@@ -117,155 +91,156 @@ export default function RestaurantsManagePage() {
     }
   }
 
-  // Solo master puede acceder
+  const bg   = isDark ? '#0a0e0b' : '#f9fafb'
+  const card = isDark ? '#111712' : '#ffffff'
+  const bdr  = isDark ? '#1f2937' : '#e5e7eb'
+  const txt  = isDark ? '#f0ece4' : '#111827'
+  const lbl  = isDark ? '#9ca3af' : '#374151'
+  const inp  = { width: '100%', background: isDark ? '#1f2937' : '#fff', border: `1px solid ${bdr}`, borderRadius: 8, padding: '10px 12px', fontFamily: 'inherit', fontSize: '0.88rem', color: txt, outline: 'none', boxSizing: 'border-box' }
+  const focus = (e) => { e.currentTarget.style.borderColor = 'var(--accent)' }
+  const blur  = (e, k) => { e.currentTarget.style.borderColor = errors[k] ? '#ef4444' : bdr }
+  const labelCss = { display: 'block', fontSize: '0.78rem', fontWeight: 600, color: lbl, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }
+  const sectionCss = { fontSize: '0.68rem', fontWeight: 700, color: isDark ? '#4b5563' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18 }
+
   if (!isMaster) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: isDark ? '#030712' : '#f9fafb', color: isDark ? '#f9fafb' : '#111827', fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: bg, fontFamily: "'DM Sans', sans-serif" }}>
         <p style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>Acceso restringido — solo para Master</p>
       </div>
     )
   }
 
-  const inputStyle = {
-    width: '100%',
-    background: isDark ? '#1f2937' : '#fff',
-    border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-    borderRadius: 8,
-    padding: '10px 12px',
-    fontFamily: 'inherit',
-    fontSize: '0.88rem',
-    color: isDark ? '#f9fafb' : '#111827',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    color: isDark ? '#9ca3af' : '#374151',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  }
-
-  const sectionTitle = {
-    fontSize: '0.68rem',
-    fontWeight: 700,
-    color: isDark ? '#4b5563' : '#9ca3af',
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
-    marginBottom: 16,
-  }
-
-  const Field = ({ label, k, type = 'text', placeholder = '', required = false }) => (
-    <div>
-      <label style={labelStyle}>{label}{required && <span style={{ color: '#ef4444' }}> *</span>}</label>
-      <input
-        type={type}
-        value={form[k]}
-        onChange={setField(k)}
-        placeholder={placeholder}
-        style={{ ...inputStyle, borderColor: errors[k] ? '#ef4444' : (isDark ? '#374151' : '#e5e7eb') }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = errors[k] ? '#ef4444' : (isDark ? '#374151' : '#e5e7eb') }}
-      />
-      {errors[k] && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 4 }}>{errors[k]}</p>}
-    </div>
-  )
-
-  const SelectField = ({ label, k, options }) => (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <select
-        value={form[k]}
-        onChange={setField(k)}
-        style={{ ...inputStyle, cursor: 'pointer' }}
-      >
-        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-    </div>
-  )
-
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 20px', fontFamily: "'DM Sans', sans-serif", ...css }}>
+    <div style={{ minHeight: '100vh', background: bg, padding: '40px 20px', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
           <button
             onClick={() => navigate('/restaurants')}
-            style={{ background: 'none', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, padding: '8px 14px', color: isDark ? '#6b7280' : '#9ca3af', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem' }}
+            style={{ background: 'none', border: `1px solid ${bdr}`, borderRadius: 8, padding: '8px 14px', color: lbl, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem' }}
           >
             ← Volver
           </button>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.6rem', color: isDark ? '#f0ece4' : '#111827', margin: 0 }}>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.6rem', color: txt, margin: 0 }}>
             Nuevo restaurante
           </h1>
         </div>
 
         {/* Card — Info general */}
-        <div style={{ background: isDark ? '#111712' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'}`, borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
           <div style={{ height: 4, background: 'var(--accent)' }} />
-          <div style={{ padding: '24px 28px' }}>
-            <p style={sectionTitle}>Información general</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Field label="Nombre del restaurante" k="name" placeholder="El Fogón de María" required />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <Field label="Ciudad" k="city" placeholder="Bogotá" />
-                <Field label="Teléfono" k="phone" placeholder="+57 300 000 0000" />
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={sectionCss}>Información general</p>
+
+            {/* Nombre */}
+            <div>
+              <label style={labelCss}>Nombre del restaurante <span style={{ color: '#ef4444' }}>*</span></label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={setField('name')}
+                placeholder="El Fogón de María"
+                style={{ ...inp, borderColor: errors.name ? '#ef4444' : bdr }}
+                onFocus={focus}
+                onBlur={(e) => blur(e, 'name')}
+              />
+              {errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 4 }}>{errors.name}</p>}
+            </div>
+
+            {/* Ciudad + Teléfono */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelCss}>Ciudad</label>
+                <input type="text" value={form.city} onChange={setField('city')} placeholder="Bogotá"
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
               </div>
-              <Field label="Dirección" k="address" placeholder="Calle 123 #45-67" />
-              <Field label="Persona de contacto" k="contact" placeholder="Juan Pérez" />
+              <div>
+                <label style={labelCss}>Teléfono</label>
+                <input type="text" value={form.phone} onChange={setField('phone')} placeholder="+57 300 000 0000"
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
+              </div>
+            </div>
+
+            {/* Dirección */}
+            <div>
+              <label style={labelCss}>Dirección</label>
+              <input type="text" value={form.address} onChange={setField('address')} placeholder="Calle 123 #45-67"
+                style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <label style={labelCss}>Persona de contacto</label>
+              <input type="text" value={form.contact} onChange={setField('contact')} placeholder="Juan Pérez"
+                style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
             </div>
           </div>
         </div>
 
         {/* Card — Suscripción */}
-        <div style={{ background: isDark ? '#111712' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'}`, borderRadius: 16, overflow: 'hidden', marginBottom: 28 }}>
+        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 28 }}>
           <div style={{ height: 4, background: 'var(--accent)' }} />
-          <div style={{ padding: '24px 28px' }}>
-            <p style={sectionTitle}>Suscripción</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <SelectField label="Plan" k="subPlan" options={[['trial', 'Prueba (30 días)'], ['monthly', 'Mensual'], ['annual', 'Anual']]} />
-                <SelectField label="Estado" k="subStatus" options={[['trial', 'Prueba'], ['active', 'Activa'], ['expired', 'Vencida']]} />
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={sectionCss}>Suscripción</p>
+
+            {/* Plan + Estado */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelCss}>Plan</label>
+                <select value={form.subPlan} onChange={setField('subPlan')}
+                  style={{ ...inp, cursor: 'pointer' }}>
+                  <option value="trial">Prueba (30 días)</option>
+                  <option value="monthly">Mensual</option>
+                  <option value="annual">Anual</option>
+                </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <Field label="Fecha inicio" k="subStart" type="date" />
-                <Field label="Fecha vencimiento" k="subEnd" type="date" />
+              <div>
+                <label style={labelCss}>Estado</label>
+                <select value={form.subStatus} onChange={setField('subStatus')}
+                  style={{ ...inp, cursor: 'pointer' }}>
+                  <option value="trial">Prueba</option>
+                  <option value="active">Activa</option>
+                  <option value="expired">Vencida</option>
+                </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={labelStyle}>Máx. usuarios</label>
-                  <input
-                    type="number" min={1} max={100} value={form.maxUsers}
-                    onChange={setField('maxUsers')}
-                    style={inputStyle}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb' }}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Máx. recetas</label>
-                  <input
-                    type="number" min={1} max={9999} value={form.maxRecipes}
-                    onChange={setField('maxRecipes')}
-                    style={inputStyle}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = isDark ? '#374151' : '#e5e7eb' }}
-                  />
-                </div>
+            </div>
+
+            {/* Fechas */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelCss}>Fecha inicio</label>
+                <input type="date" value={form.subStart} onChange={setField('subStart')}
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
+              </div>
+              <div>
+                <label style={labelCss}>Fecha vencimiento</label>
+                <input type="date" value={form.subEnd} onChange={setField('subEnd')}
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
+              </div>
+            </div>
+
+            {/* Límites */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={labelCss}>Máx. usuarios</label>
+                <input type="number" min={1} max={100} value={form.maxUsers} onChange={setField('maxUsers')}
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
+              </div>
+              <div>
+                <label style={labelCss}>Máx. recetas</label>
+                <input type="number" min={1} max={9999} value={form.maxRecipes} onChange={setField('maxRecipes')}
+                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Acciones */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
             onClick={() => navigate('/restaurants')}
-            style={{ background: 'none', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, padding: '10px 20px', color: isDark ? '#6b7280' : '#374151', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.9rem' }}
+            style={{ background: 'none', border: `1px solid ${bdr}`, borderRadius: 8, padding: '10px 20px', color: lbl, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.9rem' }}
           >
             Cancelar
           </button>
