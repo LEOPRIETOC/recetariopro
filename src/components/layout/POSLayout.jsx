@@ -397,11 +397,18 @@ export function POSLayout() {
           {currentRestaurant?.name && (
             <div style={{
               backgroundColor: 'var(--accent)',
-              padding: '14px 16px',
+              padding: '12px 14px',
               marginBottom: 4,
-              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
             }}>
-              <p style={{ fontSize: '1rem', fontWeight: 800, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {currentRestaurant.logoURL && (
+                <div style={{ width: 34, height: 34, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={currentRestaurant.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 3 }} />
+                </div>
+              )}
+              <p style={{ fontSize: currentRestaurant.logoURL ? '0.82rem' : '1rem', fontWeight: 800, color: 'white', lineHeight: 1.2, wordBreak: 'break-word', textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, textAlign: currentRestaurant.logoURL ? 'left' : 'center' }}>
                 {currentRestaurant.name}
               </p>
             </div>
