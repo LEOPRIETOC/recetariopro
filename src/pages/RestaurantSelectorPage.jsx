@@ -143,52 +143,52 @@ export default function RestaurantSelectorPage() {
           No tienes restaurantes asignados.
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20, width: '100%', maxWidth: 1100 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, width: '100%', maxWidth: 900 }}>
           {restaurants.map((rest) => {
             return (
               <div
                 key={rest.id}
                 onClick={() => enterRestaurant(rest)}
-                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 16, padding: 24, cursor: 'pointer', transition: 'border-color 0.25s, box-shadow 0.25s', display: 'flex', flexDirection: 'column', gap: 16 }}
+                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 14, padding: 16, cursor: 'pointer', transition: 'border-color 0.25s, box-shadow 0.25s', display: 'flex', flexDirection: 'column', gap: 12 }}
                 onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = isDark ? '0 8px 40px rgba(0,0,0,0.70)' : '0 4px 24px rgba(0,0,0,0.10)' }}
                 onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--b1)'; e.currentTarget.style.boxShadow = 'none' }}
               >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {rest.logoURL && (
-                      <div style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--bg3)', border: '1px solid var(--b1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src={rest.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
-                      </div>
-                    )}
-                    <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.2rem', color: 'var(--text)', margin: 0 }}>
-                      {rest.name}
-                    </h2>
-                  </div>
+                {/* Protagonista: logo + nombre */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '8px 0 4px' }}>
+                  {rest.logoURL ? (
+                    <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: 'var(--bg3)', border: '1px solid var(--b1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <img src={rest.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 64, height: 64, borderRadius: 12, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff' }}>{rest.name?.[0] || '?'}</span>
+                    </div>
+                  )}
+                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', color: 'var(--text)', margin: 0, textAlign: 'center', lineHeight: 1.3 }}>
+                    {rest.name}
+                  </h2>
+                  {(rest.city || rest.settings?.city) && (
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--t3)' }}>📍 {rest.city || rest.settings?.city}</p>
+                  )}
                 </div>
 
-                {/* Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, background: 'var(--bg3)', borderRadius: 10, padding: 12 }}>
+                {/* Stats — discretas */}
+                <div style={{ display: 'flex', justifyContent: 'space-around', borderTop: '1px solid var(--b1)', paddingTop: 10 }}>
                   {[
-                    ['Recetas',     rest.stats?.recipes,    'var(--accent)'],
-                    ['Sub-recetas', rest.stats?.subrecipes, isDark ? '#60a5fa' : '#3b82f6'],
-                    ['Mat. Primas', rest.stats?.materias,   isDark ? '#34d399' : '#10b981'],
-                    ['Usuarios',    rest.stats?.users,      'var(--t2)'],
-                  ].map(([label, value, color]) => (
+                    ['Recetas', rest.stats?.recipes],
+                    ['Sub-rec.', rest.stats?.subrecipes],
+                    ['Mat.P.', rest.stats?.materias],
+                    ['Users', rest.stats?.users],
+                  ].map(([label, value]) => (
                     <div key={label} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color }}>{value ?? '—'}</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--t2)' }}>{value ?? '—'}</div>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--t3)' }}>
-                  <span>📍 {rest.city || rest.settings?.city || '—'}</span>
-                </div>
-
                 <button
-                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.9rem', transition: 'opacity 0.2s', letterSpacing: '0.02em' }}
+                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.85rem', transition: 'opacity 0.2s' }}
                   onMouseOver={(e) => { e.stopPropagation(); e.currentTarget.style.opacity = '0.85' }}
                   onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
                   onClick={(e) => { e.stopPropagation(); enterRestaurant(rest) }}
