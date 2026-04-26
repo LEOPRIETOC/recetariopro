@@ -143,7 +143,7 @@ export default function RestaurantSelectorPage() {
           No tienes restaurantes asignados.
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, width: '100%', maxWidth: 700 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 160px)', gap: 12, justifyContent: 'center', width: '100%', maxWidth: 700 }}>
           {restaurants.map((rest) => {
             return (
               <div
