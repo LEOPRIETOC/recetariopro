@@ -21,7 +21,7 @@ export default function RestaurantsManagePage() {
   })
   const [errors, setErrors] = useState({})
 
-  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: k === 'name' ? e.target.value.toUpperCase() : e.target.value }))
 
   const handleCreate = async () => {
     const e = {}
