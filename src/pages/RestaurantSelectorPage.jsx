@@ -143,47 +143,44 @@ export default function RestaurantSelectorPage() {
           No tienes restaurantes asignados.
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, width: '100%', maxWidth: 900 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, width: '100%', maxWidth: 700 }}>
           {restaurants.map((rest) => {
             return (
               <div
                 key={rest.id}
                 onClick={() => enterRestaurant(rest)}
-                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 14, padding: 16, cursor: 'pointer', transition: 'border-color 0.25s, box-shadow 0.25s', display: 'flex', flexDirection: 'column', gap: 12 }}
-                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = isDark ? '0 8px 40px rgba(0,0,0,0.70)' : '0 4px 24px rgba(0,0,0,0.10)' }}
+                style={{ background: 'var(--bg2)', border: '1px solid var(--b1)', borderRadius: 12, padding: 12, cursor: 'pointer', transition: 'border-color 0.25s, box-shadow 0.25s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = isDark ? '0 6px 24px rgba(0,0,0,0.60)' : '0 4px 16px rgba(0,0,0,0.08)' }}
                 onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--b1)'; e.currentTarget.style.boxShadow = 'none' }}
               >
-                {/* Protagonista: logo + nombre */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '8px 0 4px' }}>
-                  {rest.logoURL ? (
-                    <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: 'var(--bg3)', border: '1px solid var(--b1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <img src={rest.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
-                    </div>
-                  ) : (
-                    <div style={{ width: 64, height: 64, borderRadius: 12, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff' }}>{rest.name?.[0] || '?'}</span>
-                    </div>
-                  )}
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', color: 'var(--text)', margin: 0, textAlign: 'center', lineHeight: 1.3 }}>
-                    {rest.name}
-                  </h2>
-                </div>
+                {/* Logo */}
+                {rest.logoURL ? (
+                  <div style={{ width: 48, height: 48, borderRadius: 10, overflow: 'hidden', background: 'var(--bg3)', border: '1px solid var(--b1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src={rest.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                  </div>
+                ) : (
+                  <div style={{ width: 48, height: 48, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>{rest.name?.[0] || '?'}</span>
+                  </div>
+                )}
 
-                {/* Stats — discretas */}
-                <div style={{ display: 'flex', justifyContent: 'space-around', borderTop: '1px solid var(--b1)', paddingTop: 10 }}>
-                  {[
-                    ['Recetas', rest.stats?.recipes],
-                    ['Sub-rec.', rest.stats?.subrecipes],
-                  ].map(([label, value]) => (
+                {/* Nombre */}
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.88rem', color: 'var(--text)', margin: 0, textAlign: 'center', lineHeight: 1.3 }}>
+                  {rest.name}
+                </h2>
+
+                {/* Stats */}
+                <div style={{ display: 'flex', gap: 12, borderTop: '1px solid var(--b1)', paddingTop: 8, width: '100%', justifyContent: 'center' }}>
+                  {[['Recetas', rest.stats?.recipes], ['Sub-rec.', rest.stats?.subrecipes]].map(([label, value]) => (
                     <div key={label} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--t2)' }}>{value ?? '—'}</div>
-                      <div style={{ fontSize: '0.58rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--t2)' }}>{value ?? '—'}</div>
+                      <div style={{ fontSize: '0.55rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
                     </div>
                   ))}
                 </div>
 
                 <button
-                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.85rem', transition: 'opacity 0.2s' }}
+                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.78rem', transition: 'opacity 0.2s' }}
                   onMouseOver={(e) => { e.stopPropagation(); e.currentTarget.style.opacity = '0.85' }}
                   onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
                   onClick={(e) => { e.stopPropagation(); enterRestaurant(rest) }}
