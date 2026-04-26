@@ -179,14 +179,6 @@ export default function RestaurantSelectorPage() {
                   ))}
                 </div>
 
-                <button
-                  style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', width: '100%', fontSize: '0.78rem', transition: 'opacity 0.2s' }}
-                  onMouseOver={(e) => { e.stopPropagation(); e.currentTarget.style.opacity = '0.85' }}
-                  onMouseOut={(e) => { e.currentTarget.style.opacity = '1' }}
-                  onClick={(e) => { e.stopPropagation(); enterRestaurant(rest) }}
-                >
-                  Entrar →
-                </button>
               </div>
             )
           })}
