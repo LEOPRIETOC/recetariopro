@@ -4,6 +4,7 @@ import { collection, addDoc, serverTimestamp, writeBatch, doc } from 'firebase/f
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { toTitleCase } from '../lib/utils'
 
 export default function RestaurantsManagePage() {
   const navigate = useNavigate()
@@ -21,7 +22,11 @@ export default function RestaurantsManagePage() {
   })
   const [errors, setErrors] = useState({})
 
-  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: k === 'name' ? e.target.value.toUpperCase() : e.target.value }))
+  const setField = (k) => (e) => {
+    const v = e.target.value
+    const val = k === 'name' ? v.toUpperCase() : (k === 'address' || k === 'contact') ? toTitleCase(v) : v
+    setForm((f) => ({ ...f, [k]: val }))
+  }
 
   const handleCreate = async () => {
     const e = {}
