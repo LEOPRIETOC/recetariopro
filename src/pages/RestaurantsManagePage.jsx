@@ -18,12 +18,6 @@ export default function RestaurantsManagePage() {
     contact: '',
     phone: '',
     city: '',
-    subPlan: 'trial',
-    subStatus: 'trial',
-    subStart: new Date().toISOString().slice(0, 10),
-    subEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-    maxUsers: 3,
-    maxRecipes: 30,
   })
   const [errors, setErrors] = useState({})
 
@@ -45,14 +39,7 @@ export default function RestaurantsManagePage() {
         city: form.city.trim(),
         ownerId: user.uid,
         members: { [user.uid]: { role: 'master', joinedAt: serverTimestamp() } },
-        subscription: {
-          plan: form.subPlan,
-          status: form.subStatus,
-          start: form.subStart,
-          end: form.subEnd,
-          maxUsers: Number(form.maxUsers),
-          maxRecipes: Number(form.maxRecipes),
-        },
+        subscription: { plan: 'trial', status: 'trial', start: new Date().toISOString().slice(0, 10) },
         settings: { showCosts: true, currency: 'USD', theme: 'day', language: 'es' },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -128,7 +115,7 @@ export default function RestaurantsManagePage() {
         </div>
 
         {/* Card — Info general */}
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 28 }}>
           <div style={{ height: 4, background: 'var(--accent)' }} />
           <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={sectionCss}>Información general</p>
@@ -174,64 +161,6 @@ export default function RestaurantsManagePage() {
               <label style={labelCss}>Persona de contacto</label>
               <input type="text" value={form.contact} onChange={setField('contact')} placeholder="Juan Pérez"
                 style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
-            </div>
-          </div>
-        </div>
-
-        {/* Card — Suscripción */}
-        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 28 }}>
-          <div style={{ height: 4, background: 'var(--accent)' }} />
-          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={sectionCss}>Suscripción</p>
-
-            {/* Plan + Estado */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <label style={labelCss}>Plan</label>
-                <select value={form.subPlan} onChange={setField('subPlan')}
-                  style={{ ...inp, cursor: 'pointer' }}>
-                  <option value="trial">Prueba (30 días)</option>
-                  <option value="monthly">Mensual</option>
-                  <option value="annual">Anual</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelCss}>Estado</label>
-                <select value={form.subStatus} onChange={setField('subStatus')}
-                  style={{ ...inp, cursor: 'pointer' }}>
-                  <option value="trial">Prueba</option>
-                  <option value="active">Activa</option>
-                  <option value="expired">Vencida</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Fechas */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <label style={labelCss}>Fecha inicio</label>
-                <input type="date" value={form.subStart} onChange={setField('subStart')}
-                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
-              </div>
-              <div>
-                <label style={labelCss}>Fecha vencimiento</label>
-                <input type="date" value={form.subEnd} onChange={setField('subEnd')}
-                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
-              </div>
-            </div>
-
-            {/* Límites */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <label style={labelCss}>Máx. usuarios</label>
-                <input type="number" min={1} max={100} value={form.maxUsers} onChange={setField('maxUsers')}
-                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
-              </div>
-              <div>
-                <label style={labelCss}>Máx. recetas</label>
-                <input type="number" min={1} max={9999} value={form.maxRecipes} onChange={setField('maxRecipes')}
-                  style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
-              </div>
             </div>
           </div>
         </div>
