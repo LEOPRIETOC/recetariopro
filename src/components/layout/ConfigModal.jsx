@@ -3065,7 +3065,7 @@ function RestauranteTab({ currentRestaurant, isDark }) {
             <label style={{ ...labelStyle, marginBottom: 6 }}>Nombre del restaurante *</label>
             <input style={{ ...inputStyle, fontSize: '1rem', fontWeight: 700 }}
               value={restData.name}
-              onChange={e => setRestData({ ...restData, name: toTitleCase(e.target.value) })}
+              onChange={e => setRestData({ ...restData, name: e.target.value.toUpperCase() })}
               placeholder="Mi Restaurante"
             />
           </div>
@@ -3078,12 +3078,12 @@ function RestauranteTab({ currentRestaurant, isDark }) {
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={labelStyle}>Dirección</label>
-            <input style={inputStyle} value={restData.address} onChange={e => setRestData({ ...restData, address: e.target.value })} placeholder="Calle, ciudad..." />
+            <input style={inputStyle} value={restData.address} onChange={e => setRestData({ ...restData, address: toTitleCase(e.target.value) })} placeholder="Calle, ciudad..." />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label style={labelStyle}>Contacto</label>
-              <input style={inputStyle} value={restData.contact} onChange={e => setRestData({ ...restData, contact: e.target.value })} placeholder="Nombre" />
+              <input style={inputStyle} value={restData.contact} onChange={e => setRestData({ ...restData, contact: toTitleCase(e.target.value) })} placeholder="Nombre" />
             </div>
             <div>
               <label style={labelStyle}>Celular</label>
