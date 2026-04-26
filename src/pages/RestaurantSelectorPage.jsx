@@ -167,9 +167,6 @@ export default function RestaurantSelectorPage() {
                   <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', color: 'var(--text)', margin: 0, textAlign: 'center', lineHeight: 1.3 }}>
                     {rest.name}
                   </h2>
-                  {(rest.city || rest.settings?.city) && (
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--t3)' }}>📍 {rest.city || rest.settings?.city}</p>
-                  )}
                 </div>
 
                 {/* Stats — discretas */}
@@ -177,8 +174,6 @@ export default function RestaurantSelectorPage() {
                   {[
                     ['Recetas', rest.stats?.recipes],
                     ['Sub-rec.', rest.stats?.subrecipes],
-                    ['Mat.P.', rest.stats?.materias],
-                    ['Users', rest.stats?.users],
                   ].map(([label, value]) => (
                     <div key={label} style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--t2)' }}>{value ?? '—'}</div>
