@@ -64,21 +64,25 @@ export function Sidebar() {
         <div className={cn('flex items-center h-16 px-4 border-b', isDark ? 'border-gray-800' : isEarth ? 'border-earth-700' : 'border-gray-100')}>
           {sidebarOpen ? (
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-gold-600 flex items-center justify-center flex-shrink-0">
-                <ChefHat className="h-4 w-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-gold-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {currentRestaurant?.logoURL
+                  ? <img src={currentRestaurant.logoURL} alt="Logo" className="w-full h-full object-contain" />
+                  : <ChefHat className="h-4 w-4 text-white" />}
               </div>
               <div className="min-w-0">
                 <p className={cn('font-display font-bold text-sm truncate', isDark ? 'text-white' : isEarth ? 'text-earth-100' : 'text-gray-900')}>
-                  RecetarioPro
+                  {currentRestaurant?.name || 'RecetarioPro'}
                 </p>
                 <p className={cn('text-xs truncate', isDark ? 'text-gray-500' : isEarth ? 'text-earth-300' : 'text-gray-400')}>
-                  {currentRestaurant?.name || 'Mi Restaurante'}
+                  RecetarioPro
                 </p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gold-600 flex items-center justify-center mx-auto">
-              <ChefHat className="h-4 w-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-gold-600 flex items-center justify-center mx-auto overflow-hidden">
+              {currentRestaurant?.logoURL
+                ? <img src={currentRestaurant.logoURL} alt="Logo" className="w-full h-full object-contain" />
+                : <ChefHat className="h-4 w-4 text-white" />}
             </div>
           )}
           <button

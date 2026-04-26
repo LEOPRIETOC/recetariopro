@@ -163,9 +163,16 @@ export default function RestaurantSelectorPage() {
               >
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.2rem', color: 'var(--text)', margin: 0 }}>
-                    {rest.name}
-                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {rest.logoURL && (
+                      <div style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--bg3)', border: '1px solid var(--b1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={rest.logoURL} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                      </div>
+                    )}
+                    <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.2rem', color: 'var(--text)', margin: 0 }}>
+                      {rest.name}
+                    </h2>
+                  </div>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, ...statusStyle }}>
                     {status}
                   </span>
