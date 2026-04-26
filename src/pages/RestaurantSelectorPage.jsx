@@ -145,14 +145,6 @@ export default function RestaurantSelectorPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20, width: '100%', maxWidth: 1100 }}>
           {restaurants.map((rest) => {
-            const sub = rest.subscription || {}
-            const status = sub.status || 'trial'
-            const statusStyle = status === 'active'
-              ? { background: 'rgba(16,185,129,0.15)', color: 'var(--green)' }
-              : status === 'trial'
-              ? { background: 'rgba(8,51,162,0.12)', color: 'var(--accent)' }
-              : { background: 'rgba(239,68,68,0.12)', color: '#ef4444' }
-
             return (
               <div
                 key={rest.id}
@@ -173,9 +165,6 @@ export default function RestaurantSelectorPage() {
                       {rest.name}
                     </h2>
                   </div>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, ...statusStyle }}>
-                    {status}
-                  </span>
                 </div>
 
                 {/* Stats */}
@@ -196,7 +185,6 @@ export default function RestaurantSelectorPage() {
                 {/* Footer */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--t3)' }}>
                   <span>📍 {rest.city || rest.settings?.city || '—'}</span>
-                  <span>Plan: {sub.plan || '—'}</span>
                 </div>
 
                 <button
