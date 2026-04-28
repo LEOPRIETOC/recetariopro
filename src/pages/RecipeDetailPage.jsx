@@ -779,15 +779,15 @@ const schema = z.object({
     description: z.string().optional().default(''),
     ingredientName: z.string().optional(),
     reference: z.string().optional(),
-    quantity: z.coerce.number().min(0).default(0),
+    quantity: z.coerce.number().min(0).catch(0).default(0),
     unit: z.string().optional(),
-    pricePerUnit: z.coerce.number().min(0).default(0),
+    pricePerUnit: z.coerce.number().min(0).catch(0).default(0),
     purchaseUnit: z.string().optional(),
-    wasteMargin: z.coerce.number().min(0).max(100).default(0),
+    wasteMargin: z.coerce.number().min(0).max(100).catch(0).default(0),
     type: z.enum(['ingredient', 'subrecipe']).default('ingredient'),
-    baseCost: z.coerce.number().default(0),
-    wasteCost: z.coerce.number().default(0),
-    totalCost: z.coerce.number().default(0),
+    baseCost: z.coerce.number().catch(0).default(0),
+    wasteCost: z.coerce.number().catch(0).default(0),
+    totalCost: z.coerce.number().catch(0).default(0),
   })).default([]),
 })
 
@@ -950,6 +950,30 @@ export default function RecipeDetailPage() {
     return () => body.removeEventListener('scroll', syncHead)
   }, [fields.length])
 
+  // Refresh cost of subrecipe ingredients with current source costs (one time per recipe load)
+  const subrecipePricesRefreshedRef = useRef(null)
+  useEffect(() => {
+    if (!recipe?.id || !allSubrecipes?.length) return
+    if (subrecipePricesRefreshedRef.current === recipe.id) return
+    const formIngredients = watch('ingredients') || []
+    formIngredients.forEach((ing, idx) => {
+      if (ing?.type !== 'subrecipe' || !ing?.ingredientId) return
+      const src = allSubrecipes.find((s) => s.id === ing.ingredientId)
+      if (!src) return
+      const yieldAmt = parseFloat(src.yieldAmount) || 1
+      const srTotal = parseFloat(src.totalCost || src.costPerPortion || 0)
+      const unitCost = yieldAmt > 0 ? srTotal / yieldAmt : srTotal
+      const currentPrice = parseFloat(ing.pricePerUnit) || 0
+      if (Math.abs(unitCost - currentPrice) > 0.001) {
+        setValue(`ingredients.${idx}.pricePerUnit`, unitCost, { shouldDirty: false })
+      }
+      if (src.yieldUnit && !ing.unit) {
+        setValue(`ingredients.${idx}.unit`, src.yieldUnit, { shouldDirty: false })
+      }
+    })
+    subrecipePricesRefreshedRef.current = recipe.id
+  }, [recipe?.id, allSubrecipes]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Mark form dirty on any field change
   useEffect(() => {
     const sub = watch(() => setHasUnsavedChanges(true))
@@ -1008,7 +1032,23 @@ export default function RecipeDetailPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  const handleSave = () => handleSubmit(onSubmit)()
+  const onInvalid = (errs) => {
+    const findFirst = (obj, path = '') => {
+      for (const [k, v] of Object.entries(obj || {})) {
+        if (!v) continue
+        const p = path ? `${path}.${k}` : k
+        if (v.message) return { field: p, message: v.message }
+        if (typeof v === 'object') {
+          const found = findFirst(v, p)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    const first = findFirst(errs)
+    error(first ? `Revisa el campo "${first.field}": ${first.message}` : 'El formulario tiene errores. Revisa los campos resaltados.')
+  }
+  const handleSave = () => handleSubmit(onSubmit, onInvalid)()
 
   const handleRemovePhoto = async () => {
     // 1. Intentar borrar de Storage (ignorar errores — nunca bloquea)
@@ -1413,7 +1453,7 @@ export default function RecipeDetailPage() {
           )}
           <button
             onClick={handleSave}
-            disabled={saving || hasErrors || photoUploading}
+            disabled={saving || photoUploading}
             style={{
               background: 'var(--accent)',
               border: 'none',
@@ -1423,8 +1463,8 @@ export default function RecipeDetailPage() {
               fontSize: '0.82rem',
               fontWeight: 600,
               padding: '7px 16px',
-              cursor: saving || hasErrors || photoUploading ? 'not-allowed' : 'pointer',
-              opacity: saving || hasErrors || photoUploading ? 0.6 : 1,
+              cursor: saving || photoUploading ? 'not-allowed' : 'pointer',
+              opacity: saving || photoUploading ? 0.6 : 1,
             }}
           >
             {saving ? 'Guardando...' : photoUploading ? 'Subiendo...' : 'Guardar'}
