@@ -1899,19 +1899,25 @@ export default function RecipeDetailPage() {
                   <div
                     onClick={async () => {
                       const newActive = recipe.active === false
-                      await toggleRecipeActive(currentRestaurant.id, id, newActive)
-                      logAction({
-                        restaurantId: currentRestaurant.id,
-                        userId: authUser?.uid,
-                        userName: authUser?.displayName || authUser?.email || 'Desconocido',
-                        userRole: authUser?.role,
-                        action: 'edit',
-                        module: recipe?.isSubRecipe ? 'subrecipe' : 'recipe',
-                        entityId: id,
-                        entityName: recipe?.name,
-                        entityCode: recipe?.code,
-                        changes: [{ field: 'estado', before: newActive ? 'inactiva' : 'activa', after: newActive ? 'activa' : 'inactiva' }],
-                      })
+                      try {
+                        await toggleRecipeActive(currentRestaurant.id, id, newActive)
+                        setRecipe((r) => ({ ...(r || {}), active: newActive }))
+                        success(newActive ? 'Receta activada' : 'Receta desactivada')
+                        logAction({
+                          restaurantId: currentRestaurant.id,
+                          userId: authUser?.uid,
+                          userName: authUser?.displayName || authUser?.email || 'Desconocido',
+                          userRole: authUser?.role,
+                          action: 'edit',
+                          module: recipe?.isSubRecipe ? 'subrecipe' : 'recipe',
+                          entityId: id,
+                          entityName: recipe?.name,
+                          entityCode: recipe?.code,
+                          changes: [{ field: 'estado', before: newActive ? 'inactiva' : 'activa', after: newActive ? 'activa' : 'inactiva' }],
+                        })
+                      } catch (err) {
+                        error('No se pudo cambiar el estado: ' + (err?.message || 'error desconocido'))
+                      }
                     }}
                     style={{
                       width: 44, height: 24,
