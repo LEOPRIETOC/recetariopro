@@ -2968,10 +2968,13 @@ function SummaryTab({ restaurantId, isDark }) {
 
   const computeRow = (r) => {
     const isSub = r.isSubRecipe === true || r.type === 'subrecipe'
-    const totalCost = parseFloat(r.totalCost) || 0
+    // calcRecipeTotalCost: usa r.totalCost si > 0, si no suma desde ingredientes
+    const totalCost = calcRecipeTotalCost(r) || 0
     const yieldAmt = parseFloat(r.yieldAmount) || 0
-    const costPerYield = parseFloat(r.costPerYieldUnit) || (isSub && yieldAmt > 0 ? totalCost / yieldAmt : 0)
-    // Para sub-recetas el precio que importa es el unitario; para recetas el sellingPrice
+    const stored = parseFloat(r.costPerYieldUnit)
+    const costPerYield = !isNaN(stored) && stored > 0
+      ? stored
+      : (yieldAmt > 0 ? totalCost / yieldAmt : 0)
     const cost = isSub ? costPerYield : totalCost
     const price = parseFloat(r.sellingPrice) || 0
     const utility = price > 0 ? ((price - cost) / price) * 100 : 0
