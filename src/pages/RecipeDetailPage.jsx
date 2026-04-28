@@ -1978,7 +1978,7 @@ export default function RecipeDetailPage() {
                   <div className={cn('rounded-lg overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-100')}>
                     {[
                       { label: 'Precio s/imp', val: suggestedPriceNoTax },
-                      { label: `IVA (${taxRate}%)`, val: taxValue },
+                      { label: `Impuesto (${taxRate}%)`, val: taxValue },
                       { label: 'Precio c/imp', val: suggestedPriceWithTax, bold: true },
                     ].map(({ label, val, bold }) => (
                       <div key={label} className={cn('flex justify-between px-3 py-1.5 text-xs border-b last:border-0',
