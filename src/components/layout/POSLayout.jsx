@@ -195,7 +195,7 @@ export function POSLayout() {
           <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 z-10', isDark ? 'text-gray-500' : 'text-gray-400')} style={{ pointerEvents: 'none' }} />
           <input
             type="text"
-            placeholder="Buscar recetas, códigos, ingredientes..."
+            placeholder="Buscar por nombre o código..."
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             className={cn(

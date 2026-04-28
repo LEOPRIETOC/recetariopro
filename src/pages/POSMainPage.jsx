@@ -318,15 +318,11 @@ export default function POSMainPage() {
     const q = (globalSearch || '').trim().toLowerCase()
 
     // Búsqueda global: ignora seccion, categoria y estado activo.
-    // Cruza recetas y sub-recetas e incluye ocultas.
+    // Cruza recetas y sub-recetas e incluye ocultas. Solo por nombre y codigo.
     if (q) {
       return (sortedRecipes || []).filter((r) =>
         r.name?.toLowerCase()?.includes(q) ||
-        r.code?.toLowerCase()?.includes(q) ||
-        (r.ingredients || []).some((i) =>
-          i.description?.toLowerCase()?.includes(q) ||
-          i.ingredientName?.toLowerCase()?.includes(q)
-        )
+        r.code?.toLowerCase()?.includes(q)
       )
     }
 
