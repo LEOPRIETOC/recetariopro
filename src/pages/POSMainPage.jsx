@@ -315,13 +315,26 @@ export default function POSMainPage() {
 
   const filtered = useMemo(() => {
     const isSub = (r) => r.isSubRecipe === true || r.type === 'subrecipe'
+    const q = (globalSearch || '').trim().toLowerCase()
+
+    // Búsqueda global: ignora seccion, categoria y estado activo.
+    // Cruza recetas y sub-recetas e incluye ocultas.
+    if (q) {
+      return (sortedRecipes || []).filter((r) =>
+        r.name?.toLowerCase()?.includes(q) ||
+        r.code?.toLowerCase()?.includes(q) ||
+        (r.ingredients || []).some((i) =>
+          i.description?.toLowerCase()?.includes(q) ||
+          i.ingredientName?.toLowerCase()?.includes(q)
+        )
+      )
+    }
+
     return (sortedRecipes || []).filter((r) => {
       if (isSubSection && !isSub(r)) return false
       if (!isSubSection && isSub(r)) return false
       if (r.active === false) return false
       if (!isSubSection && selectedCategory && r.categoryId !== selectedCategory) return false
-      const q = (globalSearch || '').toLowerCase()
-      if (q) return r.name?.toLowerCase()?.includes(q) || r.code?.toLowerCase()?.includes(q) || (r.ingredients || []).some(i => i.description?.toLowerCase()?.includes(q))
       return true
     })
   }, [sortedRecipes, selectedCategory, globalSearch, isSubSection])
