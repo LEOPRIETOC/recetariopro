@@ -1,6 +1,7 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, serverTimestamp, onSnapshot, limit,
+  arrayUnion,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -157,6 +158,44 @@ export async function updateRecipe(restaurantId, recipeId, data) {
     version: (currentSnap.data()?.version || 1) + 1,
     updatedAt: serverTimestamp(),
   })
+}
+
+// ── Notes (multi-author) ──────────────────────────────────────────────────────
+// Nota: serverTimestamp() no funciona dentro de arrayUnion(); usamos ISO string.
+export async function addRecipeNote(restaurantId, recipeId, { text, authorId, authorName, authorRole }) {
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    text: String(text || '').trim(),
+    authorId: authorId || 'desconocido',
+    authorName: authorName || 'Usuario',
+    authorRole: authorRole || 'usuario',
+    createdAt: new Date().toISOString(),
+  }
+  if (!entry.text) throw new Error('La nota está vacía')
+  await updateDoc(doc(db, 'restaurants', restaurantId, 'recipes', recipeId), {
+    noteEntries: arrayUnion(entry),
+    updatedAt: serverTimestamp(),
+  })
+  return entry
+}
+
+export async function deleteRecipeNote(restaurantId, recipeId, entryId) {
+  // arrayRemove requiere el objeto exacto; releemos el array, filtramos y reescribimos.
+  const ref = doc(db, 'restaurants', restaurantId, 'recipes', recipeId)
+  const snap = await getDoc(ref)
+  const current = Array.isArray(snap.data()?.noteEntries) ? snap.data().noteEntries : []
+  const next = current.filter((e) => e.id !== entryId)
+  await updateDoc(ref, { noteEntries: next, updatedAt: serverTimestamp() })
+}
+
+// Soft-hide / unhide: marca la nota con hidden=true|false sin borrarla.
+export async function setRecipeNoteHidden(restaurantId, recipeId, entryId, hidden) {
+  const ref = doc(db, 'restaurants', restaurantId, 'recipes', recipeId)
+  const snap = await getDoc(ref)
+  const current = Array.isArray(snap.data()?.noteEntries) ? snap.data().noteEntries : []
+  const next = current.map((e) => e.id === entryId ? { ...e, hidden: !!hidden } : e)
+  await updateDoc(ref, { noteEntries: next, updatedAt: serverTimestamp() })
+  return next
 }
 
 export async function toggleRecipeActive(restaurantId, recipeId, active) {

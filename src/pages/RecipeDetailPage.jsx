@@ -14,6 +14,7 @@ import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
 import { logAction, detectChanges, detectIngredientChanges } from '../services/auditService'
 import { RecipeReadOnlyView } from '../components/RecipeReadOnlyView'
+import { RecipeNotes } from '../components/RecipeNotes'
 import {
   getRecipe, createRecipe, updateRecipe, toggleRecipeActive,
   subscribeCategories, subscribeIngredients, subscribeRecipes,
@@ -383,162 +384,178 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
     } catch (err) { console.error(err); alert('Error al crear materia prima') } finally { setSavingQuick(false) }
   }
 
-  const rowBg = isDark ? '#111827' : '#ffffff'
+  const refBadge = getIngBadge(watch(`ingredients.${index}.reference`))
+  const labelCss = { fontSize: '0.6rem', fontWeight: 600, color: isDark ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 2 }
+  const inputCls = cn('w-full px-2 h-7 text-sm rounded-lg border outline-none focus:ring-1 focus:ring-gold-500',
+    isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200 text-gray-900')
+  const staticFieldCls = cn('w-full px-2 h-7 text-sm rounded-lg border flex items-center justify-center font-medium',
+    isDark ? 'bg-gray-900 border-gray-800 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700')
 
   return (
     <>
-      <tr className={cn(isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50')} style={{ borderTop: `1px solid ${isDark ? '#1f2937' : '#f3f4f6'}` }}>
-        {/* Producto */}
-        <td style={{ padding: '5px 8px' }}>
-          <input
-            ref={(el) => { localInputRef.current = el; if (typeof nameInputRef === 'function') nameInputRef(el) }}
-            value={query}
-            onChange={(e) => {
-              const v = e.target.value
-              setQuery(v.charAt(0).toUpperCase() + v.slice(1))
-              setValue(`ingredients.${index}.description`, v.charAt(0).toUpperCase() + v.slice(1))
-              setCompatibleUnits(allUnits)
-              updateDropRect()
-              setShowSuggestions(true)
-            }}
-            onFocus={() => { updateDropRect(); setShowSuggestions(true) }}
-            onBlur={() => setTimeout(() => { setShowSuggestions(false); setDropRect(null) }, 150)}
-            placeholder="Buscar..."
-            className={cn('w-full px-2 h-7 text-sm rounded-lg border outline-none focus:ring-1 focus:ring-gold-500',
-              isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-500' : 'bg-white border-gray-200 text-gray-900')}
-          />
-        {/* Fixed-position dropdown — escapes overflow:scroll container */}
-          {showSuggestions && dropRect && (ingMatches.length > 0 || subMatches.length > 0 || noMatch) && (
-            <div className={cn('rounded-xl border shadow-xl overflow-hidden max-h-52 overflow-y-auto',
-              isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}
-              style={{ position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: Math.max(dropRect.width, 280), zIndex: 1000 }}>
-              {ingMatches.length > 0 && (
-                <>
-                  <div className={cn('px-3 py-1 text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-800/60' : 'text-gray-400 bg-gray-50')}>Materias primas</div>
-                  {ingMatches.map((s) => (
-                    <button key={s.id} type="button" onMouseDown={() => handleSelectIngredient(s)}
-                      className={cn('w-full text-left px-3 py-2 text-sm transition-colors', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-gold-50 text-gray-700')}>
-                      <span className="font-medium">{toTitleCase(s.description || s.name)}</span>
-                      <span className={cn('ml-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.code} · {s.unit} · {formatNumber(s.pricePerUnit)}</span>
+      <div
+        className={cn('mx-3 my-2 px-3 py-2.5 rounded-xl border transition-colors',
+          isDark
+            ? 'bg-gray-900/40 border-gray-800 hover:border-gray-700'
+            : 'bg-gray-50 border-gray-200 hover:border-gray-300')}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 44px',
+          gap: 10,
+          alignItems: 'center',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Renglón 1: Referencia · Nombre */}
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'end' }}>
+            <div>
+              <label style={labelCss}>Referencia</label>
+              <span style={{
+                display: 'inline-block',
+                fontSize: '0.7rem', fontWeight: 700,
+                padding: '4px 10px', borderRadius: 6,
+                background: refBadge.bg, color: refBadge.color,
+                whiteSpace: 'nowrap', fontFamily: 'monospace',
+                lineHeight: '20px',
+              }}>
+                {refBadge.label}
+              </span>
+            </div>
+            <div>
+              <label style={labelCss}>Nombre</label>
+              <input
+                ref={(el) => { localInputRef.current = el; if (typeof nameInputRef === 'function') nameInputRef(el) }}
+                value={query}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setQuery(v.charAt(0).toUpperCase() + v.slice(1))
+                  setValue(`ingredients.${index}.description`, v.charAt(0).toUpperCase() + v.slice(1))
+                  setCompatibleUnits(allUnits)
+                  updateDropRect()
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => { updateDropRect(); setShowSuggestions(true) }}
+                onBlur={() => setTimeout(() => { setShowSuggestions(false); setDropRect(null) }, 150)}
+                placeholder="Buscar materia prima o sub-receta…"
+                className={inputCls}
+              />
+              {/* Fixed-position dropdown */}
+              {showSuggestions && dropRect && (ingMatches.length > 0 || subMatches.length > 0 || noMatch) && (
+                <div className={cn('rounded-xl border shadow-xl overflow-hidden max-h-52 overflow-y-auto',
+                  isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200')}
+                  style={{ position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: Math.max(dropRect.width, 280), zIndex: 1000 }}>
+                  {ingMatches.length > 0 && (
+                    <>
+                      <div className={cn('px-3 py-1 text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-800/60' : 'text-gray-400 bg-gray-50')}>Materias primas</div>
+                      {ingMatches.map((s) => (
+                        <button key={s.id} type="button" onMouseDown={() => handleSelectIngredient(s)}
+                          className={cn('w-full text-left px-3 py-2 text-sm transition-colors', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-gold-50 text-gray-700')}>
+                          <span className="font-medium">{toTitleCase(s.description || s.name)}</span>
+                          <span className={cn('ml-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.code} · {s.unit} · {formatNumber(s.pricePerUnit)}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {subMatches.length > 0 && (
+                    <>
+                      <div className={cn('px-3 py-1 text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-800/60' : 'text-gray-400 bg-gray-50')}>Sub-recetas</div>
+                      {subMatches.map((s) => (
+                        <button key={s.id} type="button" onMouseDown={() => handleSelectSubrecipe(s)}
+                          className={cn('w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-orange-50 text-gray-700')}>
+                          <span className="text-xs font-bold px-1 py-0.5 rounded" style={{ background: 'var(--accent)', color: '#fff' }}>SUB</span>
+                          <span className="font-medium">{toTitleCase(s.name)}</span>
+                          <span className={cn('ml-auto text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.code}</span>
+                          {s.pin && <Lock className="h-3 w-3 text-amber-500" />}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {noMatch && (
+                    <button type="button" onMouseDown={() => { setQuickAddData({ name: query }); setShowQuickAdd(true); setShowSuggestions(false); setDropRect(null) }}
+                      className={cn('w-full text-left px-3 py-2 text-sm font-medium text-gold-600', isDark ? 'hover:bg-gray-800' : 'hover:bg-gold-50')}>
+                      ＋ Agregar "{query}" a Materias Primas
                     </button>
-                  ))}
-                </>
-              )}
-              {subMatches.length > 0 && (
-                <>
-                  <div className={cn('px-3 py-1 text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-800/60' : 'text-gray-400 bg-gray-50')}>Sub-recetas</div>
-                  {subMatches.map((s) => (
-                    <button key={s.id} type="button" onMouseDown={() => handleSelectSubrecipe(s)}
-                      className={cn('w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2', isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-orange-50 text-gray-700')}>
-                      <span className="text-xs font-bold px-1 py-0.5 rounded" style={{ background: 'var(--accent)', color: '#fff' }}>SUB</span>
-                      <span className="font-medium">{toTitleCase(s.name)}</span>
-                      <span className={cn('ml-auto text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{s.code}</span>
-                      {s.pin && <Lock className="h-3 w-3 text-amber-500" />}
-                    </button>
-                  ))}
-                </>
-              )}
-              {noMatch && (
-                <button type="button" onMouseDown={() => { setQuickAddData({ name: query }); setShowQuickAdd(true); setShowSuggestions(false); setDropRect(null) }}
-                  className={cn('w-full text-left px-3 py-2 text-sm font-medium text-gold-600', isDark ? 'hover:bg-gray-800' : 'hover:bg-gold-50')}>
-                  ＋ Agregar "{query}" a Materias Primas
-                </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </td>
-        {/* Unidad */}
-        <td style={{ padding: '5px 8px' }}>
-          <select
-            value={normalizedUnit}
-            onChange={(e) => setValue(`ingredients.${index}.unit`, e.target.value)}
-            onBlur={() => { if (quantityInputRef.current) quantityInputRef.current.focus() }}
-            className={cn('w-full px-2 h-7 text-xs rounded-lg border outline-none focus:ring-1 focus:ring-gold-500',
-              isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
-          >
-            <option value="">--</option>
-            {(compatibleUnits.length > 0 ? compatibleUnits : allUnits).map((u) => <option key={u.id} value={u.abbreviation}>{u.abbreviation}</option>)}
-            {normalizedUnit && !(compatibleUnits.length > 0 ? compatibleUnits : allUnits).find(
-              (u) => u.abbreviation?.toUpperCase() === normalizedUnit.toUpperCase()
-            ) && <option value={normalizedUnit}>{normalizedUnit}</option>}
-          </select>
-        </td>
-        {/* Cantidad */}
-        <td style={{ padding: '5px 8px' }}>
-          <input
-            ref={quantityInputRef}
-            type="number"
-            step="0.001"
-            min="0"
-            placeholder="0"
-            {...register(`ingredients.${index}.quantity`, { valueAsNumber: true })}
-            className={cn('w-full px-2 h-7 text-sm rounded-lg border outline-none text-right focus:ring-1 focus:ring-gold-500',
-              isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
-          />
-        </td>
-        {/* Margen Desp. % */}
-        <td style={{ padding: '5px 8px' }}>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            max="100"
-            placeholder="0"
-            {...register(`ingredients.${index}.wasteMargin`, { valueAsNumber: true })}
-            onKeyDown={(e) => {
-              if (e.key === 'Tab' && !e.shiftKey) {
-                const desc = watch(`ingredients.${index}.description`)
-                const q = watch(`ingredients.${index}.quantity`)
-                if (desc && q) { e.preventDefault(); onAddRow() }
-              }
-            }}
-            className={cn('w-full px-2 h-7 text-sm rounded-lg border outline-none text-right focus:ring-1 focus:ring-gold-500',
-              isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
-          />
-        </td>
-        {/* Costo Unit. */}
-        <td style={{ padding: '5px 8px', textAlign: 'right' }}>
-          <span className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>{formatNumber(effectivePrice)}</span>
-        </td>
-        {/* Costo Total */}
-        <td style={{ padding: '5px 8px', textAlign: 'right' }}>
-          <span className={cn('text-sm font-medium', isDark ? 'text-gray-200' : 'text-gray-700')}>{formatNumber(rowCost)}</span>
-          {wasteCost > 0 && (
-            <span className="block text-xs" style={{ color: 'var(--accent)' }}>
-              {formatNumber(baseCost)} +{formatNumber(wasteCost)}
-            </span>
-          )}
-        </td>
-        {/* Referencia */}
-        <td style={{padding:'8px 10px'}}>
-          {(() => {
-            const badge = getIngBadge(watch(`ingredients.${index}.reference`))
-            return (
-              <span style={{
-                fontSize:'0.7rem',fontWeight:700,
-                padding:'3px 8px',borderRadius:6,
-                background:badge.bg,color:badge.color,
-                whiteSpace:'nowrap',fontFamily:'monospace',
-              }}>
-                {badge.label}
+          </div>
+
+          {/* Renglón 2: Cantidad · Unidad · Desp.% · Costo U. · Costo Total */}
+          <div style={{ display: 'grid', gridTemplateColumns: '90px 80px 80px 90px 1fr', gap: 8, alignItems: 'end' }}>
+            <div>
+              <label style={labelCss}>Cantidad</label>
+              <input
+                ref={quantityInputRef}
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0"
+                {...register(`ingredients.${index}.quantity`, { valueAsNumber: true })}
+                className={cn(inputCls, 'text-right')}
+              />
+            </div>
+            <div>
+              <label style={labelCss}>Unidad</label>
+              <div className={staticFieldCls} title="Unidad de consumo (heredada de la materia prima/sub-receta)">
+                {normalizedUnit || '—'}
+              </div>
+            </div>
+            <div>
+              <label style={labelCss}>Desp. %</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                placeholder="0"
+                {...register(`ingredients.${index}.wasteMargin`, { valueAsNumber: true })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    const desc = watch(`ingredients.${index}.description`)
+                    const q = watch(`ingredients.${index}.quantity`)
+                    if (desc && q) { e.preventDefault(); onAddRow() }
+                  }
+                }}
+                className={cn(inputCls, 'text-right')}
+              />
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <label style={labelCss}>Costo U.</label>
+              <span className={cn('text-sm', isDark ? 'text-gray-300' : 'text-gray-600')}
+                style={{ display: 'inline-block', lineHeight: '28px' }}>
+                {formatNumber(effectivePrice)}
               </span>
-            )
-          })()}
-        </td>
-        {/* Delete */}
-        <td style={{ padding: '5px 4px', textAlign: 'center' }}>
-          <button type="button" onClick={() => remove(index)}
-            className="h-7 w-7 flex items-center justify-center text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 mx-auto">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </td>
-      </tr>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <label style={labelCss}>Costo Total</label>
+              <span className={cn('text-sm font-semibold', isDark ? 'text-gray-100' : 'text-gray-800')}
+                style={{ display: 'inline-block', lineHeight: '28px' }}>
+                {formatNumber(rowCost)}
+              </span>
+              {wasteCost > 0 && (
+                <span className="block text-xs" style={{ color: 'var(--accent)', lineHeight: '14px' }}>
+                  {formatNumber(baseCost)} +{formatNumber(wasteCost)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Botón borrar — alto de los 2 renglones */}
+        <button type="button" onClick={() => remove(index)}
+          title="Eliminar ingrediente"
+          className={cn('flex items-center justify-center rounded-lg transition-colors',
+            isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-400 hover:text-red-600 hover:bg-red-50')}
+          style={{ alignSelf: 'stretch', minHeight: 64 }}>
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
 
       {/* Quick-add full MP form */}
       {showQuickAdd && (
-        <tr>
-          <td colSpan={7} style={{ padding: '0 8px 12px' }}>
-            <div style={{ background: isDark ? '#1f2937' : '#fffbeb', border: `1px solid ${isDark ? '#374151' : '#fde68a'}`, borderRadius: 10, padding: 16, marginTop: 4 }}>
+        <div style={{ padding: '0 12px 12px' }}>
+          <div style={{ background: isDark ? '#1f2937' : '#fffbeb', border: `1px solid ${isDark ? '#374151' : '#fde68a'}`, borderRadius: 10, padding: 16, marginTop: 4 }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)', marginBottom: 12 }}>Nueva materia prima</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {/* Nombre */}
@@ -644,8 +661,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 </button>
               </div>
             </div>
-          </td>
-        </tr>
+        </div>
       )}
     </>
   )
@@ -941,15 +957,6 @@ export default function RecipeDetailPage() {
     })
   }, [id, currentRestaurant?.id, isNew])
 
-  useEffect(() => {
-    const head = document.getElementById('ing-scroll-head')
-    const body = document.getElementById('ing-scroll-body')
-    if (!head || !body) return
-    // Body has the scrollbar; head mirrors it (head is overflow:hidden)
-    const syncHead = () => { head.scrollLeft = body.scrollLeft }
-    body.addEventListener('scroll', syncHead)
-    return () => body.removeEventListener('scroll', syncHead)
-  }, [fields.length])
 
   // Refresh cost of subrecipe ingredients with current source costs (one time per recipe load)
   const subrecipePricesRefreshedRef = useRef(null)
@@ -1679,80 +1686,32 @@ export default function RecipeDetailPage() {
                 <CardTitle>Ingredientes</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <style>{`
-                  #ing-scroll-body::-webkit-scrollbar { height: 8px; }
-                  #ing-scroll-body::-webkit-scrollbar-track { background: ${isDark ? '#111827' : '#f9fafb'}; }
-                  #ing-scroll-body::-webkit-scrollbar-thumb { background: ${isDark ? '#374151' : '#d1d5db'}; border-radius: 4px; }
-                `}</style>
                 {fields.length === 0 ? (
                   <div className={cn('mx-6 mb-4 text-center py-6 rounded-xl border-2 border-dashed', isDark ? 'border-gray-800 text-gray-600' : 'border-gray-200 text-gray-400')}>
                     <p className="text-sm">No hay ingredientes. Agrega el primero.</p>
                   </div>
                 ) : (
                   <>
-                    {/* Header — overflow-x hidden (no scrollbar), synced by JS */}
-                    <div id="ing-scroll-head" style={{ overflowX: 'hidden' }}>
-                      <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                        <colgroup>
-                          <col style={{ width: '240px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '80px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '120px' }} />
-                          <col style={{ width: '100px' }} />
-                          <col style={{ width: '40px' }} />
-                        </colgroup>
-                        <thead>
-                          <tr className={cn('text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-500 bg-gray-900' : 'text-gray-400 bg-white')}
-                            style={{ borderBottom: `1px solid ${isDark ? '#1f2937' : '#f3f4f6'}` }}>
-                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Producto</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Unidad</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'right' }}>Cantidad</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'right' }}>Desp.%</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo U.</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'right' }}>Costo Total</th>
-                            <th style={{ padding: '8px 8px', textAlign: 'left' }}>Ref.</th>
-                            <th style={{ padding: '8px 4px' }} />
-                          </tr>
-                        </thead>
-                      </table>
-                    </div>
-                    {/* Body — overflow-x scroll (scrollbar appears at bottom of rows) */}
-                    <div id="ing-scroll-body" style={{ overflowX: 'scroll', scrollbarWidth: 'auto' }}>
-                      <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                        <colgroup>
-                          <col style={{ width: '240px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '80px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '120px' }} />
-                          <col style={{ width: '100px' }} />
-                          <col style={{ width: '40px' }} />
-                        </colgroup>
-                        <tbody>
-                          {fields.map((field, index) => (
-                            <IngredientRow
-                              key={field.id}
-                              index={index}
-                              field={field}
-                              allIngredients={allIngredients}
-                              allSubrecipes={allSubrecipes}
-                              allUnits={allUnits}
-                              remove={remove}
-                              register={register}
-                              watch={watch}
-                              setValue={setValue}
-                              isDark={isDark}
-                              restaurantId={currentRestaurant?.id}
-                              onAddRow={handleAddRow}
-                              nameInputRef={(el) => { nameInputRefs.current[index] = el }}
-                              isAdmin={isAdmin}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
+                    <div>
+                      {fields.map((field, index) => (
+                        <IngredientRow
+                          key={field.id}
+                          index={index}
+                          field={field}
+                          allIngredients={allIngredients}
+                          allSubrecipes={allSubrecipes}
+                          allUnits={allUnits}
+                          remove={remove}
+                          register={register}
+                          watch={watch}
+                          setValue={setValue}
+                          isDark={isDark}
+                          restaurantId={currentRestaurant?.id}
+                          onAddRow={handleAddRow}
+                          nameInputRef={(el) => { nameInputRefs.current[index] = el }}
+                          isAdmin={isAdmin}
+                        />
+                      ))}
                     </div>
                     <div className={cn('flex justify-between px-4 py-2 border-t font-medium text-sm', isDark ? 'border-gray-800' : 'border-gray-100')}>
                       <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Total ingredientes</span>
@@ -1782,14 +1741,55 @@ export default function RecipeDetailPage() {
                 <textarea {...register('preparation')} rows={6} placeholder="Describe el proceso paso a paso..."
                   className={cn('w-full rounded-xl border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500',
                     isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-600' : 'bg-white border-gray-200 placeholder:text-gray-400')} />
-                <div className="space-y-2">
-                  <Label>Notas</Label>
-                  <textarea {...register('notes')} rows={3} placeholder="Alérgenos, variaciones, recomendaciones..."
-                    className={cn('w-full rounded-xl border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500',
-                      isDark ? 'bg-gray-800 border-gray-700 text-white placeholder:text-gray-600' : 'bg-white border-gray-200 placeholder:text-gray-400')} />
-                </div>
               </CardContent>
             </Card>
+
+            {/* Notes (multi-author) */}
+            {!isNew && recipe && (
+              <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
+                <CardHeader><CardTitle>Notas</CardTitle></CardHeader>
+                <CardContent>
+                  <RecipeNotes
+                    recipe={recipe}
+                    restaurantId={currentRestaurant?.id}
+                    isDark={isDark}
+                    title={null}
+                    onChange={(next) => setRecipe((r) => ({ ...(r || {}), noteEntries: next }))}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Inherited sub-recipe notes (read-only) */}
+            {!isNew && recipe && (() => {
+              const subIngs = (watch('ingredients') || []).filter((ing) => ing?.type === 'subrecipe' && ing?.ingredientId)
+              const blocks = subIngs
+                .map((ing) => allSubrecipes.find((s) => s.id === ing.ingredientId))
+                .filter(Boolean)
+                .filter((sr) => (Array.isArray(sr.noteEntries) && sr.noteEntries.length) || (typeof sr.notes === 'string' && sr.notes.trim()))
+              if (!blocks.length) return null
+              return (
+                <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
+                  <CardHeader><CardTitle>Notas de las sub-recetas usadas</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    {blocks.map((sr) => (
+                      <div key={sr.id}>
+                        <div className={cn('text-xs font-semibold mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}>
+                          {sr.code ? `${sr.code} · ` : ''}{sr.name}
+                        </div>
+                        <RecipeNotes
+                          recipe={sr}
+                          restaurantId={currentRestaurant?.id}
+                          isDark={isDark}
+                          readOnly={true}
+                          title={null}
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )
+            })()}
           </div>
 
           {/* Sidebar */}

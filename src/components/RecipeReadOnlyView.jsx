@@ -1,64 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { RecipePrintView } from './RecipePrintView'
+import { RecipeNotes } from './RecipeNotes'
 
-export function RecipeReadOnlyView({ recipe, restaurantId, userId, isDark }) {
+export function RecipeReadOnlyView({ recipe: recipeProp, restaurantId, userId, isDark }) {
   const navigate = useNavigate()
   const { currentRestaurant } = useAppStore()
-  const [note, setNote] = useState('')
-  const [saving, setSaving] = useState(false)
   const [showPrint, setShowPrint] = useState(false)
-  const saveTimer = useRef(null)
-
-  useEffect(() => {
-    if (!recipe?.id || !userId || !restaurantId) return
-    getDoc(doc(db, 'restaurants', restaurantId, 'recipes', recipe.id, 'userNotes', userId))
-      .then((snap) => { if (snap.exists()) setNote(snap.data().note || '') })
-      .catch(() => {})
-  }, [recipe?.id, userId, restaurantId])
-
-  const persistNote = useCallback(
-    (value) => {
-      clearTimeout(saveTimer.current)
-      saveTimer.current = setTimeout(async () => {
-        if (!recipe?.id || !userId || !restaurantId) return
-        setSaving(true)
-        try {
-          await setDoc(
-            doc(db, 'restaurants', restaurantId, 'recipes', recipe.id, 'userNotes', userId),
-            { note: value, updatedAt: serverTimestamp() },
-            { merge: true }
-          )
-        } finally {
-          setSaving(false)
-        }
-      }, 1200)
-    },
-    [recipe?.id, userId, restaurantId]
-  )
-
-  const saveNote = async () => {
-    if (!recipe?.id || !userId || !restaurantId) return
-    clearTimeout(saveTimer.current)
-    setSaving(true)
-    try {
-      await setDoc(
-        doc(db, 'restaurants', restaurantId, 'recipes', recipe.id, 'userNotes', userId),
-        { note, updatedAt: serverTimestamp() },
-        { merge: true }
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleNote = (e) => {
-    setNote(e.target.value)
-    persistNote(e.target.value)
-  }
+  // Local mirror so adding/removing notes refreshes the list immediately
+  const [recipe, setRecipe] = useState(recipeProp)
 
   const t3  = isDark ? '#6b7280' : '#9ca3af'
   const ink = isDark ? '#f9fafb' : '#111827'
@@ -258,53 +209,18 @@ export function RecipeReadOnlyView({ recipe, restaurantId, userId, isDark }) {
           </div>
         </div>
 
-        {/* Personal notes */}
+        {/* Notes (multi-author) */}
         <div style={{ marginTop: 32 }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, marginBottom: 8 }}>
-            Mis notas
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, marginBottom: 12 }}>
+            Notas
           </h2>
-          <textarea
-            value={note}
-            onChange={handleNote}
-            placeholder="Escribe tus notas sobre esta receta..."
-            rows={5}
-            style={{
-              width: '100%',
-              background: bg2,
-              border: `1px solid ${bdr}`,
-              borderRadius: 10,
-              padding: '12px 14px',
-              fontFamily: 'inherit',
-              fontSize: '0.9rem',
-              color: ink,
-              resize: 'vertical',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-              boxSizing: 'border-box',
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = bdr }}
+          <RecipeNotes
+            recipe={recipe}
+            restaurantId={restaurantId}
+            isDark={isDark}
+            title={null}
+            onChange={(next) => setRecipe((r) => ({ ...(r || {}), noteEntries: next }))}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-            <button
-              onClick={saveNote}
-              disabled={saving}
-              style={{
-                background: saving ? 'var(--b2)' : 'var(--accent)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '10px 20px',
-                fontFamily: 'inherit',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s',
-              }}
-            >
-              {saving ? 'Guardando...' : '💾 Guardar nota'}
-            </button>
-          </div>
         </div>
       </div>
 
