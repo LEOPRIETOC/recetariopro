@@ -111,12 +111,13 @@ function cleanForFirestore(obj) {
 // ── Recipes ─────────────────────────────────────────────────────────────────
 
 export function subscribeRecipes(restaurantId, callback) {
-  const q = query(
-    collection(db, 'restaurants', restaurantId, 'recipes'),
-    orderBy('order', 'asc')
-  )
+  // No orderBy: Firestore excluye docs sin el campo, y recetas legacy
+  // pueden no tener `order`. Ordenamos en cliente.
+  const q = query(collection(db, 'restaurants', restaurantId, 'recipes'))
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    docs.sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
+    callback(docs)
   })
 }
 

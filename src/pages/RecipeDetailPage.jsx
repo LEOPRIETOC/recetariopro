@@ -961,10 +961,43 @@ export default function RecipeDetailPage() {
     if (!recipe?.id || !allSubrecipes?.length) return
     if (subrecipePricesRefreshedRef.current === recipe.id) return
     const formIngredients = watch('ingredients') || []
+
+    // Build lookup tables: by id, by code (lowercase), by name (lowercase)
+    const byId = new Map()
+    const byCode = new Map()
+    const byName = new Map()
+    allSubrecipes.forEach((s) => {
+      if (s.id) byId.set(s.id, s)
+      if (s.code) byCode.set(String(s.code).toLowerCase(), s)
+      if (s.name) byName.set(String(s.name).toLowerCase().trim(), s)
+    })
+
     formIngredients.forEach((ing, idx) => {
-      if (ing?.type !== 'subrecipe' || !ing?.ingredientId) return
-      const src = allSubrecipes.find((s) => s.id === ing.ingredientId)
-      if (!src) return
+      if (!ing) return
+      // Try id first, then fallback to code/name only if the row looks like a sub-recipe
+      let src = ing.ingredientId ? byId.get(ing.ingredientId) : null
+      const looksLikeSubrecipe = ing.type === 'subrecipe' || (!ing.purchaseUnit && !!ing.description)
+      if (!src && looksLikeSubrecipe) {
+        if (ing.description) src = byName.get(String(ing.description).toLowerCase().trim())
+        if (!src && ing.reference) src = byCode.get(String(ing.reference).toLowerCase())
+      }
+      if (!src) {
+        if (ing.type === 'subrecipe') {
+          console.warn('[subrecipe-refresh] no source found for row', idx, {
+            ingredientId: ing.ingredientId, description: ing.description, reference: ing.reference,
+          })
+        }
+        return
+      }
+
+      // Normalize row metadata so future loads match by id
+      if (ing.type !== 'subrecipe') {
+        setValue(`ingredients.${idx}.type`, 'subrecipe', { shouldDirty: false })
+      }
+      if (ing.ingredientId !== src.id) {
+        setValue(`ingredients.${idx}.ingredientId`, src.id, { shouldDirty: false })
+      }
+
       // Use per-yield-unit cost — never the raw totalCost
       const srYield = parseFloat(src.yieldAmount) || 0
       const stored = parseFloat(src.costPerYieldUnit)
