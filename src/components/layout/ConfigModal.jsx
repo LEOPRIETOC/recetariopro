@@ -3330,6 +3330,7 @@ export function ConfigModal() {
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('config-view-mode', mode) }
 
   const CARDS = [
+    { key: 'summary',       label: 'Resumen',            visible: canEdit, icon: FileSpreadsheet },
     { key: 'ingredients',   label: 'Materias Primas',    visible: canEdit },
     { key: 'mp_categories', label: 'Categorías MP',      visible: canEdit },
     { key: 'units',         label: 'Unidades',           visible: canEdit },
