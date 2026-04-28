@@ -842,7 +842,6 @@ export default function RecipeDetailPage() {
   const [pendingNavigation, setPendingNavigation] = useState(null)
   const [marginContribution, setMarginContribution] = useState(35)
   const [taxRate, setTaxRate] = useState(8)
-  const [tipRate, setTipRate] = useState(10)
   const [convertModal, setConvertModal] = useState(false)
   const [convertData, setConvertData] = useState({})
   const [converting, setConverting] = useState(false)
@@ -882,8 +881,6 @@ export default function RecipeDetailPage() {
     : 0
   const taxValue = suggestedPriceNoTax * (taxRate / 100)
   const suggestedPriceWithTax = suggestedPriceNoTax + taxValue
-  const tipValue = suggestedPriceWithTax * (tipRate / 100)
-  const suggestedPriceWithTip = suggestedPriceWithTax + tipValue
 
   useEffect(() => {
     if (!currentRestaurant?.id) return
@@ -917,7 +914,6 @@ export default function RecipeDetailPage() {
       setVideoURL(r.videoURL || '')
       setMarginContribution(r.costSettings?.marginContribution ?? 35)
       setTaxRate(r.costSettings?.taxRate ?? 8)
-      setTipRate(r.costSettings?.tipRate ?? 10)
       reset({
         name: r.name, code: r.code, categoryId: r.categoryId || '',
         menuCode: r.menuCode || '',
@@ -1296,12 +1292,11 @@ export default function RecipeDetailPage() {
           const t = cleanIngredients.reduce((s, i) => s + (i.totalCost || 0), 0)
           return isNaN(t) ? 0 : t
         })(),
-        costSettings: { marginContribution, taxRate, tipRate },
+        costSettings: { marginContribution, taxRate },
         calculatedCosts: {
           totalCost: isNaN(totalCostCalc) ? 0 : totalCostCalc,
           suggestedPriceNoTax: isNaN(suggestedPriceNoTax) ? 0 : suggestedPriceNoTax,
           suggestedPriceWithTax: isNaN(suggestedPriceWithTax) ? 0 : suggestedPriceWithTax,
-          suggestedPriceWithTip: isNaN(suggestedPriceWithTip) ? 0 : suggestedPriceWithTip,
         },
       }
       const restaurantId = currentRestaurant?.id
@@ -1950,44 +1945,47 @@ export default function RecipeDetailPage() {
                   <CardTitle className="text-base">Análisis marginal</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Sliders */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
+                  {/* Inputs */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-xs items-center">
                       <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Margen contribución</span>
                       <span className="font-mono font-bold" style={{ color: 'var(--accent)' }}>{marginContribution}%</span>
                     </div>
                     <input type="range" min="1" max="99" value={marginContribution}
                       onChange={(e) => setMarginContribution(Number(e.target.value))}
                       className="w-full h-1.5 rounded-full accent-[var(--accent)]" />
-                    <div className="flex justify-between text-xs">
-                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Impuesto</span>
-                      <span className="font-mono font-bold" style={{ color: 'var(--accent)' }}>{taxRate}%</span>
+                    <div className="flex justify-between text-xs items-center">
+                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Impuesto (%)</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={taxRate}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value)
+                            setTaxRate(isNaN(v) ? 0 : Math.max(0, Math.min(100, v)))
+                          }}
+                          className={cn('w-16 h-7 px-2 text-xs rounded-md border outline-none text-right font-mono focus:ring-1 focus:ring-gold-500',
+                            isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200')}
+                        />
+                        <span className="font-mono text-xs" style={{ color: 'var(--accent)' }}>%</span>
+                      </div>
                     </div>
-                    <input type="range" min="0" max="30" value={taxRate}
-                      onChange={(e) => setTaxRate(Number(e.target.value))}
-                      className="w-full h-1.5 rounded-full accent-[var(--accent)]" />
-                    <div className="flex justify-between text-xs">
-                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Propina</span>
-                      <span className="font-mono font-bold" style={{ color: 'var(--accent)' }}>{tipRate}%</span>
-                    </div>
-                    <input type="range" min="0" max="30" value={tipRate}
-                      onChange={(e) => setTipRate(Number(e.target.value))}
-                      className="w-full h-1.5 rounded-full accent-[var(--accent)]" />
                   </div>
                   {/* Results table */}
                   <div className={cn('rounded-lg overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-100')}>
                     {[
                       { label: 'Precio s/imp', val: suggestedPriceNoTax },
                       { label: `IVA (${taxRate}%)`, val: taxValue },
-                      { label: 'Precio c/imp', val: suggestedPriceWithTax, accent: true },
-                      { label: `Propina (${tipRate}%)`, val: tipValue },
-                      { label: 'Precio final', val: suggestedPriceWithTip, bold: true },
-                    ].map(({ label, val, accent, bold }) => (
+                      { label: 'Precio c/imp', val: suggestedPriceWithTax, bold: true },
+                    ].map(({ label, val, bold }) => (
                       <div key={label} className={cn('flex justify-between px-3 py-1.5 text-xs border-b last:border-0',
                         isDark ? 'border-gray-800' : 'border-gray-50')}>
                         <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{label}</span>
-                        <span className={cn('font-mono', bold ? 'font-bold' : '', accent ? 'font-semibold'  : '')}
-                          style={accent || bold ? { color: 'var(--accent)' } : {}}>
+                        <span className={cn('font-mono', bold ? 'font-bold' : '')}
+                          style={bold ? { color: 'var(--accent)' } : {}}>
                           {formatNumber(isNaN(val) ? 0 : val)}
                         </span>
                       </div>
