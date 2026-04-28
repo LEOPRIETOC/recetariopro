@@ -314,9 +314,14 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   }
 
   const handleSelectSubrecipe = (sr) => {
-    const yieldAmt = parseFloat(sr.yieldAmount) || 1
+    // Use the per-yield-unit cost — never the raw totalCost.
+    // Priority: stored costPerYieldUnit → derived from totalCost / yieldAmount → 0
+    const yieldAmt = parseFloat(sr.yieldAmount) || 0
+    const stored = parseFloat(sr.costPerYieldUnit)
     const srTotal = parseFloat(sr.totalCost || sr.costPerPortion || 0)
-    const unitCost = yieldAmt > 0 ? srTotal / yieldAmt : srTotal
+    const unitCost = !isNaN(stored) && stored > 0
+      ? stored
+      : (yieldAmt > 0 ? srTotal / yieldAmt : 0)
     const displayName = toTitleCase(sr.name || '')
     setCompatibleUnits(allUnits)
     setValue(`ingredients.${index}.ingredientId`, sr.id)
@@ -960,9 +965,13 @@ export default function RecipeDetailPage() {
       if (ing?.type !== 'subrecipe' || !ing?.ingredientId) return
       const src = allSubrecipes.find((s) => s.id === ing.ingredientId)
       if (!src) return
-      const yieldAmt = parseFloat(src.yieldAmount) || 1
+      // Use per-yield-unit cost — never the raw totalCost
+      const srYield = parseFloat(src.yieldAmount) || 0
+      const stored = parseFloat(src.costPerYieldUnit)
       const srTotal = parseFloat(src.totalCost || src.costPerPortion || 0)
-      const unitCost = yieldAmt > 0 ? srTotal / yieldAmt : srTotal
+      const unitCost = !isNaN(stored) && stored > 0
+        ? stored
+        : (srYield > 0 ? srTotal / srYield : 0)
       const currentPrice = parseFloat(ing.pricePerUnit) || 0
       if (Math.abs(unitCost - currentPrice) > 0.001) {
         setValue(`ingredients.${idx}.pricePerUnit`, unitCost, { shouldDirty: false })
@@ -1792,6 +1801,19 @@ export default function RecipeDetailPage() {
                     {formatNumber(effectiveTotalCost)}
                   </span>
                 </div>
+                {isSubRecipe && (
+                  <div
+                    className={cn('flex justify-between text-sm pt-2 border-t', isDark ? 'border-gray-800' : 'border-gray-100')}
+                    title="Este es el costo que se usa cuando esta sub-receta se llama como ingrediente"
+                  >
+                    <span className={isDark ? 'text-gray-300 font-medium' : 'text-gray-700 font-medium'}>
+                      Costo por {watch('yieldUnit') || 'unidad'} de rendimiento
+                    </span>
+                    <span className="font-bold text-base" style={{ color: 'var(--accent)' }}>
+                      {yieldAmt > 0 ? formatNumber(costPerYieldUnit) : '—'}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
