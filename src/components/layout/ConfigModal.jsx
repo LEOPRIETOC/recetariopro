@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal } from 'lucide-react'
+import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal, FileSpreadsheet, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import BulkImportTab from '../BulkImportTab'
 import * as XLSX from 'xlsx'
 import {
@@ -58,6 +58,7 @@ const PARAM_TABS = [
 ]
 
 const TABS = [
+  { id: 'summary',          icon: FileSpreadsheet, label: 'Resumen' },
   { id: 'sales',            icon: ShoppingCart, label: 'Ventas' },
   { id: 'analytics',        icon: BarChart3,    label: 'Análisis BCG' },
   { id: 'versions',         icon: History,      label: 'Historial versiones' },
@@ -2942,6 +2943,219 @@ function UsersAdminTab({ isDark }) {
 }
 
 // ── RestauranteTab ────────────────────────────────────────────────────────────
+// ── Summary Tab — todas las recetas y sub-recetas con costo, precio, utilidad ─
+function SummaryTab({ restaurantId, isDark }) {
+  const [recipes, setRecipes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+
+  useEffect(() => {
+    if (!restaurantId) return
+    setLoading(true)
+    const u = subscribeRecipes(restaurantId, (rs) => {
+      setRecipes(rs || [])
+      setLoading(false)
+    })
+    return () => u()
+  }, [restaurantId])
+
+  const handleSort = (key) => {
+    if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortBy(key); setSortDir('asc') }
+  }
+
+  const computeRow = (r) => {
+    const isSub = r.isSubRecipe === true || r.type === 'subrecipe'
+    const totalCost = parseFloat(r.totalCost) || 0
+    const yieldAmt = parseFloat(r.yieldAmount) || 0
+    const costPerYield = parseFloat(r.costPerYieldUnit) || (isSub && yieldAmt > 0 ? totalCost / yieldAmt : 0)
+    // Para sub-recetas el precio que importa es el unitario; para recetas el sellingPrice
+    const cost = isSub ? costPerYield : totalCost
+    const price = parseFloat(r.sellingPrice) || 0
+    const utility = price > 0 ? ((price - cost) / price) * 100 : 0
+    return { ...r, isSub, _cost: cost, _price: price, _utility: utility }
+  }
+
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const all = recipes.map(computeRow)
+    const filtered = q
+      ? all.filter((r) =>
+          r.name?.toLowerCase()?.includes(q) ||
+          r.code?.toLowerCase()?.includes(q) ||
+          r.reference?.toLowerCase?.()?.includes(q)
+        )
+      : all
+    const dir = sortDir === 'asc' ? 1 : -1
+    const getVal = (r) => {
+      switch (sortBy) {
+        case 'code':      return (r.code || '').toLowerCase()
+        case 'reference': return (r.reference || '').toLowerCase()
+        case 'name':      return (r.name || '').toLowerCase()
+        case 'type':      return r.isSub ? 1 : 0
+        case 'cost':      return r._cost
+        case 'price':     return r._price
+        case 'utility':   return r._utility
+        default: return ''
+      }
+    }
+    return [...filtered].sort((a, b) => {
+      const av = getVal(a), bv = getVal(b)
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return 0
+    })
+  }, [recipes, search, sortBy, sortDir])
+
+  const ink = isDark ? '#f0ece4' : '#111827'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const bg2 = isDark ? '#111712' : '#fff'
+  const bg3 = isDark ? '#0d110e' : '#f9fafb'
+  const b1 = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+
+  const cols = [
+    { key: 'code',      label: 'Código',     align: 'left',  width: 100 },
+    { key: 'reference', label: 'Referencia', align: 'left',  width: 110 },
+    { key: 'name',      label: 'Nombre',     align: 'left',  width: 'auto' },
+    { key: 'type',      label: 'Tipo',       align: 'left',  width: 90 },
+    { key: 'cost',      label: 'Costo',      align: 'right', width: 110 },
+    { key: 'price',     label: 'P. Venta',   align: 'right', width: 110 },
+    { key: 'utility',   label: '% Utilidad', align: 'right', width: 100 },
+  ]
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12 }}>
+        <div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
+            Resumen de recetas
+          </h2>
+          <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+            {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye sub-recetas y ocultas)
+          </p>
+        </div>
+        <div style={{ position: 'relative', width: 280, flexShrink: 0 }}>
+          <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, código o referencia"
+            style={{
+              width: '100%', height: 34,
+              paddingLeft: 30, paddingRight: search ? 28 : 12,
+              background: bg2, color: ink,
+              border: `1px solid ${b1}`, borderRadius: 8,
+              fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
+            }}
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')}
+              style={{
+                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                width: 22, height: 22, border: 'none', background: 'none', color: t2,
+                cursor: 'pointer', borderRadius: 4, fontSize: '1rem', lineHeight: 1,
+              }}>×</button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: t3 }}>Cargando…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>
+          {search ? `Sin resultados para "${search}"` : 'No hay recetas todavía.'}
+        </div>
+      ) : (
+        <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: bg3 }}>
+                  {cols.map((c) => {
+                    const active = sortBy === c.key
+                    return (
+                      <th key={c.key}
+                        onClick={() => handleSort(c.key)}
+                        style={{
+                          padding: '10px 14px', textAlign: c.align,
+                          fontSize: '0.68rem', textTransform: 'uppercase',
+                          letterSpacing: '0.06em', fontWeight: 700,
+                          color: active ? 'var(--accent)' : t3,
+                          borderBottom: `1px solid ${b1}`,
+                          cursor: 'pointer', userSelect: 'none',
+                          width: c.width,
+                          whiteSpace: 'nowrap',
+                        }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: c.align === 'right' ? 'flex-end' : 'flex-start' }}>
+                          {c.label}
+                          {active
+                            ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                            : <ArrowUpDown className="h-3 w-3" style={{ opacity: 0.4 }} />}
+                        </span>
+                      </th>
+                    )
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}
+                    style={{
+                      borderBottom: `1px solid ${b1}`,
+                      opacity: r.active === false ? 0.55 : 1,
+                    }}>
+                    <td style={{ padding: '9px 14px', color: t2, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                      {r.code || '—'}
+                    </td>
+                    <td style={{ padding: '9px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                      {r.reference || '—'}
+                    </td>
+                    <td style={{ padding: '9px 14px', color: ink, fontWeight: 500 }}>
+                      {r.name || '—'}
+                      {r.active === false && (
+                        <span style={{ marginLeft: 8, fontSize: '0.65rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase' }}>oculta</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '9px 14px' }}>
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 700,
+                        padding: '2px 8px', borderRadius: 6,
+                        background: r.isSub ? 'rgba(96,165,250,0.15)' : 'rgba(217,119,6,0.15)',
+                        color: r.isSub ? '#60a5fa' : '#d97706',
+                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                      }}>
+                        {r.isSub ? 'Sub-receta' : 'Receta'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '9px 14px', textAlign: 'right', color: ink, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {formatNumber(r._cost)}
+                    </td>
+                    <td style={{ padding: '9px 14px', textAlign: 'right', color: ink, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {r._price > 0 ? formatNumber(r._price) : '—'}
+                    </td>
+                    <td style={{
+                      padding: '9px 14px', textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                      fontWeight: 700,
+                      color: r._price <= 0 ? t3 : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444',
+                    }}>
+                      {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RestauranteTab({ currentRestaurant, isDark }) {
   const { success, error } = useToast()
   const { setCurrentRestaurant } = useAppStore()
@@ -3270,6 +3484,7 @@ export function ConfigModal() {
                 {configTab === 'categories' && <CategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'suppliers' && <SuppliersTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'import' && <BulkImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'summary' && <SummaryTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
