@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { createUserWithRole, updateUserRole, deactivateUser, sendUserPasswordReset, generateTempPassword, validateStrongPassword, PASSWORD_POLICY } from '../services/auth'
 import { toTitleCase } from '../lib/utils'
 import { useToast } from '../components/ui/toast'
-import { UserPlus, Pencil, MailCheck, Power, X, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react'
+import { UserPlus, Pencil, MailCheck, Power, X, Eye, EyeOff, RefreshCw, Copy, Check, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 
 // ── Role badge colors ──────────────────────────────────────────────────────────
 const ROLE_BADGE = {
@@ -304,8 +304,36 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editMember, setEditMember] = useState(null)
+  const [sortBy, setSortBy] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
 
   const creator = { uid: user?.uid, isMaster, isAdmin }
+
+  const handleSort = (key) => {
+    if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortBy(key); setSortDir('asc') }
+  }
+
+  const sortedMembers = useMemo(() => {
+    const arr = [...members]
+    const dir = sortDir === 'asc' ? 1 : -1
+    const getVal = (m) => {
+      switch (sortBy) {
+        case 'name':    return (m.name || '').toLowerCase()
+        case 'role':    return (m.restaurantRole || m.role || '').toLowerCase()
+        case 'created': return m.createdAt?.toMillis?.() ?? 0
+        case 'active':  return m.active === false ? 0 : 1
+        default: return ''
+      }
+    }
+    arr.sort((a, b) => {
+      const av = getVal(a), bv = getVal(b)
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return 0
+    })
+    return arr
+  }, [members, sortBy, sortDir])
 
   const loadData = async () => {
     if (!currentRestaurant?.id) return
@@ -394,15 +422,41 @@ export default function UsersPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ background: isDark ? '#0d110e' : '#f9fafb' }}>
-                {['Usuario', 'Rol', 'Fecha creación', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: t3, fontWeight: 700, borderBottom: `1px solid ${b1}` }}>
-                    {h}
-                  </th>
-                ))}
+                {[
+                  { label: 'Usuario',        key: 'name' },
+                  { label: 'Rol',            key: 'role' },
+                  { label: 'Fecha creación', key: 'created' },
+                  { label: 'Estado',         key: 'active' },
+                  { label: 'Acciones',       key: null },
+                ].map(({ label, key }) => {
+                  const sortable = !!key
+                  const isActive = sortBy === key
+                  return (
+                    <th key={label}
+                      onClick={sortable ? () => handleSort(key) : undefined}
+                      style={{
+                        padding: '11px 16px', textAlign: 'left',
+                        fontSize: '0.68rem', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', color: isActive ? 'var(--accent)' : t3,
+                        fontWeight: 700, borderBottom: `1px solid ${b1}`,
+                        cursor: sortable ? 'pointer' : 'default',
+                        userSelect: 'none',
+                      }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {label}
+                        {sortable && (
+                          isActive
+                            ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                            : <ArrowUpDown className="h-3 w-3" style={{ opacity: 0.4 }} />
+                        )}
+                      </span>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
-              {members.map((m) => {
+              {sortedMembers.map((m) => {
                 const createdAt = m.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'
                 const isActive = m.active !== false
                 return (
