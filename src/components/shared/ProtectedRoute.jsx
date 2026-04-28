@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function ProtectedRoute({ requireAdmin = false }) {
-  const { user, loading, isAdmin } = useAuth()
+  const { user, userProfile, loading, isAdmin } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -18,6 +19,11 @@ export function ProtectedRoute({ requireAdmin = false }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  if (userProfile?.mustChangePassword === true && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />
+  }
+
   if (requireAdmin && !isAdmin) return <Navigate to="/dashboard" replace />
 
   return <Outlet />

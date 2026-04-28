@@ -266,18 +266,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Register link */}
-          <p className={`text-center text-sm mt-6 ${textSecondary}`}>
-            {t('auth.noAccount')}{' '}
-            <Link
-              to="/register"
-              className="font-medium hover:underline"
-              style={{ color: 'var(--accent, #C2410C)' }}
-            >
-              {t('auth.register')}
-            </Link>
-          </p>
-
           <p className={`text-center text-xs mt-8 ${isDark ? 'text-gray-700' : 'text-gray-300'}`}>
             © 2026 RecetarioPro. Todos los derechos reservados.
           </p>

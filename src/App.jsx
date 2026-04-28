@@ -6,11 +6,12 @@ import './i18n'
 // Layout
 import { POSLayout } from './components/layout/POSLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
+import { UpdateBar } from './components/shared/UpdateBar'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 // App pages
 import POSMainPage from './pages/POSMainPage'
@@ -42,13 +43,14 @@ export default function App() {
 
   return (
     <ThemeProvider>
+      <UpdateBar />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/restaurants" element={<RestaurantSelectorPage />} />
             <Route path="/restaurants/new" element={<RestaurantsManagePage />} />
             <Route element={<POSLayout />}>

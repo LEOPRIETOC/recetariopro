@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { onAuthChange, getUserProfile } from '../services/auth'
-import { collection, query, where, getDocs, addDoc, setDoc, doc, limit, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
 // Module-level flag — resets on every page reload, prevents duplicate navigation
@@ -31,13 +31,12 @@ export function useAuth() {
         let profile = await getUserProfile(firebaseUser.uid)
         if (profile) setUserProfile(profile)
 
-        // Load the user's primary restaurant (kept for backwards compat)
         if (!currentRestaurant) {
           let found = null
           try {
             const q = query(
               collection(db, 'restaurants'),
-              where(`members.${firebaseUser.uid}.role`, 'in', ['admin', 'chef', 'superadmin', 'master', 'usuario']),
+              where(`members.${firebaseUser.uid}.role`, 'in', ['master', 'admin', 'usuario']),
               limit(1)
             )
             const snap = await getDocs(q)
@@ -57,27 +56,6 @@ export function useAuth() {
           if (found) {
             setCurrentRestaurant(found)
             if (found.accentColor) setAccentColor(found.accentColor)
-          } else {
-            // Auto-create restaurant on first login
-            try {
-              const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Mi Restaurante'
-              const restRef = await addDoc(collection(db, 'restaurants'), {
-                name,
-                ownerId: firebaseUser.uid,
-                members: { [firebaseUser.uid]: { role: 'admin' } },
-                createdAt: serverTimestamp(),
-              })
-              await setDoc(doc(db, 'users', firebaseUser.uid), {
-                role: 'admin',
-                restaurantId: restRef.id,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName || '',
-                createdAt: serverTimestamp(),
-              }, { merge: true })
-              setCurrentRestaurant({ id: restRef.id, name, ownerId: firebaseUser.uid })
-              profile = await getUserProfile(firebaseUser.uid)
-              if (profile) setUserProfile(profile)
-            } catch { /* silent */ }
           }
         }
 
@@ -98,23 +76,21 @@ export function useAuth() {
     return unsubscribe
   }, [])
 
-  const role           = userProfile?.role?.toLowerCase() || ''
-  const isMaster       = role === 'master'
-  const isSuperAdmin   = role === 'superadmin'
-  const isAdmin        = role === 'admin'
-  const isChef         = role === 'chef'
-  const isUsuario      = role === 'usuario'
+  const rawRole = userProfile?.role?.toLowerCase() || ''
+  const role = rawRole === 'superadmin' ? 'admin' : (rawRole === 'chef' ? 'usuario' : rawRole)
+  const isMaster  = role === 'master'
+  const isAdmin   = role === 'admin'
+  const isUsuario = role === 'usuario'
 
-  // Permisos compuestos
-  const canEdit             = isMaster || isSuperAdmin || isAdmin
-  const canSeeCosts         = isMaster || isSuperAdmin || isAdmin
-  const canManageUsers      = isMaster || isSuperAdmin
-  const canCreateAdmin      = isMaster || isSuperAdmin
+  const canEdit             = isMaster || isAdmin
+  const canSeeCosts         = isMaster || isAdmin
+  const canManageUsers      = isMaster || isAdmin
+  const canCreateAdmin      = isMaster || isAdmin
   const canCreateRestaurant = isMaster
 
   return {
     user, userProfile, loading,
-    isAdmin, isSuperAdmin, isMaster, isChef, isUsuario,
+    isMaster, isAdmin, isUsuario,
     canEdit, canSeeCosts, canManageUsers, canCreateAdmin, canCreateRestaurant,
   }
 }

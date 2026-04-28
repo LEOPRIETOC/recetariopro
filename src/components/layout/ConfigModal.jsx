@@ -2534,7 +2534,7 @@ const uInput = (isDark) => ({
 // ── Users Admin Tab ───────────────────────────────────────────────────────────
 function UsersAdminTab({ isDark }) {
   const { currentRestaurant, user, userProfile } = useAppStore()
-  const { isMaster, isSuperAdmin, isAdmin, canCreateAdmin } = useAuth()
+  const { isMaster, isAdmin, canCreateAdmin } = useAuth()
   const { success, error } = useToast()
 
   const [users, setUsers] = useState([])
@@ -2550,8 +2550,8 @@ function UsersAdminTab({ isDark }) {
   const [showPassword, setShowPassword] = useState(false)
 
   const roleOptions = isMaster
-    ? ['superadmin', 'admin', 'usuario']
-    : isSuperAdmin ? ['admin', 'usuario'] : ['usuario']
+    ? ['master', 'admin', 'usuario']
+    : isAdmin ? ['admin', 'usuario'] : []
 
   // ── Load users ──
   const loadUsers = async () => {
@@ -2644,9 +2644,8 @@ function UsersAdminTab({ isDark }) {
   const canManage = (targetUser) => {
     const targetRole = targetUser?.role || 'usuario'
     if ((targetUser?.uid || targetUser?.id) === (user?.uid)) return false // nunca a sí mismo
-    if (isMaster) return targetRole !== 'master'
-    if (isSuperAdmin) return !['master', 'superadmin'].includes(targetRole)
-    if (isAdmin) return targetRole === 'usuario'
+    if (isMaster) return true
+    if (isAdmin) return targetRole === 'admin' || targetRole === 'usuario'
     return false
   }
   // canDelete wrapper (kept for compat, uses canManage)

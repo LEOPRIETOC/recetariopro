@@ -3,18 +3,16 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
-import { createUserWithRole, updateUserRole, deactivateUser, sendUserPasswordReset } from '../services/auth'
-import { cn, toTitleCase } from '../lib/utils'
+import { createUserWithRole, updateUserRole, deactivateUser, sendUserPasswordReset, generateTempPassword, validateStrongPassword, PASSWORD_POLICY } from '../services/auth'
+import { toTitleCase } from '../lib/utils'
 import { useToast } from '../components/ui/toast'
-import { UserPlus, Pencil, MailCheck, Power, Trash2, X, ChevronDown } from 'lucide-react'
+import { UserPlus, Pencil, MailCheck, Power, X, Eye, EyeOff, RefreshCw, Copy, Check } from 'lucide-react'
 
 // ── Role badge colors ──────────────────────────────────────────────────────────
 const ROLE_BADGE = {
-  master:     { bg: '#111111', color: '#c9a84c',  border: '#c9a84c44' },
-  superadmin: { bg: '#3b2800', color: '#f59e0b',  border: '#f59e0b44' },
-  admin:      { bg: '#0a2e1a', color: '#4ade80',  border: '#4ade8044' },
-  usuario:    { bg: '#1f2937', color: '#9ca3af',  border: '#9ca3af33' },
-  chef:       { bg: '#1e1b4b', color: '#a5b4fc',  border: '#a5b4fc33' },
+  master:  { bg: '#111111', color: '#c9a84c', border: '#c9a84c44' },
+  admin:   { bg: '#0a2e1a', color: '#4ade80', border: '#4ade8044' },
+  usuario: { bg: '#1f2937', color: '#9ca3af', border: '#9ca3af33' },
 }
 
 function RoleBadge({ role }) {
@@ -32,11 +30,10 @@ function RoleBadge({ role }) {
   )
 }
 
-// ── Role options per creator ───────────────────────────────────────────────────
+// ── Role options per creator (each role can create same level or below) ───────
 function rolesFor(creator) {
-  if (creator.isMaster)     return ['superadmin', 'admin', 'usuario']
-  if (creator.isSuperAdmin) return ['admin', 'usuario']
-  if (creator.isAdmin)      return ['usuario']
+  if (creator.isMaster) return ['master', 'admin', 'usuario']
+  if (creator.isAdmin)  return ['admin', 'usuario']
   return []
 }
 
@@ -85,11 +82,55 @@ const inputStyle = {
   color: 'var(--text, #111)', outline: 'none', boxSizing: 'border-box',
 }
 
+// ── Created credentials modal (shown after successful creation) ────────────────
+function CreatedCredentialsModal({ name, email, password, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    const text = `Usuario: ${email}\nContraseña temporal: ${password}\n\nDeberás cambiarla al iniciar sesión.`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* noop */ }
+  }
+  return (
+    <Modal title={`Usuario ${name} creado`} onClose={onClose}>
+      <p style={{ fontSize: '0.85rem', color: 'var(--t2, #6b7280)', marginBottom: 14 }}>
+        Comparte estos datos con el usuario. Deberá cambiar la contraseña al iniciar sesión.
+      </p>
+      <div style={{ background: 'var(--bg3, #f3f4f6)', border: '1px solid var(--b2, #d1d5db)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--t3, #9ca3af)', letterSpacing: '0.06em', fontWeight: 700 }}>Correo</div>
+        <div style={{ fontSize: '0.95rem', color: 'var(--text, #111)', marginBottom: 10, wordBreak: 'break-all' }}>{email}</div>
+        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--t3, #9ca3af)', letterSpacing: '0.06em', fontWeight: 700 }}>Contraseña temporal</div>
+        <div style={{ fontFamily: 'monospace', fontSize: '1rem', color: 'var(--text, #111)', wordBreak: 'break-all' }}>{password}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button onClick={handleCopy} style={{ background: 'none', border: '1px solid var(--b2, #d1d5db)', borderRadius: 8, padding: '9px 18px', cursor: 'pointer', color: 'var(--t2, #6b7280)', fontFamily: 'inherit', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {copied ? 'Copiado' : 'Copiar'}
+        </button>
+        <button onClick={onClose} style={{ background: 'var(--accent, #d97706)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem' }}>
+          Listo
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Create user modal ──────────────────────────────────────────────────────────
-function CreateUserModal({ onClose, onCreated, restaurants, creator }) {
-  const { success, error } = useToast()
+function CreateUserModal({ onClose, onCreated, restaurants, creator, currentRestaurantId }) {
+  const { error } = useToast()
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: rolesFor(creator)[0] || 'usuario', restaurantIds: [] })
+  const [showPwd, setShowPwd] = useState(false)
+  const [pwdError, setPwdError] = useState('')
+  const [createdCreds, setCreatedCreds] = useState(null)
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: rolesFor(creator)[0] || 'usuario',
+    restaurantIds: currentRestaurantId ? [currentRestaurantId] : [],
+  })
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const toggleRest = (id) => setForm((f) => ({
@@ -99,18 +140,42 @@ function CreateUserModal({ onClose, onCreated, restaurants, creator }) {
       : [...f.restaurantIds, id],
   }))
 
+  const handleGenerate = () => {
+    const pwd = generateTempPassword(12)
+    setForm((f) => ({ ...f, password: pwd }))
+    setPwdError('')
+    setShowPwd(true)
+  }
+
+  const handlePwdChange = (e) => {
+    const v = e.target.value
+    setForm((f) => ({ ...f, password: v }))
+    setPwdError(v && !validateStrongPassword(v) ? PASSWORD_POLICY.message : '')
+  }
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) { error('Completa todos los campos'); return }
-    if (form.password.length < 6) { error('La contraseña debe tener al menos 6 caracteres'); return }
+    if (!validateStrongPassword(form.password)) { setPwdError(PASSWORD_POLICY.message); return }
+    if (!form.restaurantIds.length) { error('Asigna al menos un restaurante'); return }
     setSaving(true)
     try {
       await createUserWithRole(form, creator.uid)
-      success(`Usuario ${form.name} creado correctamente`)
+      setCreatedCreds({ name: form.name, email: form.email, password: form.password })
       onCreated()
-      onClose()
     } catch (err) {
       error(err.code === 'auth/email-already-in-use' ? 'Este correo ya está registrado' : (err.message || 'Error al crear usuario'))
     } finally { setSaving(false) }
+  }
+
+  if (createdCreds) {
+    return (
+      <CreatedCredentialsModal
+        name={createdCreds.name}
+        email={createdCreds.email}
+        password={createdCreds.password}
+        onClose={onClose}
+      />
+    )
   }
 
   return (
@@ -122,7 +187,36 @@ function CreateUserModal({ onClose, onCreated, restaurants, creator }) {
         <input style={inputStyle} type="email" value={form.email} onChange={set('email')} placeholder="correo@ejemplo.com" />
       </Field>
       <Field label="Contraseña temporal *">
-        <input style={inputStyle} type="password" value={form.password} onChange={set('password')} placeholder="Mín. 6 caracteres" />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              style={{ ...inputStyle, paddingRight: 36 }}
+              type={showPwd ? 'text' : 'password'}
+              value={form.password}
+              onChange={handlePwdChange}
+              placeholder="Generar o escribir"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd((s) => !s)}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2, #6b7280)', padding: 4 }}
+              title={showPwd ? 'Ocultar' : 'Mostrar'}
+            >
+              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            style={{ background: 'var(--bg3, #f3f4f6)', border: '1px solid var(--b2, #d1d5db)', borderRadius: 8, padding: '0 12px', cursor: 'pointer', color: 'var(--t2, #6b7280)', fontFamily: 'inherit', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+            title="Generar contraseña fuerte"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Generar
+          </button>
+        </div>
+        <p style={{ fontSize: '0.72rem', color: pwdError ? '#ef4444' : 'var(--t3, #9ca3af)', marginTop: 6 }}>
+          {pwdError || PASSWORD_POLICY.message}
+        </p>
       </Field>
       <Field label="Rol *">
         <select style={inputStyle} value={form.role} onChange={set('role')}>
@@ -201,7 +295,7 @@ function EditRoleModal({ member, onClose, onSaved, creator }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const { currentRestaurant, theme } = useAppStore()
-  const { user, isMaster, isSuperAdmin, isAdmin, canManageUsers } = useAuth()
+  const { user, isMaster, isAdmin, canManageUsers } = useAuth()
   const { success, error } = useToast()
   const isDark = theme === 'night'
 
@@ -211,7 +305,7 @@ export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editMember, setEditMember] = useState(null)
 
-  const creator = { uid: user?.uid, isMaster, isSuperAdmin, isAdmin }
+  const creator = { uid: user?.uid, isMaster, isAdmin }
 
   const loadData = async () => {
     if (!currentRestaurant?.id) return
@@ -369,10 +463,9 @@ export default function UsersPage() {
         <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.95rem', color: ink, margin: '0 0 14px' }}>Roles del sistema</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { role: 'master',     desc: 'Acceso total. Puede crear restaurantes, superadmins y admins.' },
-            { role: 'superadmin', desc: 'Gestión de todos los restaurantes asignados. Puede crear admins.' },
-            { role: 'admin',      desc: 'Gestión completa de su restaurante, costos y usuarios básicos.' },
-            { role: 'usuario',    desc: 'Solo lectura de recetas. No ve costos ni configuración.' },
+            { role: 'master',  desc: 'Acceso total. Único que puede crear restaurantes. Puede crear master, admin y usuario.' },
+            { role: 'admin',   desc: 'Gestión completa de su restaurante. Puede crear admin y usuario.' },
+            { role: 'usuario', desc: 'Solo lectura de recetas. No ve costos ni configuración.' },
           ].map(({ role, desc }) => (
             <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <RoleBadge role={role} />
@@ -389,6 +482,7 @@ export default function UsersPage() {
           onCreated={loadData}
           restaurants={restaurants}
           creator={creator}
+          currentRestaurantId={currentRestaurant?.id}
         />
       )}
       {editMember && (
