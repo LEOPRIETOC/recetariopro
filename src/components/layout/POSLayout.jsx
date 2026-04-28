@@ -155,6 +155,17 @@ export function POSLayout() {
     loadCounts()
   }, [currentRestaurant?.id])
 
+  // Click fuera del search → limpia la busqueda
+  useEffect(() => {
+    if (!globalSearch) return
+    const handleClick = (e) => {
+      if (e.target.closest?.('.pos-search-container')) return
+      setGlobalSearch('')
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [globalSearch, setGlobalSearch])
+
 
   function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return
