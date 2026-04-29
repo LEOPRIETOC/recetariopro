@@ -1,11 +1,9 @@
-export function getConvertedPrice(rawPrice, purchaseUnit, recipeUnit) {
-  const pu = (purchaseUnit || '').toLowerCase()
-  const ru = (recipeUnit || '').toLowerCase()
-  const kgToG = (pu === 'kg' || pu === 'kilo' || pu === 'kilogramo' || pu === 'kgs') &&
-                (ru === 'g' || ru === 'gr' || ru === 'gramo' || ru === 'grs' || ru === 'gramos')
-  const ltToMl = (pu === 'lt' || pu === 'l' || pu === 'litro' || pu === 'lts' || pu === 'litros') &&
-                 (ru === 'ml' || ru === 'mililitro' || ru === 'mililitros')
-  return kgToG || ltToMl ? rawPrice / 1000 : rawPrice
+// pricePerUnit ya se guarda en moneda-por-useUnit (ej. $/g) cuando se crea la
+// materia prima (pricePerUnit = value / quantityPerPresentation). No hace falta
+// convertir aqui — solo se devuelve el precio crudo. Se mantiene la firma para
+// compat con los call sites existentes.
+export function getConvertedPrice(rawPrice /* , purchaseUnit, recipeUnit */) {
+  return parseFloat(rawPrice) || 0
 }
 
 export function calcIngredientCost(ing) {
