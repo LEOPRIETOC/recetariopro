@@ -155,16 +155,10 @@ export function POSLayout() {
     loadCounts()
   }, [currentRestaurant?.id])
 
-  // Click fuera del search → limpia la busqueda
+  // Limpia la busqueda al navegar a otra ruta (ej. tras seleccionar receta)
   useEffect(() => {
-    if (!globalSearch) return
-    const handleClick = (e) => {
-      if (e.target.closest?.('.pos-search-container')) return
-      setGlobalSearch('')
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [globalSearch, setGlobalSearch])
+    setGlobalSearch('')
+  }, [location.pathname, setGlobalSearch])
 
 
   function handleDragEnd({ active, over }) {
