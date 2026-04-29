@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Save, Printer, Plus, Trash2, Lock, ToggleRight, ToggleLeft, ImageIcon, Video, Upload } from 'lucide-react'
+import { ArrowLeft, Save, Printer, Plus, Trash2, Lock, ToggleRight, ToggleLeft, ImageIcon, Video, Upload, Info } from 'lucide-react'
 import { useReactToPrint } from 'react-to-print'
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../lib/firebase'
@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { logAction, detectChanges, detectIngredientChanges } from '../services/auditService'
 import { RecipeReadOnlyView } from '../components/RecipeReadOnlyView'
 import { RecipeNotes } from '../components/RecipeNotes'
+import { IngredientSourceModal } from '../components/IngredientSourceModal'
 import {
   getRecipe, createRecipe, updateRecipe, toggleRecipeActive,
   subscribeCategories, subscribeIngredients, subscribeRecipes,
@@ -234,6 +235,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const [quickAddData, setQuickAddData] = useState({})
   const [savingQuick, setSavingQuick] = useState(false)
   const [compatibleUnits, setCompatibleUnits] = useState(allUnits)
+  const [showSourceModal, setShowSourceModal] = useState(false)
   const quantityInputRef = useRef(null)
   const localInputRef = useRef(null)
   const { success } = useToast()
@@ -542,15 +544,44 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           </div>
         </div>
 
-        {/* Botón borrar — alto de los 2 renglones */}
-        <button type="button" onClick={() => remove(index)}
-          title="Eliminar ingrediente"
-          className={cn('flex items-center justify-center rounded-lg transition-colors',
-            isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-400 hover:text-red-600 hover:bg-red-50')}
-          style={{ alignSelf: 'stretch', minHeight: 64 }}>
-          <Trash2 className="h-4 w-4" />
-        </button>
+        {/* Acciones — alto de los 2 renglones, apiladas */}
+        <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button type="button"
+            onClick={() => {
+              const id = watch(`ingredients.${index}.ingredientId`)
+              if (!id) { return }
+              setShowSourceModal(true)
+            }}
+            disabled={!watch(`ingredients.${index}.ingredientId`)}
+            title="Ver origen del costo (materia prima o sub-receta)"
+            className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
+              isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-900/30' : 'text-blue-400 hover:text-blue-600 hover:bg-blue-50',
+              !watch(`ingredients.${index}.ingredientId`) && 'opacity-30 cursor-not-allowed')}>
+            <Info className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => remove(index)}
+            title="Eliminar ingrediente"
+            className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
+              isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-400 hover:text-red-600 hover:bg-red-50')}>
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Modal de fuente del costo */}
+      {showSourceModal && (
+        <IngredientSourceModal
+          open={showSourceModal}
+          onClose={() => setShowSourceModal(false)}
+          restaurantId={restaurantId}
+          ingredientRow={{
+            ingredientId: watch(`ingredients.${index}.ingredientId`),
+            description: watch(`ingredients.${index}.description`),
+          }}
+          isDark={isDark}
+          canEdit={!!isAdmin}
+        />
+      )}
 
       {/* Quick-add full MP form */}
       {showQuickAdd && (
