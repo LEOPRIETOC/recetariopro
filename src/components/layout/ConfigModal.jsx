@@ -2944,12 +2944,20 @@ function UsersAdminTab({ isDark }) {
 
 // ── RestauranteTab ────────────────────────────────────────────────────────────
 // ── Summary Tab — todas las recetas y sub-recetas con costo, precio, utilidad ─
-function SummaryTab({ restaurantId, isDark }) {
+function SummaryTab({ restaurantId, isDark, onClose }) {
+  const navigate = useNavigate()
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all') // all | recipe | subrecipe
   const [sortBy, setSortBy] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+
+  const handleOpenRecipe = (id) => {
+    if (!id) return
+    if (typeof onClose === 'function') onClose()
+    navigate(`/recipes/${id}`, { state: { from: 'gestion' } })
+  }
 
   useEffect(() => {
     if (!restaurantId) return
@@ -2984,13 +2992,18 @@ function SummaryTab({ restaurantId, isDark }) {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
     const all = recipes.map(computeRow)
+    const byType = typeFilter === 'recipe'
+      ? all.filter((r) => !r.isSub)
+      : typeFilter === 'subrecipe'
+        ? all.filter((r) => r.isSub)
+        : all
     const filtered = q
-      ? all.filter((r) =>
+      ? byType.filter((r) =>
           r.name?.toLowerCase()?.includes(q) ||
           r.code?.toLowerCase()?.includes(q) ||
           r.reference?.toLowerCase?.()?.includes(q)
         )
-      : all
+      : byType
     const dir = sortDir === 'asc' ? 1 : -1
     const getVal = (r) => {
       switch (sortBy) {
@@ -3010,7 +3023,7 @@ function SummaryTab({ restaurantId, isDark }) {
       if (av > bv) return 1 * dir
       return 0
     })
-  }, [recipes, search, sortBy, sortDir])
+  }, [recipes, search, typeFilter, sortBy, sortDir])
 
   const ink = isDark ? '#f0ece4' : '#111827'
   const t2 = isDark ? '#9ca3af' : '#6b7280'
@@ -3031,38 +3044,63 @@ function SummaryTab({ restaurantId, isDark }) {
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
             Resumen de recetas
           </h2>
           <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
-            {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye sub-recetas y ocultas)
+            {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye ocultas)
           </p>
         </div>
-        <div style={{ position: 'relative', width: 280, flexShrink: 0 }}>
-          <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, código o referencia"
-            style={{
-              width: '100%', height: 34,
-              paddingLeft: 30, paddingRight: search ? 28 : 12,
-              background: bg2, color: ink,
-              border: `1px solid ${b1}`, borderRadius: 8,
-              fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
-            }}
-          />
-          {search && (
-            <button type="button" onClick={() => setSearch('')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {/* Filtro por tipo */}
+          <div style={{ display: 'flex', gap: 2, background: bg3, borderRadius: 8, padding: 3 }}>
+            {[
+              { id: 'all',       label: 'Todos' },
+              { id: 'recipe',    label: 'Recetas' },
+              { id: 'subrecipe', label: 'Sub-recetas' },
+            ].map((opt) => (
+              <button key={opt.id} type="button"
+                onClick={() => setTypeFilter(opt.id)}
+                style={{
+                  background: typeFilter === opt.id ? (isDark ? '#374151' : '#fff') : 'transparent',
+                  color: typeFilter === opt.id ? 'var(--accent)' : t2,
+                  border: 'none', borderRadius: 6,
+                  padding: '6px 12px',
+                  fontSize: '0.78rem', fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* Buscador */}
+          <div style={{ position: 'relative', width: 240 }}>
+            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Nombre, código o referencia"
               style={{
-                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                width: 22, height: 22, border: 'none', background: 'none', color: t2,
-                cursor: 'pointer', borderRadius: 4, fontSize: '1rem', lineHeight: 1,
-              }}>×</button>
-          )}
+                width: '100%', height: 34,
+                paddingLeft: 30, paddingRight: search ? 28 : 12,
+                background: bg2, color: ink,
+                border: `1px solid ${b1}`, borderRadius: 8,
+                fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                  width: 22, height: 22, border: 'none', background: 'none', color: t2,
+                  cursor: 'pointer', borderRadius: 4, fontSize: '1rem', lineHeight: 1,
+                }}>×</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -3107,10 +3145,16 @@ function SummaryTab({ restaurantId, isDark }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}
+                    onClick={() => handleOpenRecipe(r.id)}
+                    title="Abrir receta"
                     style={{
                       borderBottom: `1px solid ${b1}`,
                       opacity: r.active === false ? 0.55 : 1,
-                    }}>
+                      cursor: 'pointer',
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = isDark ? 'rgba(201,168,76,0.06)' : '#fafafa' }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'transparent' }}>
                     <td style={{ padding: '9px 14px', color: t2, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
                       {r.code || '—'}
                     </td>
@@ -3118,7 +3162,10 @@ function SummaryTab({ restaurantId, isDark }) {
                       {r.reference || '—'}
                     </td>
                     <td style={{ padding: '9px 14px', color: ink, fontWeight: 500 }}>
-                      {r.name || '—'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {r.name || '—'}
+                        <ExternalLink className="h-3 w-3" style={{ color: t3 }} />
+                      </span>
                       {r.active === false && (
                         <span style={{ marginLeft: 8, fontSize: '0.65rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase' }}>oculta</span>
                       )}
@@ -3488,7 +3535,7 @@ export function ConfigModal() {
                 {configTab === 'categories' && <CategoriesTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'suppliers' && <SuppliersTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'import' && <BulkImportTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
-                {configTab === 'summary' && <SummaryTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'summary' && <SummaryTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
                 {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
