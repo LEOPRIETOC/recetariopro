@@ -33,12 +33,17 @@ export function UpdateBar() {
   const [reloading, setReloading] = useState(false)
 
   const check = useCallback(async () => {
-    if (!CURRENT_BUILD_ID) return
+    if (!CURRENT_BUILD_ID) {
+      console.warn('[UpdateBar] CURRENT_BUILD_ID no disponible (build sin VITE_BUILD_ID inyectado)')
+      return
+    }
     try {
       const remote = await fetchRemoteBuildId()
-      if (remote && remote !== CURRENT_BUILD_ID) setHasUpdate(true)
-    } catch {
-      // silent — red puede estar caída
+      const isStale = remote && remote !== CURRENT_BUILD_ID
+      console.info('[UpdateBar] check', { current: CURRENT_BUILD_ID, remote, isStale })
+      if (isStale) setHasUpdate(true)
+    } catch (err) {
+      console.warn('[UpdateBar] error fetching version.json', err?.message || err)
     }
   }, [])
 
