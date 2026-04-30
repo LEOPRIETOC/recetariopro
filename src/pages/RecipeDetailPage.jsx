@@ -825,6 +825,7 @@ const schema = z.object({
   videoURL: z.string().optional(),
   yieldAmount: z.coerce.number().min(0).optional(),
   yieldUnit: z.string().optional(),
+  sellingPrice: z.coerce.number().min(0).catch(0).default(0),
   ingredients: z.array(z.object({
     ingredientId: z.string().optional(),
     description: z.string().optional().default(''),
@@ -1329,6 +1330,7 @@ export default function RecipeDetailPage() {
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
         useManualCost: useManualCostFlag,
         manualCost: manualCostVal,
+        sellingPrice: parseFloat(data.sellingPrice) || 0,
         totalCost: useManualCostFlag
           ? manualCostVal
           : (() => {
