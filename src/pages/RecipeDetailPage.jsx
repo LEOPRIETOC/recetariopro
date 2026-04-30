@@ -965,7 +965,8 @@ export default function RecipeDetailPage() {
         menuCode: r.menuCode || '',
         item: r.item || '', reference: r.reference || '',
         recipeType: r.recipeType || 'recipe',
-        manualCost: r.manualCost || 0, useManualCost: r.useManualCost || false,
+        manualCost: parseFloat(r.manualCost) || 0,
+        useManualCost: r.useManualCost === true,
         preparation: r.preparation || '', notes: r.notes || '',
         isSubRecipe: r.isSubRecipe || r.type === 'subrecipe' || false, pin: r.pin || '',
         sellingPrice: r.sellingPrice || 0,
@@ -1308,6 +1309,8 @@ export default function RecipeDetailPage() {
           clean.totalCost = isNaN(base + waste) ? 0 : base + waste
           return clean
         })
+      const useManualCostFlag = !!data.useManualCost
+      const manualCostVal = parseFloat(data.manualCost) || 0
       const payload = {
         ...data,
         item: data.item || null,
@@ -1324,11 +1327,14 @@ export default function RecipeDetailPage() {
         yieldAmount: data.yieldAmount || null,
         yieldUnit: data.yieldUnit || null,
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
-        totalCost: (() => {
-          if (data.useManualCost) return parseFloat(data.manualCost) || 0
-          const t = cleanIngredients.reduce((s, i) => s + (i.totalCost || 0), 0)
-          return isNaN(t) ? 0 : t
-        })(),
+        useManualCost: useManualCostFlag,
+        manualCost: manualCostVal,
+        totalCost: useManualCostFlag
+          ? manualCostVal
+          : (() => {
+              const t = cleanIngredients.reduce((s, i) => s + (i.totalCost || 0), 0)
+              return isNaN(t) ? 0 : t
+            })(),
         costSettings: { marginContribution, taxRate },
         calculatedCosts: {
           totalCost: isNaN(totalCostCalc) ? 0 : totalCostCalc,
@@ -1851,7 +1857,7 @@ export default function RecipeDetailPage() {
                 {canSeeCosts && useManualCost && (
                   <div className="space-y-1">
                     <Label className="text-xs">Costo total manual</Label>
-                    <Input type="number" step="0.01" min="0" {...register('manualCost')} />
+                    <Input type="number" step="0.01" min="0" {...register('manualCost', { valueAsNumber: true })} />
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
