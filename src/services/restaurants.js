@@ -259,6 +259,8 @@ export async function upsertRecipesWithIngredients(restaurantId, rows) {
     }
     const nameVal = norm(pick(first, 'NOMBRE_RECETA', 'nombreReceta', 'NOMBRE', 'nombre', 'name'))
     if (nameVal) updates.name = nameVal.toUpperCase()
+    const refVal = norm(pick(first, 'REFERENCIA_RECETA', 'referenciaReceta', 'REFERENCIA', 'referencia', 'reference'))
+    if (refVal) updates.reference = refVal
     if (pick(first, 'RENDIMIENTO', 'rendimiento', 'yieldAmount') !== '') {
       updates.yieldAmount = num(pick(first, 'RENDIMIENTO', 'rendimiento', 'yieldAmount'))
     }
@@ -317,8 +319,11 @@ export async function upsertRecipesByCode(restaurantId, rows) {
     if (!existing) { notFound++; continue }
 
     const updates = {}
-    if (has(row, 'NOMBRE', 'nombre', 'name')) {
-      updates.name = norm(pick(row, 'NOMBRE', 'nombre', 'name')).toUpperCase()
+    if (has(row, 'NOMBRE_RECETA', 'NOMBRE', 'nombre', 'name')) {
+      updates.name = norm(pick(row, 'NOMBRE_RECETA', 'NOMBRE', 'nombre', 'name')).toUpperCase()
+    }
+    if (has(row, 'REFERENCIA_RECETA', 'REFERENCIA', 'referencia', 'reference')) {
+      updates.reference = norm(pick(row, 'REFERENCIA_RECETA', 'REFERENCIA', 'referencia', 'reference'))
     }
     if (has(row, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice')) {
       updates.sellingPrice = num(pick(row, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice'))

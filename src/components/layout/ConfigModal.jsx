@@ -3527,11 +3527,13 @@ function DescargasTab({ restaurantId, isDark }) {
       if (!ings.length) {
         out.push({
           CODIGO_RECETA: r.code || '',
+          REFERENCIA_RECETA: r.reference || '',
           NOMBRE_RECETA: r.name || '',
           RENDIMIENTO: r.yieldAmount ?? '',
           UNIDAD_RENDIMIENTO: r.yieldUnit || '',
           PRECIO_VENTA: r.sellingPrice ?? '',
           CODIGO_INGREDIENTE: '',
+          REFERENCIA_INGREDIENTE: '',
           NOMBRE_INGREDIENTE: '',
           TIPO: '',
           CANTIDAD: '',
@@ -3546,11 +3548,13 @@ function DescargasTab({ restaurantId, isDark }) {
         const source = isSub ? recById.get(ing.ingredientId) : mpById.get(ing.ingredientId)
         out.push({
           CODIGO_RECETA: r.code || '',
+          REFERENCIA_RECETA: idx === 0 ? (r.reference || '') : '',
           NOMBRE_RECETA: idx === 0 ? (r.name || '') : '',
           RENDIMIENTO: idx === 0 ? (r.yieldAmount ?? '') : '',
           UNIDAD_RENDIMIENTO: idx === 0 ? (r.yieldUnit || '') : '',
           PRECIO_VENTA: idx === 0 ? (r.sellingPrice ?? '') : '',
           CODIGO_INGREDIENTE: source?.code || ing.reference || '',
+          REFERENCIA_INGREDIENTE: source?.reference || ing.reference || '',
           NOMBRE_INGREDIENTE: ing.ingredientName || ing.description || source?.name || '',
           TIPO: isSub ? 'subreceta' : 'mp',
           CANTIDAD: ing.quantity ?? '',
@@ -3562,8 +3566,8 @@ function DescargasTab({ restaurantId, isDark }) {
     })
     const ws = XLSX.utils.json_to_sheet(out)
     ws['!cols'] = [
-      { wch: 14 }, { wch: 28 }, { wch: 12 }, { wch: 16 }, { wch: 14 },
-      { wch: 18 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
+      { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 12 }, { wch: 16 }, { wch: 14 },
+      { wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
     ]
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, label)
     XLSX.writeFile(wb, `${fname}_${new Date().toISOString().slice(0, 10)}.xlsx`)
