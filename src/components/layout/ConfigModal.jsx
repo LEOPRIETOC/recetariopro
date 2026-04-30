@@ -1953,6 +1953,195 @@ function AnalyticsTab({ restaurantId, isDark, onGoToSales }) {
   )
 }
 
+// Filtra logs sin cambios reales (reutilizable por render y exports)
+function logHasRealChanges(log) {
+  if (log.action !== 'edit') return true
+  const fieldChanges = (log.changes || []).filter(c => c.field !== 'ingrediente' && !c.item)
+  if (fieldChanges.length > 0) return true
+  const oldIngChanges = (log.changes || []).filter(c => c.field === 'ingrediente' || c.item)
+  if (oldIngChanges.length > 0) return true
+  const ingBefore = log.ingredientsBefore || []
+  const ingAfter  = log.ingredientsAfter  || []
+  if (ingBefore.length !== ingAfter.length) return true
+  const key = (i) => i.reference || i.ingredientName || i.description || ''
+  const beforeMap = new Map(ingBefore.map((i) => [key(i), i]))
+  for (const a of ingAfter) {
+    const b = beforeMap.get(key(a))
+    if (!b) return true
+    if (b.quantity !== a.quantity || b.wasteMargin !== a.wasteMargin || b.unit !== a.unit) return true
+    if (Number(b.pricePerUnit) !== Number(a.pricePerUnit)) return true
+  }
+  return false
+}
+
+// Convierte logs a filas planas para exportar (una fila por cambio)
+function buildExportRows(logs) {
+  const fmtDate = (d) => d?.toDate?.()?.toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) || '—'
+  const actionLbl = { create: 'Creación', edit: 'Edición', delete: 'Eliminación' }
+  const fieldLbl = (f) => ({
+    sellingPrice: 'Precio de venta', name: 'Nombre', preparation: 'Preparación',
+    yieldAmount: 'Rendimiento', yieldUnit: 'Unidad rendimiento', totalCost: 'Costo total',
+    manualCost: 'Costo manual', estado: 'Estado', rol: 'Rol',
+  }[f] || f)
+  const key = (i) => i.reference || i.ingredientName || i.description || ''
+  const ingQty = (ing) => ing && ing.quantity != null && ing.quantity !== '' ? String(ing.quantity) : ''
+  const ingUnit = (ing) => ing && ing.unit ? String(ing.unit) : ''
+
+  const rows = []
+
+  logs.forEach((log) => {
+    const fecha = fmtDate(log.timestamp)
+    const codR = log.entityCode || ''
+    const nomR = log.entityName || '—'
+    const accionDefault = actionLbl[log.action] || log.action
+
+    const fieldChanges = (log.changes || []).filter(c => c.field !== 'ingrediente' && !c.item)
+    const ingBefore = log.ingredientsBefore || []
+    const ingAfter  = log.ingredientsAfter  || []
+
+    let pushed = 0
+
+    // Cambios a campos de la receta (nombre, precio, preparación, etc.)
+    fieldChanges.forEach((c) => {
+      const isPrep = c.field === 'preparation'
+      rows.push({
+        'Fecha': fecha,
+        'Código receta': codR,
+        'Nombre receta': nomR,
+        'Acción': isPrep ? 'Preparación modificada' : `${fieldLbl(c.field)} modificado`,
+        'Código ingrediente': '',
+        'Nombre ingrediente': '',
+        'Actual': isPrep ? '' : (c.after != null ? String(c.after) : ''),
+        'Unidad actual': '',
+        'Anterior': isPrep ? '' : (c.before != null ? String(c.before) : ''),
+        'Unidad anterior': '',
+        'Preparación': isPrep ? String(c.after ?? '') : '',
+      })
+      pushed++
+    })
+
+    // Cambios a ingredientes (con snapshots)
+    if (ingBefore.length || ingAfter.length) {
+      const beforeMap = new Map(ingBefore.map((i) => [key(i), i]))
+      const afterMap  = new Map(ingAfter.map((i)  => [key(i), i]))
+
+      ingAfter.forEach((a) => {
+        const k = key(a)
+        const b = beforeMap.get(k)
+        const codI = a.reference || a.code || ''
+        const nomI = a.ingredientName || a.description || k
+        if (!b) {
+          rows.push({
+            'Fecha': fecha,
+            'Código receta': codR,
+            'Nombre receta': nomR,
+            'Acción': 'Adicionado',
+            'Código ingrediente': codI,
+            'Nombre ingrediente': nomI,
+            'Actual': ingQty(a),
+            'Unidad actual': ingUnit(a),
+            'Anterior': '',
+            'Unidad anterior': '',
+            'Preparación': '',
+          })
+          pushed++
+        } else {
+          const distinct = b.quantity !== a.quantity || b.unit !== a.unit
+            || b.wasteMargin !== a.wasteMargin
+            || Number(b.pricePerUnit) !== Number(a.pricePerUnit)
+          if (distinct) {
+            rows.push({
+              'Fecha': fecha,
+              'Código receta': codR,
+              'Nombre receta': nomR,
+              'Acción': 'Modificado',
+              'Código ingrediente': codI,
+              'Nombre ingrediente': nomI,
+              'Actual': ingQty(a),
+              'Unidad actual': ingUnit(a),
+              'Anterior': ingQty(b),
+              'Unidad anterior': ingUnit(b),
+              'Preparación': '',
+            })
+            pushed++
+          }
+        }
+      })
+
+      ingBefore.forEach((b) => {
+        const k = key(b)
+        if (!afterMap.has(k)) {
+          rows.push({
+            'Fecha': fecha,
+            'Código receta': codR,
+            'Nombre receta': nomR,
+            'Acción': 'Eliminado',
+            'Código ingrediente': b.reference || b.code || '',
+            'Nombre ingrediente': b.ingredientName || b.description || k,
+            'Actual': '',
+            'Unidad actual': '',
+            'Anterior': ingQty(b),
+            'Unidad anterior': ingUnit(b),
+            'Preparación': '',
+          })
+          pushed++
+        }
+      })
+    }
+
+    // Cambios de ingredientes en formato viejo — solo si NO hay snapshots
+    // (si hay snapshots, ya procesamos arriba y duplicariamos al hacerlo aqui)
+    const hasSnapshots = ingBefore.length > 0 || ingAfter.length > 0
+    if (!hasSnapshots) {
+      const parseLegacy = (s) => {
+        if (s == null) return { qty: '', unit: '' }
+        const m = String(s).match(/^([\d.,]+)\s*(.*)$/)
+        if (m) return { qty: m[1], unit: m[2].trim() }
+        return { qty: String(s), unit: '' }
+      }
+      ;(log.changes || []).filter(c => c.field === 'ingrediente' || c.item).forEach((c) => {
+        const action = c.action === 'added' ? 'Adicionado' : c.action === 'removed' ? 'Eliminado' : 'Modificado'
+        const isQtyish = c.field === 'cantidad' || c.field === 'desperdicio' || c.field === 'ingrediente'
+        const after = isQtyish ? parseLegacy(c.after) : { qty: c.after != null ? String(c.after) : '', unit: '' }
+        const before = isQtyish ? parseLegacy(c.before) : { qty: c.before != null ? String(c.before) : '', unit: '' }
+        rows.push({
+          'Fecha': fecha,
+          'Código receta': codR,
+          'Nombre receta': nomR,
+          'Acción': action,
+          'Código ingrediente': '',
+          'Nombre ingrediente': c.item || '',
+          'Actual': after.qty,
+          'Unidad actual': after.unit,
+          'Anterior': before.qty,
+          'Unidad anterior': before.unit,
+          'Preparación': '',
+        })
+        pushed++
+      })
+    }
+
+    // Si fue un create / delete sin detalles, igual incluimos una fila resumen
+    if (!pushed) {
+      rows.push({
+        'Fecha': fecha,
+        'Código receta': codR,
+        'Nombre receta': nomR,
+        'Acción': accionDefault,
+        'Código ingrediente': '',
+        'Nombre ingrediente': '',
+        'Actual': '',
+        'Unidad actual': '',
+        'Anterior': '',
+        'Unidad anterior': '',
+        'Preparación': '',
+      })
+    }
+  })
+
+  return rows
+}
+
 // ── Historial / Auditoría Tab ─────────────────────────────────────────────────
 function VersionsTab({ restaurantId, isDark }) {
   const { userProfile } = useAppStore()
@@ -1969,6 +2158,30 @@ function VersionsTab({ restaurantId, isDark }) {
   const [loading, setLoading] = useState(false)
   const [totalInCollection, setTotalInCollection] = useState(null)
   const [creatingTest, setCreatingTest] = useState(false)
+
+  const visibleLogs = useMemo(() => logs.filter(logHasRealChanges), [logs])
+
+  const exportToExcel = () => {
+    const rows = buildExportRows(visibleLogs)
+    if (!rows.length) return
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [
+      { wch: 18 }, // Fecha
+      { wch: 14 }, // Código receta
+      { wch: 30 }, // Nombre receta
+      { wch: 22 }, // Acción
+      { wch: 16 }, // Código ingrediente
+      { wch: 28 }, // Nombre ingrediente
+      { wch: 12 }, // Actual
+      { wch: 10 }, // Unidad actual
+      { wch: 12 }, // Anterior
+      { wch: 10 }, // Unidad anterior
+      { wch: 60 }, // Preparación
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Historial')
+    XLSX.writeFile(wb, `historial-${activeTab}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   // Verificar total de documentos en la colección (sin filtro)
   useEffect(() => {
@@ -2022,23 +2235,41 @@ function VersionsTab({ restaurantId, isDark }) {
 
   return (
     <div className="space-y-4">
-      {/* Diagnóstico + botón test */}
+      {/* Diagnóstico + exportar + botón test */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: '0.75rem', color: t3 }}>
           {totalInCollection === null ? 'Verificando colección…' : `Total en colección: ${totalInCollection} docs`}
         </span>
-        <button
-          onClick={handleCreateTestLog}
-          disabled={creatingTest}
-          style={{
-            background: 'none', border: `1px dashed ${t3}`, borderRadius: 6,
-            padding: '4px 12px', fontSize: '0.75rem', color: t2,
-            cursor: creatingTest ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-            opacity: creatingTest ? 0.5 : 1,
-          }}
-        >
-          {creatingTest ? 'Creando…' : '+ Crear log de prueba'}
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={exportToExcel}
+            disabled={visibleLogs.length === 0}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${visibleLogs.length === 0 ? t3 : 'var(--accent)'}`,
+              color: visibleLogs.length === 0 ? t3 : 'var(--accent)',
+              borderRadius: 6, padding: '5px 14px',
+              fontSize: '0.78rem', fontWeight: 600,
+              cursor: visibleLogs.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: visibleLogs.length === 0 ? 0.5 : 1,
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            <Download className="h-3.5 w-3.5" /> Exportar a Excel
+          </button>
+          <button
+            onClick={handleCreateTestLog}
+            disabled={creatingTest}
+            style={{
+              background: 'none', border: `1px dashed ${t3}`, borderRadius: 6,
+              padding: '4px 12px', fontSize: '0.75rem', color: t2,
+              cursor: creatingTest ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              opacity: creatingTest ? 0.5 : 1, marginLeft: 6,
+            }}
+          >
+            {creatingTest ? 'Creando…' : '+ Test'}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -2061,14 +2292,14 @@ function VersionsTab({ restaurantId, isDark }) {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
           <div style={{ width: 24, height: 24, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         </div>
-      ) : logs.length === 0 ? (
+      ) : visibleLogs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: t3 }}>
           <History className="h-10 w-10 mx-auto mb-3 opacity-20" />
           <p style={{ fontSize: '0.88rem' }}>Sin registros para este módulo</p>
         </div>
       ) : (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
-          {logs.map((log) => (
+          {visibleLogs.map((log) => (
             <div key={log.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${borderCol}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: log.changes?.length > 0 ? 10 : 0 }}>
@@ -2147,7 +2378,7 @@ function VersionsTab({ restaurantId, isDark }) {
                         <tr style={{ background: isDark ? '#0f172a' : '#f3f4f6' }}>
                           <th style={{ ...thStyle, width: '32%' }}>Ingrediente</th>
                           <th style={{ ...thStyle, width: '16%' }}>Acción</th>
-                          <th style={{ ...thStyle, width: '26%', color: 'var(--green, #16a34a)' }}>Nuevo</th>
+                          <th style={{ ...thStyle, width: '26%', color: 'var(--green, #16a34a)' }}>Actual</th>
                           <th style={{ ...thStyle, width: '26%', color: 'var(--red, #dc2626)' }}>Anterior</th>
                         </tr>
                       </thead>
@@ -2165,12 +2396,15 @@ function VersionsTab({ restaurantId, isDark }) {
                         {hasSnapshots ? allIngredients.map(({ k, before, after }, i) => {
                           const act = ingAction({ before, after })
                           const rowBg = (fieldChanges.length + i) % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)')
+                          // "Anterior" solo muestra valor si hubo cambio real (modificado o eliminado).
+                          // Si el ingrediente no cambio o es nuevo, queda vacio para no ensuciar la lectura.
+                          const showBefore = act.label === 'Modificado' || act.label === 'Eliminado'
                           return (
                             <tr key={`ing${i}`} style={{ background: rowBg }}>
                               <td style={{ ...cellStyle(true), color: isDark ? '#f9fafb' : '#111827', fontWeight: 500 }}>{after?.ingredientName || before?.ingredientName || after?.description || before?.description || k}</td>
                               <td style={{ ...cellStyle(true), color: act.color, fontWeight: 700, fontSize: '0.72rem' }}>{act.label}</td>
                               <td style={{ ...cellStyle(true), color: 'var(--green, #16a34a)' }}>{ingVal(after)}</td>
-                              <td style={{ ...cellStyle(true), color: 'var(--red, #dc2626)' }}>{ingVal(before)}</td>
+                              <td style={{ ...cellStyle(true), color: 'var(--red, #dc2626)' }}>{showBefore ? ingVal(before) : '—'}</td>
                             </tr>
                           )
                         }) : (log.changes || []).filter(c => c.field === 'ingrediente' || c.item).map((change, i) => {
