@@ -55,6 +55,7 @@ const PARAM_TABS = [
   { id: 'suppliers',     icon: Truck,      label: 'Proveedores' },
   { id: 'import',        icon: FileUp,     label: 'Importación masiva' },
   { id: 'recipes',       icon: FileText,   label: 'Gestión recetas' },
+  { id: 'replacer',      icon: ArrowUpDown, label: 'Reemplazar item' },
 ]
 
 const TABS = [
@@ -3206,6 +3207,388 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
   )
 }
 
+// ── Item Replacer Tab — reemplaza una MP o sub-receta por otra en TODAS las recetas
+function ItemReplacerTab({ restaurantId, isDark }) {
+  const { success, error } = useToast()
+  const [allMps, setAllMps] = useState([])
+  const [allRecipes, setAllRecipes] = useState([])
+  const [oldItem, setOldItem] = useState(null) // {id, _kind:'mp'|'subrecipe', ...}
+  const [newItem, setNewItem] = useState(null)
+  const [executing, setExecuting] = useState(false)
+  const [result, setResult] = useState(null) // {ok, updated, errors}
+
+  useEffect(() => {
+    if (!restaurantId) return
+    const u1 = subscribeIngredients(restaurantId, setAllMps)
+    const u2 = subscribeRecipes(restaurantId, setAllRecipes)
+    return () => { u1(); u2() }
+  }, [restaurantId])
+
+  const subrecipes = useMemo(() => (allRecipes || []).filter((r) => r.isSubRecipe || r.type === 'subrecipe'), [allRecipes])
+
+  const affected = useMemo(() => {
+    if (!oldItem) return []
+    return (allRecipes || []).filter((r) =>
+      (r.ingredients || []).some((i) => i.ingredientId === oldItem.id)
+    )
+  }, [oldItem, allRecipes])
+
+  const buildRow = (item) => {
+    if (item._kind === 'subrecipe') {
+      const yieldAmt = parseFloat(item.yieldAmount) || 0
+      const stored = parseFloat(item.costPerYieldUnit)
+      const total = parseFloat(item.totalCost) || 0
+      const unitCost = !isNaN(stored) && stored > 0
+        ? stored
+        : (yieldAmt > 0 ? total / yieldAmt : 0)
+      return {
+        ingredientId: item.id,
+        description: toTitleCase(item.name || ''),
+        ingredientName: toTitleCase(item.name || ''),
+        reference: item.code || '',
+        unit: item.yieldUnit || 'und',
+        purchaseUnit: '',
+        pricePerUnit: unitCost,
+        type: 'subrecipe',
+      }
+    }
+    // mp
+    const qty = parseFloat(item.quantityPerPresentation) || 0
+    const val = parseFloat(item.value) || 0
+    const pricePerUnit = parseFloat(item.pricePerUnit) || (qty > 0 ? val / qty : 0)
+    return {
+      ingredientId: item.id,
+      description: toTitleCase(item.description || item.name || ''),
+      ingredientName: toTitleCase(item.description || item.name || ''),
+      reference: item.reference || item.item || '',
+      unit: item.useUnit || item.unit || '',
+      purchaseUnit: item.purchaseUnit || '',
+      pricePerUnit,
+      type: 'ingredient',
+    }
+  }
+
+  const handleExecute = async () => {
+    if (!oldItem || !newItem) return
+    if (oldItem.id === newItem.id) { error('El item original y el nuevo son iguales'); return }
+    if (!affected.length) { error('No hay recetas que usen el item original'); return }
+    const msg = `Esto reemplazará "${oldItem.name || oldItem.description}" por "${newItem.name || newItem.description}" en ${affected.length} ${affected.length === 1 ? 'receta' : 'recetas'}. La cantidad y el % de desperdicio se conservan. ¿Continuar?`
+    if (!window.confirm(msg)) return
+
+    setExecuting(true)
+    setResult(null)
+    const newRow = buildRow(newItem)
+    let updated = 0
+    const errors = []
+    try {
+      // Chunk en lotes de 400 para mantenerse bajo el limite de batch (500)
+      const chunks = []
+      for (let i = 0; i < affected.length; i += 400) chunks.push(affected.slice(i, i + 400))
+      for (const chunk of chunks) {
+        const batch = writeBatch(db)
+        chunk.forEach((recipe) => {
+          const ingredients = recipe.ingredients || []
+          const newIngredients = ingredients.map((ing) => {
+            if (ing.ingredientId !== oldItem.id) return ing
+            const merged = {
+              ...ing,
+              ...newRow,
+              quantity: ing.quantity,
+              wasteMargin: ing.wasteMargin,
+            }
+            const eff = parseFloat(merged.pricePerUnit) || 0
+            const base = (parseFloat(merged.quantity) || 0) * eff
+            const waste = base * ((parseFloat(merged.wasteMargin) || 0) / 100)
+            return {
+              ...merged,
+              baseCost: isNaN(base) ? 0 : base,
+              wasteCost: isNaN(waste) ? 0 : waste,
+              totalCost: isNaN(base + waste) ? 0 : base + waste,
+            }
+          })
+          const newTotalCost = newIngredients.reduce((s, i) => s + (i.totalCost || 0), 0)
+          batch.update(doc(db, 'restaurants', restaurantId, 'recipes', recipe.id), {
+            ingredients: newIngredients,
+            totalCost: isNaN(newTotalCost) ? 0 : newTotalCost,
+            updatedAt: serverTimestamp(),
+          })
+        })
+        await batch.commit()
+        updated += chunk.length
+      }
+      setResult({ ok: true, updated })
+      success(`Reemplazado en ${updated} ${updated === 1 ? 'receta' : 'recetas'}`)
+    } catch (err) {
+      errors.push(err?.message || 'desconocido')
+      setResult({ ok: false, updated, errors })
+      error('Error en la operación: ' + (err?.message || 'desconocido'))
+    } finally {
+      setExecuting(false)
+    }
+  }
+
+  const ink = isDark ? '#f0ece4' : '#111827'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const bg2 = isDark ? '#111712' : '#fff'
+  const bg3 = isDark ? '#0d110e' : '#f9fafb'
+  const b1 = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+
+  return (
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
+          Reemplazar item
+        </h2>
+        <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+          Sustituye una materia prima o sub-receta por otra en todas las recetas que la usen. Se conservan la cantidad y el % de desperdicio.
+        </p>
+      </div>
+
+      {/* Item original */}
+      <ItemPicker
+        label="Item original"
+        item={oldItem}
+        onSelect={setOldItem}
+        onClear={() => setOldItem(null)}
+        allMps={allMps}
+        subrecipes={subrecipes}
+        isDark={isDark}
+      />
+
+      {/* Affected count */}
+      {oldItem && (
+        <div style={{
+          marginTop: 10, padding: '10px 14px',
+          background: bg3, border: `1px solid ${b1}`, borderRadius: 8,
+          fontSize: '0.82rem', color: affected.length ? ink : t3,
+        }}>
+          {affected.length === 0
+            ? 'Este item no está siendo usado en ninguna receta.'
+            : <>Usado en <strong>{affected.length}</strong> {affected.length === 1 ? 'receta/sub-receta' : 'recetas/sub-recetas'}.</>}
+        </div>
+      )}
+
+      {/* Separator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
+        <div style={{ flex: 1, height: 1, background: b1 }} />
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Reemplazar por</span>
+        <div style={{ flex: 1, height: 1, background: b1 }} />
+      </div>
+
+      {/* Item nuevo */}
+      <ItemPicker
+        label="Item nuevo"
+        item={newItem}
+        onSelect={setNewItem}
+        onClear={() => setNewItem(null)}
+        allMps={allMps}
+        subrecipes={subrecipes}
+        isDark={isDark}
+      />
+
+      {/* Execute */}
+      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button type="button"
+          onClick={handleExecute}
+          disabled={!oldItem || !newItem || executing || !affected.length || oldItem.id === newItem?.id}
+          style={{
+            background: 'var(--accent)', color: '#fff',
+            border: 'none', borderRadius: 8,
+            padding: '10px 22px',
+            fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 700,
+            cursor: (!oldItem || !newItem || executing || !affected.length) ? 'not-allowed' : 'pointer',
+            opacity: (!oldItem || !newItem || executing || !affected.length || oldItem?.id === newItem?.id) ? 0.5 : 1,
+          }}>
+          {executing
+            ? 'Reemplazando…'
+            : oldItem && newItem && affected.length
+              ? `Reemplazar en ${affected.length} ${affected.length === 1 ? 'receta' : 'recetas'}`
+              : 'Reemplazar'}
+        </button>
+      </div>
+
+      {result && (
+        <div style={{
+          marginTop: 16, padding: '12px 14px', borderRadius: 8,
+          background: result.ok ? 'rgba(22,163,74,0.10)' : 'rgba(239,68,68,0.10)',
+          border: `1px solid ${result.ok ? 'rgba(22,163,74,0.30)' : 'rgba(239,68,68,0.30)'}`,
+          color: result.ok ? '#16a34a' : '#ef4444',
+          fontSize: '0.85rem', fontWeight: 600,
+        }}>
+          {result.ok
+            ? `✓ Reemplazo completado en ${result.updated} ${result.updated === 1 ? 'receta' : 'recetas'}.`
+            : `Error tras actualizar ${result.updated} recetas: ${(result.errors || []).join(', ')}`}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Search + select component for MP or sub-receta
+function ItemPicker({ label, item, onSelect, onClear, allMps, subrecipes, isDark }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+
+  const ink = isDark ? '#f0ece4' : '#111827'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const bg2 = isDark ? '#111712' : '#fff'
+  const bg3 = isDark ? '#0d110e' : '#f9fafb'
+  const b1 = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (q.length < 1) return []
+    const mpHits = (allMps || [])
+      .filter((m) =>
+        (m.description || m.name || '').toLowerCase().includes(q) ||
+        (m.code || '').toLowerCase().includes(q) ||
+        (m.reference || '').toLowerCase().includes(q)
+      )
+      .slice(0, 6)
+      .map((m) => ({ ...m, _kind: 'mp' }))
+    const srHits = (subrecipes || [])
+      .filter((s) =>
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.code || '').toLowerCase().includes(q)
+      )
+      .slice(0, 6)
+      .map((s) => ({ ...s, _kind: 'subrecipe' }))
+    return [...mpHits, ...srHits]
+  }, [query, allMps, subrecipes])
+
+  if (item) {
+    return (
+      <div style={{
+        background: bg3, border: `1px solid ${b1}`, borderRadius: 10,
+        padding: '12px 16px',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: '0.62rem', fontWeight: 700,
+              padding: '2px 8px', borderRadius: 5,
+              background: item._kind === 'subrecipe' ? 'rgba(96,165,250,0.18)' : 'rgba(217,119,6,0.18)',
+              color: item._kind === 'subrecipe' ? '#60a5fa' : '#d97706',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}>
+              {item._kind === 'subrecipe' ? 'Sub-receta' : 'Materia prima'}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{label}</span>
+          </div>
+          <button type="button" onClick={onClear}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: t2, fontSize: '0.78rem', padding: 4 }}>
+            Cambiar
+          </button>
+        </div>
+        {item._kind === 'subrecipe' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.85rem' }}>
+            <Cell label="Código" value={item.code || '—'} t3={t3} ink={ink} mono />
+            <Cell label="Nombre" value={item.name || '—'} t3={t3} ink={ink} />
+            <Cell label="Unidad de rendimiento" value={item.yieldUnit || '—'} t3={t3} ink={ink} />
+            <Cell label="Rendimiento" value={formatNumber(item.yieldAmount || 0)} t3={t3} ink={ink} />
+            <Cell label="Costo total" value={formatNumber(item.totalCost || 0)} t3={t3} ink={ink} />
+            <Cell label={`Costo por ${item.yieldUnit || 'unidad'}`} value={formatNumber(item.costPerYieldUnit || (item.yieldAmount > 0 ? (item.totalCost || 0) / item.yieldAmount : 0))} t3={t3} ink={ink} accent />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.85rem' }}>
+            <Cell label="Código" value={item.code || '—'} t3={t3} ink={ink} mono />
+            <Cell label="Referencia" value={item.reference || item.item || '—'} t3={t3} ink={ink} mono />
+            <Cell label="Nombre" value={item.description || item.name || '—'} t3={t3} ink={ink} />
+            <Cell label="Unidad de uso" value={item.useUnit || item.unit || '—'} t3={t3} ink={ink} />
+            <Cell label="Unidad de compra" value={item.purchaseUnit || '—'} t3={t3} ink={ink} />
+            <Cell label="Cant./presentación" value={formatNumber(item.quantityPerPresentation || 0)} t3={t3} ink={ink} />
+            <Cell label="Valor" value={formatNumber(item.value || 0)} t3={t3} ink={ink} />
+            <Cell label={`Precio por ${item.useUnit || 'unidad'}`} value={formatNumber(item.pricePerUnit || 0)} t3={t3} ink={ink} accent />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: t3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
+        <input type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 180)}
+          placeholder="Buscar por nombre o código…"
+          style={{
+            width: '100%', height: 38,
+            paddingLeft: 32, paddingRight: 12,
+            background: bg2, color: ink,
+            border: `1px solid ${b1}`, borderRadius: 8,
+            fontSize: '0.88rem', outline: 'none', fontFamily: 'inherit',
+          }} />
+        {open && matches.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 10,
+            background: bg2, border: `1px solid ${b1}`, borderRadius: 8,
+            maxHeight: 280, overflowY: 'auto',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          }}>
+            {matches.map((m) => (
+              <button key={`${m._kind}-${m.id}`} type="button"
+                onMouseDown={() => { onSelect(m); setQuery(''); setOpen(false) }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '8px 12px', background: 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  borderBottom: `1px solid ${b1}`, fontFamily: 'inherit',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = bg3}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700,
+                  padding: '2px 6px', borderRadius: 4,
+                  background: m._kind === 'subrecipe' ? 'rgba(96,165,250,0.18)' : 'rgba(217,119,6,0.18)',
+                  color: m._kind === 'subrecipe' ? '#60a5fa' : '#d97706',
+                  textTransform: 'uppercase', flexShrink: 0,
+                }}>
+                  {m._kind === 'subrecipe' ? 'SUB' : 'MP'}
+                </span>
+                <span style={{ fontSize: '0.85rem', color: ink, fontWeight: 500, flex: 1 }}>
+                  {m.description || m.name}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: t3, fontFamily: 'monospace' }}>
+                  {m.code}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Cell({ label, value, t3, ink, mono, accent }) {
+  return (
+    <div>
+      <div style={{ fontSize: '0.65rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: '0.88rem',
+        color: accent ? 'var(--accent)' : ink,
+        fontWeight: accent ? 700 : 500,
+        fontFamily: mono ? 'monospace' : 'inherit',
+        wordBreak: 'break-word',
+      }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
 function RestauranteTab({ currentRestaurant, isDark }) {
   const { success, error } = useToast()
   const { setCurrentRestaurant } = useAppStore()
@@ -3388,6 +3771,7 @@ export function ConfigModal() {
     { key: 'suppliers',     label: 'Proveedores',        visible: canEdit },
     { key: 'import',        label: 'Importación Masiva', visible: canEdit },
     { key: 'recipes',       label: 'Gestión Recetas',    visible: canEdit },
+    { key: 'replacer',      label: 'Reemplazar Item',    visible: canEdit, icon: ArrowUpDown },
     { key: 'sales',         label: 'Ventas',             visible: canEdit },
     { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
     { key: 'versions',      label: 'Historial',          visible: canEdit },
@@ -3539,6 +3923,7 @@ export function ConfigModal() {
                 {configTab === 'sales' && <SalesTab restaurantId={currentRestaurant?.id} isDark={isDark} onViewBCG={() => goTo('analytics')} />}
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
+                {configTab === 'replacer' && <ItemReplacerTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'verification' && <VerificationTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
