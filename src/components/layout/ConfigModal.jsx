@@ -22,7 +22,7 @@ import { cn, formatNumber, toTitleCase } from '../../lib/utils'
 import { calcRecipeTotalCost } from '../../utils/costUtils'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
-  importIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
+  importIngredients, upsertIngredientsByCode, upsertRecipesByCode, upsertRecipesWithIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
   updateCategoryOrder,
   subscribeRecipes, subscribeSalesData, importSalesData, getNextIngredientCode,
   getNextCategoryCode, getNextRecipeCode,
@@ -56,6 +56,7 @@ const PARAM_TABS = [
   { id: 'import',        icon: FileUp,     label: 'Importación masiva' },
   { id: 'recipes',       icon: FileText,   label: 'Gestión recetas' },
   { id: 'replacer',      icon: ArrowUpDown, label: 'Reemplazar item' },
+  { id: 'descargas',     icon: Download,    label: 'Descargas' },
 ]
 
 const TABS = [
@@ -280,18 +281,28 @@ function IngredientsTab({ restaurantId, isDark }) {
     } catch { error('Error') }
   }
 
+  const [importing, setImporting] = useState(false)
   const handleImport = (e) => {
     const file = e.target.files?.[0]; if (!file) return
     const reader = new FileReader()
     reader.onload = async (ev) => {
+      setImporting(true)
       try {
         const wb = XLSX.read(ev.target.result, { type: 'array' })
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
-        const existingCodes = ingredients.map((i) => i.code)
-        await importIngredients(restaurantId, rows, existingCodes)
-        success(`${rows.length} materias importadas`)
-      } catch { error('Error al importar') }
-      e.target.value = ''
+        if (!rows.length) { error('El archivo está vacío'); return }
+        const result = await upsertIngredientsByCode(restaurantId, rows)
+        const partes = []
+        if (result.updated) partes.push(`${result.updated} actualizada${result.updated === 1 ? '' : 's'}`)
+        if (result.created) partes.push(`${result.created} nueva${result.created === 1 ? '' : 's'}`)
+        if (result.skipped) partes.push(`${result.skipped} omitida${result.skipped === 1 ? '' : 's'} (sin código)`)
+        success(partes.length ? partes.join(' · ') : 'Sin cambios')
+      } catch (err) {
+        error('Error al importar: ' + (err?.message || 'desconocido'))
+      } finally {
+        setImporting(false)
+        e.target.value = ''
+      }
     }
     reader.readAsArrayBuffer(file)
   }
@@ -3441,6 +3452,241 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
   )
 }
 
+// ── Descargas Tab — exportar/importar masivo de MP, recetas y sub-recetas ─────
+function DescargasTab({ restaurantId, isDark }) {
+  const { success, error } = useToast()
+  const [ingredients, setIngredients] = useState([])
+  const [recipes, setRecipes] = useState([])
+  const [busy, setBusy] = useState(null) // ej. 'mp-import' | 'rec-import' | 'sub-import'
+
+  useEffect(() => {
+    if (!restaurantId) return
+    const u1 = subscribeIngredients(restaurantId, setIngredients)
+    const u2 = subscribeRecipes(restaurantId, setRecipes)
+    return () => { u1(); u2() }
+  }, [restaurantId])
+
+  const justRecipes = useMemo(() => recipes.filter((r) => !(r.isSubRecipe || r.type === 'subrecipe')), [recipes])
+  const justSubRecipes = useMemo(() => recipes.filter((r) => r.isSubRecipe || r.type === 'subrecipe'), [recipes])
+
+  // ── Materias primas ──
+  const exportMP = () => {
+    if (!ingredients.length) { error('No hay materias primas para descargar'); return }
+    const ws = XLSX.utils.json_to_sheet(ingredients.map((i) => ({
+      CODIGO: i.code || '',
+      ITEM: i.item || '',
+      REFERENCIA: i.reference || '',
+      NOMBRE: i.name || i.description || '',
+      UNIDAD: i.useUnit || i.unit || '',
+      UNIDAD_COMPRA: i.purchaseUnit || '',
+      CANT_PRESENTACION: i.quantityPerPresentation || '',
+      VALOR: i.value || '',
+      PRECIO_POR_UNIDAD: i.pricePerUnit || '',
+      CATEGORIA: i.category || '',
+      CODIGO_PROVEEDOR: i.supplierCode || '',
+      PROVEEDOR: i.supplier || '',
+    })))
+    ws['!cols'] = Array(12).fill({ wch: 18 })
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Materias primas')
+    XLSX.writeFile(wb, `materias_primas_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const importMP = (e) => {
+    const file = e.target.files?.[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      setBusy('mp-import')
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' })
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
+        if (!rows.length) { error('El archivo está vacío'); return }
+        const r = await upsertIngredientsByCode(restaurantId, rows)
+        const partes = []
+        if (r.updated) partes.push(`${r.updated} actualizada${r.updated === 1 ? '' : 's'}`)
+        if (r.created) partes.push(`${r.created} nueva${r.created === 1 ? '' : 's'}`)
+        if (r.skipped) partes.push(`${r.skipped} omitida${r.skipped === 1 ? '' : 's'} (sin código)`)
+        success(partes.length ? partes.join(' · ') : 'Sin cambios')
+      } catch (err) {
+        error('Error al importar: ' + (err?.message || 'desconocido'))
+      } finally {
+        setBusy(null)
+        e.target.value = ''
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  // ── Recetas / Sub-recetas (con ingredientes por fila, sin costos) ──
+  const exportRecipes = (list, fname, label) => () => {
+    if (!list.length) { error(`No hay ${label} para descargar`); return }
+    const mpById = new Map(ingredients.map((i) => [i.id, i]))
+    const recById = new Map(recipes.map((r) => [r.id, r]))
+    const out = []
+    list.forEach((r) => {
+      const ings = r.ingredients || []
+      if (!ings.length) {
+        out.push({
+          CODIGO_RECETA: r.code || '',
+          NOMBRE_RECETA: r.name || '',
+          RENDIMIENTO: r.yieldAmount ?? '',
+          UNIDAD_RENDIMIENTO: r.yieldUnit || '',
+          PRECIO_VENTA: r.sellingPrice ?? '',
+          CODIGO_INGREDIENTE: '',
+          NOMBRE_INGREDIENTE: '',
+          TIPO: '',
+          CANTIDAD: '',
+          UNIDAD: '',
+          'DESPERDICIO_%': '',
+          PREPARACION: r.preparation || '',
+        })
+        return
+      }
+      ings.forEach((ing, idx) => {
+        const isSub = ing.type === 'subrecipe'
+        const source = isSub ? recById.get(ing.ingredientId) : mpById.get(ing.ingredientId)
+        out.push({
+          CODIGO_RECETA: r.code || '',
+          NOMBRE_RECETA: idx === 0 ? (r.name || '') : '',
+          RENDIMIENTO: idx === 0 ? (r.yieldAmount ?? '') : '',
+          UNIDAD_RENDIMIENTO: idx === 0 ? (r.yieldUnit || '') : '',
+          PRECIO_VENTA: idx === 0 ? (r.sellingPrice ?? '') : '',
+          CODIGO_INGREDIENTE: source?.code || ing.reference || '',
+          NOMBRE_INGREDIENTE: ing.ingredientName || ing.description || source?.name || '',
+          TIPO: isSub ? 'subreceta' : 'mp',
+          CANTIDAD: ing.quantity ?? '',
+          UNIDAD: ing.unit || '',
+          'DESPERDICIO_%': ing.wasteMargin ?? '',
+          PREPARACION: idx === 0 ? (r.preparation || '') : '',
+        })
+      })
+    })
+    const ws = XLSX.utils.json_to_sheet(out)
+    ws['!cols'] = [
+      { wch: 14 }, { wch: 28 }, { wch: 12 }, { wch: 16 }, { wch: 14 },
+      { wch: 18 }, { wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
+    ]
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, label)
+    XLSX.writeFile(wb, `${fname}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const importRecipes = (label, busyKey) => (e) => {
+    const file = e.target.files?.[0]; if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      setBusy(busyKey)
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' })
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
+        if (!rows.length) { error('El archivo está vacío'); return }
+        // Usa el upsert con ingredientes si vienen filas con CODIGO_INGREDIENTE
+        const hasIngs = rows.some((r) => (r.CODIGO_INGREDIENTE || r.codigoIngrediente))
+        const r = hasIngs
+          ? await upsertRecipesWithIngredients(restaurantId, rows)
+          : await upsertRecipesByCode(restaurantId, rows)
+        const partes = []
+        if (r.updated) partes.push(`${r.updated} actualizada${r.updated === 1 ? '' : 's'}`)
+        if (r.notFound) partes.push(`${r.notFound} código${r.notFound === 1 ? '' : 's'} no encontrado${r.notFound === 1 ? '' : 's'}`)
+        if (r.ingredientsSkipped) partes.push(`${r.ingredientsSkipped} ingrediente(s) omitido(s)`)
+        if (r.skipped) partes.push(`${r.skipped} sin cambios`)
+        success(partes.length ? partes.join(' · ') : 'Sin cambios')
+      } catch (err) {
+        error(`Error al importar ${label}: ` + (err?.message || 'desconocido'))
+      } finally {
+        setBusy(null)
+        e.target.value = ''
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
+  const ink = isDark ? '#f0ece4' : '#111827'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const bg2 = isDark ? '#111712' : '#fff'
+  const b1 = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+
+  const Card = ({ title, count, desc, children }) => (
+    <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', color: ink, margin: 0 }}>{title}</h3>
+        <span style={{ fontSize: '0.75rem', color: t3 }}>{count} {count === 1 ? 'item' : 'items'}</span>
+      </div>
+      <p style={{ fontSize: '0.82rem', color: t2, margin: 0 }}>{desc}</p>
+      <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>{children}</div>
+    </div>
+  )
+
+  const ActionBtn = ({ onClick, icon: Icon, label, variant = 'outline', loading, disabled }) => (
+    <button type="button" onClick={onClick} disabled={loading || disabled}
+      style={{
+        background: variant === 'primary' ? 'var(--accent)' : 'transparent',
+        color: variant === 'primary' ? '#fff' : 'var(--accent)',
+        border: variant === 'primary' ? 'none' : `1px solid var(--accent)`,
+        borderRadius: 8, padding: '8px 16px',
+        fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600,
+        cursor: (loading || disabled) ? 'not-allowed' : 'pointer',
+        opacity: (loading || disabled) ? 0.55 : 1,
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+      }}>
+      <Icon className="h-4 w-4" /> {loading ? 'Procesando…' : label}
+    </button>
+  )
+
+  const FileBtn = ({ onChange, label, busyKey }) => (
+    <label style={{
+      background: 'transparent', color: 'var(--accent)',
+      border: `1px solid var(--accent)`, borderRadius: 8, padding: '8px 16px',
+      fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600,
+      cursor: busy === busyKey ? 'wait' : 'pointer',
+      opacity: busy && busy !== busyKey ? 0.4 : 1,
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+    }}>
+      <Upload className="h-4 w-4" /> {busy === busyKey ? 'Subiendo…' : label}
+      <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onChange} disabled={!!busy} />
+    </label>
+  )
+
+  return (
+    <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
+          Descargas y carga masiva
+        </h2>
+        <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+          Descarga todos tus datos en Excel, edítalos y súbelos para actualizar en bloque. La identificación se hace por <strong>CÓDIGO</strong>.
+        </p>
+      </div>
+
+      <Card
+        title="Materias primas"
+        count={ingredients.length}
+        desc="Descarga, edita precios/valores/unidades, y sube. Filas con códigos nuevos se crean; las existentes se actualizan."
+      >
+        <ActionBtn onClick={exportMP} icon={Download} label="Descargar Excel" />
+        <FileBtn onChange={importMP} label="Subir Excel" busyKey="mp-import" />
+      </Card>
+
+      <Card
+        title="Recetas"
+        count={justRecipes.length}
+        desc="Una fila por ingrediente: muestra cada receta con sus ingredientes, cantidades y unidades. Edita cantidades, unidades, % desperdicio o cambia ingredientes (por código) y sube. No se crean recetas nuevas."
+      >
+        <ActionBtn onClick={exportRecipes(justRecipes, 'recetas', 'Recetas')} icon={Download} label="Descargar Excel" />
+        <FileBtn onChange={importRecipes('recetas', 'rec-import')} label="Subir Excel" busyKey="rec-import" />
+      </Card>
+
+      <Card
+        title="Sub-recetas"
+        count={justSubRecipes.length}
+        desc="Igual que recetas: una fila por ingrediente con sus cantidades. Los ingredientes pueden ser materias primas o sub-recetas (columna TIPO indica)."
+      >
+        <ActionBtn onClick={exportRecipes(justSubRecipes, 'subrecetas', 'Sub-recetas')} icon={Download} label="Descargar Excel" />
+        <FileBtn onChange={importRecipes('sub-recetas', 'sub-import')} label="Subir Excel" busyKey="sub-import" />
+      </Card>
+    </div>
+  )
+}
+
 // ── Item Replacer Tab — reemplaza una MP o sub-receta por otra en TODAS las recetas
 function ItemReplacerTab({ restaurantId, isDark }) {
   const { success, error } = useToast()
@@ -4006,6 +4252,7 @@ export function ConfigModal() {
     { key: 'import',        label: 'Importación Masiva', visible: canEdit },
     { key: 'recipes',       label: 'Gestión Recetas',    visible: canEdit },
     { key: 'replacer',      label: 'Reemplazar Item',    visible: canEdit, icon: ArrowUpDown },
+    { key: 'descargas',     label: 'Descargas',          visible: canEdit, icon: Download },
     { key: 'sales',         label: 'Ventas',             visible: canEdit },
     { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
     { key: 'versions',      label: 'Historial',          visible: canEdit },
@@ -4158,6 +4405,7 @@ export function ConfigModal() {
                 {configTab === 'analytics' && <AnalyticsTab restaurantId={currentRestaurant?.id} isDark={isDark} onGoToSales={() => goTo('sales')} />}
                 {configTab === 'recipes' && <RecipeManagementTab restaurantId={currentRestaurant?.id} isDark={isDark} onClose={handleClose} />}
                 {configTab === 'replacer' && <ItemReplacerTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
+                {configTab === 'descargas' && <DescargasTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'versions' && <VersionsTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'verification' && <VerificationTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}

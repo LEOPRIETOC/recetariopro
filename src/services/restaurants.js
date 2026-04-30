@@ -160,6 +160,196 @@ export async function updateRecipe(restaurantId, recipeId, data) {
   })
 }
 
+// Upsert por CODIGO con soporte de ingredientes por fila.
+// Si las filas tienen CODIGO_INGREDIENTE, se reconstruye ingredients[] de cada
+// receta agrupando por CODIGO_RECETA. Si no, solo actualiza campos planos.
+// No crea recetas nuevas (necesitan ser definidas desde el editor).
+export async function upsertRecipesWithIngredients(restaurantId, rows) {
+  const mpSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
+  const mpByCode = new Map()
+  mpSnap.docs.forEach((d) => {
+    const code = d.data()?.code
+    if (code) mpByCode.set(String(code).toLowerCase().trim(), { id: d.id, ...d.data() })
+  })
+
+  const recSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  const recipesByCode = new Map()
+  recSnap.docs.forEach((d) => {
+    const code = d.data()?.code
+    if (code) recipesByCode.set(String(code).toLowerCase().trim(), { id: d.id, ...d.data() })
+  })
+
+  const norm = (v) => (v == null ? '' : String(v).trim())
+  const num  = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? 0 : n }
+  const pick = (row, ...keys) => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k]
+    }
+    return ''
+  }
+
+  // Agrupar por código de receta
+  const groups = new Map()
+  rows.forEach((r) => {
+    const code = norm(pick(r, 'CODIGO_RECETA', 'codigoReceta', 'CODIGO', 'codigo', 'code'))
+    if (!code) return
+    const k = code.toLowerCase()
+    if (!groups.has(k)) groups.set(k, [])
+    groups.get(k).push(r)
+  })
+
+  let updated = 0, notFound = 0, skipped = 0, ingredientsSkipped = 0
+
+  for (const [codeLower, groupRows] of groups) {
+    const existing = recipesByCode.get(codeLower)
+    if (!existing) { notFound++; continue }
+
+    const newIngredients = []
+    for (const row of groupRows) {
+      const ingCode = norm(pick(row, 'CODIGO_INGREDIENTE', 'codigoIngrediente'))
+      if (!ingCode) continue
+      const ingLow = ingCode.toLowerCase()
+      const mp = mpByCode.get(ingLow)
+      const sr = recipesByCode.get(ingLow)
+      const tipoHint = norm(pick(row, 'TIPO', 'tipo', 'type')).toLowerCase()
+      const isSub = (sr && (sr.isSubRecipe || sr.type === 'subrecipe') && (!mp || tipoHint === 'subreceta' || tipoHint === 'sub' || tipoHint === 'subrecipe'))
+      const source = isSub ? sr : mp || (sr && (sr.isSubRecipe || sr.type === 'subrecipe') ? sr : null)
+      if (!source) { ingredientsSkipped++; continue }
+
+      const qty = num(pick(row, 'CANTIDAD', 'cantidad', 'quantity'))
+      const unit = norm(pick(row, 'UNIDAD', 'unidad', 'unit')) || (isSub ? source.yieldUnit : (source.useUnit || source.unit)) || ''
+      const waste = num(pick(row, 'DESPERDICIO_%', 'DESPERDICIO_PCT', 'DESPERDICIO', 'desperdicio', 'wasteMargin'))
+
+      let pricePerUnit
+      if (isSub) {
+        const stored = parseFloat(source.costPerYieldUnit)
+        const yieldAmt = parseFloat(source.yieldAmount) || 0
+        const total = parseFloat(source.totalCost) || 0
+        pricePerUnit = !isNaN(stored) && stored > 0
+          ? stored
+          : (yieldAmt > 0 ? total / yieldAmt : 0)
+      } else {
+        pricePerUnit = parseFloat(source.pricePerUnit) || 0
+      }
+
+      const base = qty * pricePerUnit
+      const wasteCost = base * (waste / 100)
+      newIngredients.push({
+        ingredientId: source.id,
+        description: source.name || source.description || '',
+        ingredientName: source.name || source.description || '',
+        reference: source.reference || source.code || '',
+        quantity: qty,
+        unit,
+        wasteMargin: waste,
+        purchaseUnit: isSub ? '' : (source.purchaseUnit || ''),
+        pricePerUnit,
+        type: isSub ? 'subrecipe' : 'ingredient',
+        baseCost: isNaN(base) ? 0 : base,
+        wasteCost: isNaN(wasteCost) ? 0 : wasteCost,
+        totalCost: isNaN(base + wasteCost) ? 0 : base + wasteCost,
+      })
+    }
+
+    const first = groupRows[0]
+    const updates = {
+      ingredients: newIngredients,
+      totalCost: newIngredients.reduce((s, i) => s + (i.totalCost || 0), 0),
+      updatedAt: serverTimestamp(),
+    }
+    const nameVal = norm(pick(first, 'NOMBRE_RECETA', 'nombreReceta', 'NOMBRE', 'nombre', 'name'))
+    if (nameVal) updates.name = nameVal.toUpperCase()
+    if (pick(first, 'RENDIMIENTO', 'rendimiento', 'yieldAmount') !== '') {
+      updates.yieldAmount = num(pick(first, 'RENDIMIENTO', 'rendimiento', 'yieldAmount'))
+    }
+    const yu = norm(pick(first, 'UNIDAD_RENDIMIENTO', 'unidadRendimiento', 'yieldUnit'))
+    if (yu) updates.yieldUnit = yu
+    if (pick(first, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice') !== '') {
+      updates.sellingPrice = num(pick(first, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice'))
+    }
+    if (pick(first, 'PREPARACION', 'preparacion', 'preparation') !== '') {
+      updates.preparation = String(pick(first, 'PREPARACION', 'preparacion', 'preparation'))
+    }
+
+    if (existing.isSubRecipe || existing.type === 'subrecipe') {
+      const yieldAmt = parseFloat(updates.yieldAmount ?? existing.yieldAmount) || 0
+      updates.costPerYieldUnit = yieldAmt > 0 ? updates.totalCost / yieldAmt : 0
+    }
+
+    await updateDoc(doc(db, 'restaurants', restaurantId, 'recipes', existing.id), updates)
+    updated++
+  }
+
+  return { updated, notFound, skipped, ingredientsSkipped }
+}
+
+// Upsert por CODIGO de receta — solo actualiza campos planos (no toca ingredientes).
+// No crea recetas nuevas porque requieren ingredientes desde el editor.
+export async function upsertRecipesByCode(restaurantId, rows) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+  const byCode = new Map()
+  snap.docs.forEach((d) => {
+    const code = d.data()?.code
+    if (code) byCode.set(String(code).toLowerCase().trim(), { id: d.id, data: d.data() })
+  })
+
+  const norm = (v) => (v == null ? '' : String(v).trim())
+  const num  = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? 0 : n }
+  const bool = (v) => v === true || /^(true|si|sí|1|x|y|yes)$/i.test(String(v ?? '').trim())
+  const pick = (row, ...keys) => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k]
+    }
+    return ''
+  }
+  const has = (row, ...keys) => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return true
+    }
+    return false
+  }
+
+  let updated = 0, skipped = 0, notFound = 0
+  for (const row of rows) {
+    const code = norm(pick(row, 'CODIGO', 'codigo', 'code'))
+    if (!code) { skipped++; continue }
+    const existing = byCode.get(code.toLowerCase())
+    if (!existing) { notFound++; continue }
+
+    const updates = {}
+    if (has(row, 'NOMBRE', 'nombre', 'name')) {
+      updates.name = norm(pick(row, 'NOMBRE', 'nombre', 'name')).toUpperCase()
+    }
+    if (has(row, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice')) {
+      updates.sellingPrice = num(pick(row, 'PRECIO_VENTA', 'precioVenta', 'sellingPrice'))
+    }
+    if (has(row, 'RENDIMIENTO', 'rendimiento', 'yieldAmount')) {
+      updates.yieldAmount = num(pick(row, 'RENDIMIENTO', 'rendimiento', 'yieldAmount'))
+    }
+    if (has(row, 'UNIDAD_RENDIMIENTO', 'unidadRendimiento', 'yieldUnit')) {
+      updates.yieldUnit = norm(pick(row, 'UNIDAD_RENDIMIENTO', 'unidadRendimiento', 'yieldUnit'))
+    }
+    if (has(row, 'PREPARACION', 'preparacion', 'preparation')) {
+      updates.preparation = String(pick(row, 'PREPARACION', 'preparacion', 'preparation'))
+    }
+    if (has(row, 'COSTO_MANUAL', 'costoManual', 'manualCost')) {
+      updates.manualCost = num(pick(row, 'COSTO_MANUAL', 'costoManual', 'manualCost'))
+    }
+    if (has(row, 'USA_COSTO_MANUAL', 'usaCostoManual', 'useManualCost')) {
+      updates.useManualCost = bool(pick(row, 'USA_COSTO_MANUAL', 'usaCostoManual', 'useManualCost'))
+    }
+    if (has(row, 'NOTAS', 'notas', 'notes')) {
+      updates.notes = String(pick(row, 'NOTAS', 'notas', 'notes'))
+    }
+
+    if (Object.keys(updates).length === 0) { skipped++; continue }
+    updates.updatedAt = serverTimestamp()
+    await updateDoc(doc(db, 'restaurants', restaurantId, 'recipes', existing.id), updates)
+    updated++
+  }
+  return { updated, notFound, skipped }
+}
+
 // ── Notes (multi-author) ──────────────────────────────────────────────────────
 // Nota: serverTimestamp() no funciona dentro de arrayUnion(); usamos ISO string.
 export async function addRecipeNote(restaurantId, recipeId, { text, authorId, authorName, authorRole }) {
@@ -253,6 +443,73 @@ export async function updateIngredient(restaurantId, ingredientId, data) {
 
 export async function deleteIngredient(restaurantId, ingredientId) {
   return deleteDoc(doc(db, 'restaurants', restaurantId, 'materias_primas', ingredientId))
+}
+
+// Upsert por CODIGO: actualiza si el code ya existe, crea si es nuevo.
+// Mapea encabezados del export (CODIGO, NOMBRE, ...) y nombres legacy/lowercase.
+export async function upsertIngredientsByCode(restaurantId, rows) {
+  const snap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
+  const byCode = new Map()
+  snap.docs.forEach((d) => {
+    const code = d.data()?.code
+    if (code) byCode.set(String(code).toLowerCase().trim(), d.id)
+  })
+
+  const norm = (v) => (v == null ? '' : String(v).trim())
+  const num  = (v) => {
+    const n = parseFloat(String(v ?? '').replace(',', '.'))
+    return isNaN(n) ? 0 : n
+  }
+  const pick = (row, ...keys) => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k]
+    }
+    return ''
+  }
+
+  let created = 0, updated = 0, skipped = 0
+  for (const row of rows) {
+    const code = norm(pick(row, 'CODIGO', 'codigo', 'code', 'Código'))
+    if (!code) { skipped++; continue }
+
+    const name = norm(pick(row, 'NOMBRE', 'nombre', 'name', 'Nombre', 'description', 'descripcion', 'DESCRIPCION'))
+    const useUnit = norm(pick(row, 'UNIDAD', 'unidad', 'useUnit', 'unit', 'Unidad'))
+    const purchaseUnit = norm(pick(row, 'UNIDAD_COMPRA', 'unidadCompra', 'purchaseUnit', 'Unidad de compra'))
+    const qtyPres = num(pick(row, 'CANT_PRESENTACION', 'cantPresentacion', 'quantityPerPresentation', 'Cant. presentación'))
+    const value = num(pick(row, 'VALOR', 'valor', 'value', 'Valor'))
+    let pricePerUnit = num(pick(row, 'PRECIO_POR_UNIDAD', 'precioPorUnidad', 'pricePerUnit', 'Precio por unidad'))
+    if (!pricePerUnit && qtyPres > 0 && value > 0) pricePerUnit = value / qtyPres
+
+    const data = {
+      code,
+      item: norm(pick(row, 'ITEM', 'item', 'Item')) || null,
+      reference: norm(pick(row, 'REFERENCIA', 'referencia', 'reference', 'Referencia')) || null,
+      name,
+      description: name,
+      useUnit: useUnit || null,
+      unit: useUnit || null,
+      purchaseUnit: purchaseUnit || null,
+      quantityPerPresentation: qtyPres,
+      value,
+      pricePerUnit,
+      category: norm(pick(row, 'CATEGORIA', 'categoria', 'category', 'Categoría')) || null,
+      supplierCode: norm(pick(row, 'CODIGO_PROVEEDOR', 'codigoProveedor', 'supplierCode', 'Código proveedor')) || null,
+      supplier: norm(pick(row, 'PROVEEDOR', 'proveedor', 'supplier', 'Proveedor')) || null,
+      updatedAt: serverTimestamp(),
+    }
+
+    const existingId = byCode.get(code.toLowerCase())
+    if (existingId) {
+      await updateDoc(doc(db, 'restaurants', restaurantId, 'materias_primas', existingId), data)
+      updated++
+    } else {
+      await addDoc(collection(db, 'restaurants', restaurantId, 'materias_primas'), {
+        ...data, active: true, createdAt: serverTimestamp(),
+      })
+      created++
+    }
+  }
+  return { created, updated, skipped }
 }
 
 export async function importIngredients(restaurantId, rows, existingCodes = []) {
