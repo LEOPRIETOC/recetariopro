@@ -33,6 +33,7 @@ import { cn, formatNumber } from '../lib/utils'
 import { uploadRecipeFile } from '../services/storage'
 import { compressImage } from '../utils/imageUtils'
 import { getConvertedPrice } from '../utils/costUtils'
+import { assertVersionFresh } from '../utils/versionCheck'
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 function formatDate(ts) {
@@ -1292,6 +1293,11 @@ export default function RecipeDetailPage() {
     if (!currentRestaurant?.id) { error('No hay restaurante configurado'); return }
     setSaving(true)
     try {
+      // Bloquea el guardado si la version cargada esta obsoleta — fuerza recarga.
+      try { await assertVersionFresh() } catch (err) {
+        error('La aplicación tiene una versión obsoleta. Recargando…')
+        return
+      }
       // Build ingredient lookup maps for cost resolution
       const ingById = {}
       const ingByRef = {}
