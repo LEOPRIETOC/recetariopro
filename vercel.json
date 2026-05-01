@@ -1,5 +1,25 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "redirects": [
+    {
+      "source": "/login",
+      "has": [{ "type": "host", "value": "inom.pro" }],
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "has": [{ "type": "host", "value": "app.inom.pro" }],
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "has": [{ "type": "host", "value": "www.inom.pro" }],
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/((?!assets/).*)",
