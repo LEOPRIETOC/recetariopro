@@ -152,18 +152,22 @@ export async function signInWithSocialProvider(provider) {
   // Create user doc only if new (no existing Firestore record)
   const userRef = doc(db, 'users', user.uid)
   const snap = await getDoc(userRef)
+  let isNew = false
   if (!snap.exists()) {
     await setDoc(userRef, {
       uid: user.uid,
       email: user.email,
       name: user.displayName || '',
       role: 'usuario',
+      restaurantIds: [],
+      active: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
+    isNew = true
   }
 
-  return user
+  return { user, isNew }
 }
 
 export async function logoutUser() {

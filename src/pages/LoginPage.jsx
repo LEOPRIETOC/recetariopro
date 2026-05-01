@@ -94,7 +94,10 @@ export default function LoginPage() {
     setSocialLoading(name)
     setAuthError('')
     try {
-      await signInWithSocialProvider(provider)
+      const { isNew } = await signInWithSocialProvider(provider)
+      if (isNew) {
+        success('Cuenta creada. Pide a tu administrador que te asigne a un restaurante para poder continuar.')
+      }
       // onAuthChange in useAuth.js handles navigation to /restaurants
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
