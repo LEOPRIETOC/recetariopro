@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useTableSort } from '../../hooks/useTableSort.jsx'
 import { cn, formatNumber, toTitleCase } from '../../lib/utils'
 import { calcRecipeTotalCost } from '../../utils/costUtils'
+import { PLANS, PLAN_IDS, FEATURE_LABELS, getPlan, isLicenseActive } from '../../lib/plans'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
   importIngredients, upsertIngredientsByCode, upsertRecipesByCode, upsertRecipesWithIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
@@ -66,7 +67,7 @@ const TABS = [
   { id: 'versions',         icon: History,      label: 'Historial versiones' },
   { id: 'users',            icon: Users,        label: 'Usuarios' },
   { id: 'appearance',       icon: Settings,     label: 'Personalización', masterOnly: true },
-  { id: 'subscription',     icon: CreditCard,   label: 'Suscripción' },
+  { id: 'subscription',     icon: CreditCard,   label: 'Licencias', masterOnly: true },
   { id: 'restaurants_link', icon: Store,        label: 'Restaurantes', masterOnly: true },
 ]
 
@@ -4073,6 +4074,216 @@ function Cell({ label, value, t3, ink, mono, accent }) {
   )
 }
 
+// ── Licenses Tab (master only) — gestiona el plan de cada restaurante ─────────
+function LicensesTab({ isDark }) {
+  const { success, error } = useToast()
+  const { currentRestaurant, setCurrentRestaurant } = useAppStore()
+  const [restaurants, setRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    getDocs(collection(db, 'restaurants')).then((snap) => {
+      const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
+      setRestaurants(arr)
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const startEdit = (r) => {
+    const sub = r.subscription || {}
+    setEditing({
+      id: r.id,
+      name: r.name,
+      plan: sub.plan && PLAN_IDS.includes(sub.plan) ? sub.plan : 'emprendedor',
+      active: sub.active !== false,
+      startDate: typeof sub.startDate === 'string' ? sub.startDate.slice(0, 10) : '',
+      endDate: typeof sub.endDate === 'string' ? sub.endDate.slice(0, 10) : '',
+    })
+  }
+
+  const handleSave = async () => {
+    if (!editing) return
+    if (!PLAN_IDS.includes(editing.plan)) { error('Plan inválido'); return }
+    setSaving(true)
+    try {
+      const newSub = {
+        plan: editing.plan,
+        active: !!editing.active,
+        startDate: editing.startDate || null,
+        endDate: editing.endDate || null,
+        updatedAt: new Date().toISOString(),
+      }
+      await updateDoc(doc(db, 'restaurants', editing.id), {
+        subscription: newSub,
+        updatedAt: serverTimestamp(),
+      })
+      setRestaurants((arr) => arr.map((r) => r.id === editing.id ? { ...r, subscription: newSub } : r))
+      if (currentRestaurant?.id === editing.id) {
+        setCurrentRestaurant({ ...currentRestaurant, subscription: newSub })
+      }
+      success('Licencia actualizada')
+      setEditing(null)
+    } catch (err) {
+      error('Error al guardar: ' + (err?.message || 'desconocido'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const ink = isDark ? '#f0ece4' : '#111827'
+  const t2 = isDark ? '#9ca3af' : '#6b7280'
+  const t3 = isDark ? '#6b7280' : '#9ca3af'
+  const bg2 = isDark ? '#111712' : '#fff'
+  const bg3 = isDark ? '#0d110e' : '#f9fafb'
+  const b1 = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'
+
+  const fmtDate = (s) => {
+    if (!s) return '—'
+    try { return new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) }
+    catch { return s }
+  }
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>Licencias</h2>
+        <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+          Plan, estado y vigencia de cada restaurante. Solo master.
+        </p>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: t3 }}>Cargando…</div>
+      ) : (
+        <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead>
+              <tr style={{ background: bg3 }}>
+                {['Restaurante', 'Plan', 'Estado', 'Inicio', 'Fin', ''].map((h, i) => (
+                  <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: t3, fontWeight: 700, borderBottom: `1px solid ${b1}` }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {restaurants.map((r) => {
+                const sub = r.subscription || {}
+                const planObj = getPlan(sub)
+                const active = isLicenseActive(sub)
+                return (
+                  <tr key={r.id} style={{ borderBottom: `1px solid ${b1}` }}>
+                    <td style={{ padding: '10px 14px', color: ink, fontWeight: 500 }}>{r.name || '—'}</td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                        background: planObj.color + '22', color: planObj.color,
+                        textTransform: 'uppercase', letterSpacing: '0.05em',
+                      }}>{planObj.label}</span>
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                        background: active ? 'rgba(22,163,74,0.12)' : 'rgba(192,72,72,0.12)',
+                        color: active ? '#16a34a' : '#c04848',
+                      }}>{active ? 'Activa' : 'Inactiva'}</span>
+                    </td>
+                    <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.startDate)}</td>
+                    <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.endDate)}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                      <button onClick={() => startEdit(r)}
+                        style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editing && (
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) setEditing(null) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 14, width: 'min(540px, 95vw)', maxHeight: '90vh', overflow: 'auto', padding: 24 }}>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', color: ink, margin: '0 0 14px' }}>
+              Licencia — {editing.name}
+            </h3>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6, display: 'block' }}>Plan</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {PLAN_IDS.map((id) => {
+                  const p = PLANS[id]
+                  const sel = editing.plan === id
+                  return (
+                    <button key={id} type="button"
+                      onClick={() => setEditing((e) => ({ ...e, plan: id }))}
+                      style={{
+                        background: sel ? p.color : 'transparent',
+                        color: sel ? '#fff' : p.color,
+                        border: `1px solid ${p.color}`, borderRadius: 8, padding: '7px 14px',
+                        fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
+                      }}>
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: 10, fontSize: '0.78rem', color: t2 }}>
+                Hasta {PLANS[editing.plan].maxRecipes} recetas y/o sub-recetas · {PLANS[editing.plan].maxUsers} usuarios
+              </div>
+              <ul style={{ marginTop: 6, paddingLeft: 16, fontSize: '0.78rem', color: t2 }}>
+                {Object.entries(PLANS[editing.plan].features).filter(([, v]) => v).map(([k]) => (
+                  <li key={k}>{FEATURE_LABELS[k]}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6, display: 'block' }}>Inicio</label>
+                <input type="date" value={editing.startDate || ''}
+                  onChange={(e) => setEditing((s) => ({ ...s, startDate: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: `1px solid ${b1}`, borderRadius: 8, background: bg2, color: ink, fontFamily: 'inherit', fontSize: '0.85rem' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6, display: 'block' }}>Fin</label>
+                <input type="date" value={editing.endDate || ''}
+                  onChange={(e) => setEditing((s) => ({ ...s, endDate: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: `1px solid ${b1}`, borderRadius: 8, background: bg2, color: ink, fontFamily: 'inherit', fontSize: '0.85rem' }} />
+              </div>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 18, fontSize: '0.88rem', color: ink }}>
+              <input type="checkbox" checked={!!editing.active}
+                onChange={(e) => setEditing((s) => ({ ...s, active: e.target.checked }))}
+                style={{ width: 16, height: 16 }} />
+              Licencia activa
+            </label>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditing(null)}
+                style={{ background: 'none', border: `1px solid ${b1}`, color: t2, borderRadius: 8, padding: '8px 16px', fontFamily: 'inherit', fontSize: '0.85rem', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RestauranteTab({ currentRestaurant, isDark }) {
   const { success, error } = useToast()
   const { setCurrentRestaurant } = useAppStore()
@@ -4263,7 +4474,7 @@ export function ConfigModal() {
     { key: 'verification',  label: 'Verificación',       visible: canEdit, icon: SlidersHorizontal },
     { key: 'users',         label: 'Usuarios',           visible: canManageUsers },
     { key: 'appearance',    label: 'Personalización',    visible: isMaster },
-    { key: 'subscription',  label: 'Suscripción',        visible: canManageUsers },
+    { key: 'subscription',  label: 'Licencias',          visible: isMaster, icon: CreditCard },
     { key: 'restaurante',   label: 'Restaurante',        visible: canEdit, icon: Store },
   ].filter(c => c.visible).sort((a, b) => a.label.localeCompare(b.label, 'es'))
 
@@ -4414,10 +4625,11 @@ export function ConfigModal() {
                 {configTab === 'verification' && <VerificationTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
                 {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
-                {configTab === 'subscription' && (
+                {configTab === 'subscription' && isMaster && <LicensesTab isDark={isDark} />}
+                {configTab === 'subscription' && !isMaster && (
                   <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
                     <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">Gestión de suscripciones — próximamente</p>
+                    <p className="text-sm">Solo el rol Master puede gestionar las licencias.</p>
                   </div>
                 )}
                 {configTab === 'restaurante' && <RestauranteTab currentRestaurant={currentRestaurant} isDark={isDark} />}
