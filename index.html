@@ -11,14 +11,49 @@
     <meta http-equiv="Expires" content="0">
     <title>RecetarioPro</title>
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          registrations.forEach(r => r.unregister())
-        })
-        caches.keys().then(keys => {
-          keys.forEach(key => caches.delete(key))
-        })
-      }
+      // ── Version gate ─────────────────────────────────────────────────────────
+      // Corre ANTES de que React monte. Compara el buildId del version.json con
+      // el guardado en localStorage. Si la version cargada es obsoleta, limpia
+      // caches + service workers y recarga con cache-bust.
+      (function () {
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (r) { r.unregister(); });
+            }).catch(function () {});
+          }
+        } catch (e) {}
+
+        if (!('fetch' in window) || !('localStorage' in window)) return;
+        var KEY = 'app_buildId';
+        var prev = null;
+        try { prev = localStorage.getItem(KEY); } catch (e) {}
+
+        fetch('/version.json?ts=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r && r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data || !data.buildId) return;
+            if (prev && prev !== data.buildId) {
+              var p = Promise.resolve();
+              try {
+                if ('caches' in window) {
+                  p = caches.keys().then(function (keys) {
+                    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                  });
+                }
+              } catch (e) {}
+              p.catch(function () {}).then(function () {
+                try { localStorage.setItem(KEY, data.buildId); } catch (e) {}
+                var u = new URL(window.location.href);
+                u.searchParams.set('v', data.buildId);
+                window.location.replace(u.toString());
+              });
+            } else {
+              try { localStorage.setItem(KEY, data.buildId); } catch (e) {}
+            }
+          })
+          .catch(function () {});
+      })();
     </script>
   </head>
   <body>
