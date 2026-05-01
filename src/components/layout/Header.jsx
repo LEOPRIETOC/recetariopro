@@ -180,7 +180,7 @@ export function Header({ title }) {
                 onClick={() => {
                   setSearchQuery('')
                   setSearchOpen(false)
-                  navigate(`/recipes/${recipe.id}`)
+                  navigate(`/recipes/${recipe.id}`, { state: { from: 'header-search' } })
                 }}
                 style={{
                   padding: '10px 14px',

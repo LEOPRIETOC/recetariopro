@@ -85,7 +85,7 @@ export function IngredientSourceModal({ open, onClose, restaurantId, ingredientR
   const goToSubrecipe = () => {
     if (source?.id) {
       onClose?.()
-      navigate(`/recipes/${source.id}`)
+      navigate(`/recipes/${source.id}`, { state: { from: 'source-modal' } })
     }
   }
 

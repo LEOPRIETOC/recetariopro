@@ -974,10 +974,25 @@ export default function RecipeDetailPage() {
     }
   }, [isNew, currentRestaurant?.id, typeFromUrl])
 
+  // Bloqueo de deep-links externos: si se monta sin state.from, redirige al selector.
+  // Las navegaciones internas (cards, gestión, summary, modal de fuente) deben pasar
+  // state: { from: 'app' } u otro valor truthy.
+  useEffect(() => {
+    if (isNew) return
+    if (!location?.state?.from) {
+      navigate('/restaurants', { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (isNew || !currentRestaurant?.id || !id) return
+    if (!location?.state?.from) return
     getRecipe(currentRestaurant.id, id).then((r) => {
-      if (!r) return
+      if (!r) {
+        navigate('/restaurants', { replace: true })
+        return
+      }
       setRecipe(r)
       setPhotoURL(r.photoURL || '')
       setPhotoPreview(r.photoURL || '')

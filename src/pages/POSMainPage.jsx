@@ -116,7 +116,7 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
       )}
 
       <div
-        onClick={() => navigate(`/recipes/${recipe.id}`)}
+        onClick={() => navigate(`/recipes/${recipe.id}`, { state: { from: 'list' } })}
         className={cn(
           'rounded-2xl overflow-hidden cursor-pointer transition-all duration-200',
           'hover:shadow-lg hover:-translate-y-0.5',
@@ -504,7 +504,7 @@ export default function POSMainPage() {
                     style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
                     onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
                     onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                    onClick={() => navigate(`/recipes/${r.id}`)}
+                    onClick={() => navigate(`/recipes/${r.id}`, { state: { from: 'list' } })}
                   >
                     {activeCols.filter(c => c.visible).map(col => renderCell(col.id, r))}
                   </tr>
