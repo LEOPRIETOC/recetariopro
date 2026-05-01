@@ -269,23 +269,45 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const wasteCost = baseCost * (wasteMargin / 100)
   const rowCost = baseCost + wasteCost
 
-  const qLow = query.toLowerCase()
-  const ingMatches = query.length > 1
-    ? (allIngredients || []).filter((i) =>
-        (i.description || '').toLowerCase().includes(qLow) ||
-        (i.name || '').toLowerCase().includes(qLow) ||
-        (i.code || '').toLowerCase().includes(qLow) ||
-        (i.item || '').toLowerCase().includes(qLow)
-      ).slice(0, 5)
+  const qLow = query.toLowerCase().trim()
+  // Score: 0 = inicio exacto del nombre, 1 = inicio de cualquier campo, 2 = contiene
+  const scoreIng = (i) => {
+    const name = (i.name || '').toLowerCase()
+    const desc = (i.description || '').toLowerCase()
+    const code = (i.code || '').toLowerCase()
+    const item = (i.item || '').toLowerCase()
+    if (name === qLow || desc === qLow) return 0
+    if (name.startsWith(qLow) || desc.startsWith(qLow)) return 1
+    if (code.startsWith(qLow) || item.startsWith(qLow)) return 2
+    if (name.includes(qLow) || desc.includes(qLow) || code.includes(qLow) || item.includes(qLow)) return 3
+    return 99
+  }
+  const ingMatches = qLow.length > 1
+    ? (allIngredients || [])
+        .map((i) => ({ i, s: scoreIng(i) }))
+        .filter(({ s }) => s < 99)
+        .sort((a, b) => a.s - b.s || (a.i.name || '').localeCompare(b.i.name || '', 'es'))
+        .slice(0, 12)
+        .map(({ i }) => i)
     : []
 
-  const subMatches = query.length > 1
+  const scoreSub = (s) => {
+    const name = (s.name || '').toLowerCase()
+    const code = (s.code || '').toLowerCase()
+    if (name === qLow) return 0
+    if (name.startsWith(qLow)) return 1
+    if (code.startsWith(qLow)) return 2
+    if (name.includes(qLow) || code.includes(qLow)) return 3
+    return 99
+  }
+  const subMatches = qLow.length > 1
     ? (allSubrecipes || [])
         .filter((s) => isAdmin || !s.pin)
-        .filter((s) =>
-          (s.name || '').toLowerCase().includes(qLow) ||
-          (s.code || '').toLowerCase().includes(qLow)
-        ).slice(0, 3)
+        .map((s) => ({ s, sc: scoreSub(s) }))
+        .filter(({ sc }) => sc < 99)
+        .sort((a, b) => a.sc - b.sc || (a.s.name || '').localeCompare(b.s.name || '', 'es'))
+        .slice(0, 8)
+        .map(({ s }) => s)
     : []
 
   const noMatch = query.length > 1 && ingMatches.length === 0 && subMatches.length === 0
