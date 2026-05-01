@@ -158,44 +158,6 @@ export default function LoginPage() {
             <p className={`text-sm mt-1 ${textSecondary}`}>Ingresa para acceder a tu recetario</p>
           </div>
 
-          {/* Social buttons */}
-          <div className="flex flex-col gap-3 mb-5">
-            <button
-              type="button"
-              onClick={() => handleSocial(googleProvider, 'google')}
-              disabled={!!socialLoading || loading}
-              className={`w-full flex items-center justify-center gap-3 h-10 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${socialBtn}`}
-            >
-              {socialLoading === 'google' ? (
-                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <GoogleLogo />
-              )}
-              Continuar con Google
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSocial(appleProvider, 'apple')}
-              disabled={!!socialLoading || loading}
-              className={`w-full flex items-center justify-center gap-3 h-10 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${socialBtn}`}
-            >
-              {socialLoading === 'apple' ? (
-                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <AppleLogo isDark={isDark} />
-              )}
-              Continuar con Apple
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className={`relative flex items-center mb-5`}>
-            <div className={`flex-1 border-t ${dividerColor}`} />
-            <span className={`px-3 text-xs ${dividerText}`}>o continúa con correo</span>
-            <div className={`flex-1 border-t ${dividerColor}`} />
-          </div>
-
           {/* Email / password form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
