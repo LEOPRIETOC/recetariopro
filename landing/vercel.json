@@ -1,5 +1,45 @@
 {
+  "redirects": [
+    {
+      "source": "/login",
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    },
+    {
+      "source": "/register",
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "https://recetariopro-app.vercel.app/forgot-password",
+      "permanent": false
+    },
+    {
+      "source": "/change-password",
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    },
+    {
+      "source": "/restaurants",
+      "destination": "https://recetariopro-app.vercel.app/restaurants",
+      "permanent": false
+    },
+    {
+      "source": "/recipes/:path*",
+      "destination": "https://recetariopro-app.vercel.app/login",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+      ]
+    }
   ]
 }
