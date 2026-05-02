@@ -290,6 +290,17 @@ export default function POSMainPage() {
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('pos-main-view-mode') || 'grid')
+  // En cel/tablet (<lg = 1024px) forzamos grid — la vista de lista se desactiva
+  // para evitar perdida de datos por filas comprimidas.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const onChange = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const effectiveViewMode = isMobile ? 'grid' : viewMode
   const [activeId, setActiveId] = useState(null)
 
   const [menuColumns, setMenuColumns] = useState(() => loadCols('menu-columns-order', MENU_DEFAULT_COLS))
@@ -389,7 +400,7 @@ export default function POSMainPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => { setViewMode('grid'); localStorage.setItem('pos-main-view-mode', 'grid') }} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
               <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
@@ -441,7 +452,7 @@ export default function POSMainPage() {
       )}
 
       {/* Grid view */}
-      {filtered.length > 0 && viewMode === 'grid' && (
+      {filtered.length > 0 && effectiveViewMode === 'grid' && (
         <DndContext sensors={sensors} collisionDetection={closestCenter}
           onDragStart={({ active }) => setActiveId(active.id)}
           onDragEnd={handleDragEnd}>
@@ -465,7 +476,7 @@ export default function POSMainPage() {
       )}
 
       {/* List view — columnas reordenables */}
-      {filtered.length > 0 && viewMode === 'list' && (
+      {filtered.length > 0 && effectiveViewMode === 'list' && (
         <div style={{ borderRadius: 12, border: '1px solid var(--b1)', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto', maxHeight: '70vh', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
