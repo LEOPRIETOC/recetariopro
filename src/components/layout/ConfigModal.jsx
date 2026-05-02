@@ -2285,17 +2285,18 @@ function VersionsTab({ restaurantId, isDark }) {
         </div>
       </div>
 
-      {/* Tabs — scroll horizontal en mobile si no caben */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${borderCol}`, paddingBottom: 0, overflowX: 'auto', whiteSpace: 'nowrap' }}>
+      {/* Tabs — wrap a multiple lineas en mobile */}
+      <div className="flex flex-wrap gap-1" style={{ borderBottom: `1px solid ${borderCol}` }}>
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             style={{
-              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: '0.82rem', fontWeight: 600, padding: '8px 14px', borderRadius: '8px 8px 0 0',
+              background: activeTab === tab.id ? (isDark ? '#1f2937' : '#f9fafb') : 'transparent',
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: '0.78rem', fontWeight: 600, padding: '7px 12px', borderRadius: '8px 8px 0 0',
               borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
               color: activeTab === tab.id ? 'var(--accent)' : t2,
               transition: 'all 0.15s',
-              flexShrink: 0,
+              whiteSpace: 'nowrap',
             }}
           >{tab.label}</button>
         ))}
@@ -3313,7 +3314,7 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
             {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye ocultas)
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto lg:flex-shrink-0">
           {/* Toggle Grid / Lista */}
           <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Tarjetas">
@@ -3324,7 +3325,7 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
             </button>
           </div>
           {/* Filtro por tipo */}
-          <div style={{ display: 'flex', gap: 2, background: bg3, borderRadius: 8, padding: 3 }}>
+          <div className="flex flex-wrap gap-0.5 rounded-lg p-0.5" style={{ background: bg3 }}>
             {[
               { id: 'all',       label: 'Todos' },
               { id: 'recipe',    label: 'Recetas' },
@@ -3340,13 +3341,14 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
                   fontSize: '0.78rem', fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'inherit',
                   transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
                 }}>
                 {opt.label}
               </button>
             ))}
           </div>
           {/* Buscador */}
-          <div style={{ position: 'relative', width: 240 }}>
+          <div className="relative flex-1 lg:flex-none w-full lg:w-60 min-w-[180px]">
             <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
             <input
               type="text"
