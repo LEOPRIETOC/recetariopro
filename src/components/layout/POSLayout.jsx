@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
-import { Search, Settings, ChefHat, GripVertical, LogOut } from 'lucide-react'
+import { Search, Settings, ChefHat, GripVertical, LogOut, Menu, X as XIcon } from 'lucide-react'
 import { logoutUser } from '../../services/auth'
 import { signOut } from 'firebase/auth'
 import { auth, db } from '../../lib/firebase'
@@ -89,6 +89,10 @@ export function POSLayout() {
   const [localCategories, setLocalCategories] = useState([])
   const [showSalirModal, setShowSalirModal] = useState(false)
   const [counts, setCounts] = useState({ recipes: 0, subrecipes: 0 })
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Cierra el sidebar al cambiar de ruta (en mobile)
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
 
   const doLogout = async () => {
     try {
@@ -185,10 +189,23 @@ export function POSLayout() {
     >
 
       {/* ── Top Header ─────────────────────────────────────────────────────── */}
-      <header className={cn('flex items-center h-14 px-4 gap-4 border-b flex-shrink-0', headerBg)}
+      <header className={cn('flex items-center h-14 px-4 gap-3 border-b flex-shrink-0', headerBg)}
         style={{ display: recipeOpen ? 'none' : undefined }}>
+        {/* Hamburger — solo mobile/tablet */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((v) => !v)}
+          aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+          className={cn(
+            'lg:hidden flex-shrink-0 h-9 w-9 rounded-lg flex items-center justify-center transition-colors',
+            isDark ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
+          )}
+        >
+          {sidebarOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+
         {/* Logo */}
-        <div className="select-none flex-shrink-0" style={{ width: 200, paddingLeft: 16 }}>
+        <div className="select-none flex-shrink-0 hidden sm:block" style={{ width: 200, paddingLeft: 16 }}>
           <span className={cn('font-display night-logo-text', isDark ? 'text-white' : 'text-gray-900')}
             style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '0.04em' }}>
             RecetarioPro
@@ -278,14 +295,29 @@ export function POSLayout() {
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+
+        {/* Backdrop — solo mobile/tablet cuando sidebar abierto */}
+        {sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            style={{ top: 56 }}
+          />
+        )}
 
         {/* ── Left: Categories Panel ────────────────────────────────────────── */}
         <aside className={cn(
-          'w-[200px] flex-shrink-0 flex flex-col border-r overflow-y-auto',
-          sideBg
+          'w-[230px] flex-shrink-0 flex flex-col border-r overflow-y-auto transition-transform duration-200 ease-in-out',
+          sideBg,
+          // En mobile/tablet: overlay slide-in. En desktop: inline normal.
+          'fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
-          style={{ display: recipeOpen ? 'none' : undefined }}>
+          style={{
+            display: recipeOpen ? 'none' : undefined,
+            top: 56, // alineado debajo del header en mobile
+          }}>
           {/* Restaurant name bar */}
           {currentRestaurant?.name && (
             <div style={{
@@ -315,7 +347,7 @@ export function POSLayout() {
                     cat={cat}
                     isActive={selectedCategory === cat.id}
                     isDark={isDark}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => { setSelectedCategory(cat.id); setSidebarOpen(false) }}
                   />
                 ))}
               </SortableContext>
@@ -326,7 +358,7 @@ export function POSLayout() {
           <div className="mt-auto p-3 pt-1">
             <div className={cn('border-t pt-2 mb-1', isDark ? 'border-gray-800' : 'border-gray-200')} />
             <button
-              onClick={() => setSelectedCategory(SUBRECIPES_CATEGORY_ID)}
+              onClick={() => { setSelectedCategory(SUBRECIPES_CATEGORY_ID); setSidebarOpen(false) }}
               className={cn(
                 'w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left',
                 selectedCategory === SUBRECIPES_CATEGORY_ID
