@@ -3,7 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>RecetarioPro — El recetario digital para tu restaurante</title>
+<script>
+  // Limpia residuos de versiones antiguas (PWA, service workers, caches del browser).
+  // Una sola vez por sesion, recarga si encontro algo que limpiar.
+  (function () {
+    var FLAG = 'rp_cleaned_v2';
+    try { if (sessionStorage.getItem(FLAG)) return; } catch (e) {}
+    var didClean = false;
+    var p = [];
+    try {
+      if ('serviceWorker' in navigator) {
+        p.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+          if (regs && regs.length > 0) {
+            didClean = true;
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }
+        }).catch(function () {}));
+      }
+    } catch (e) {}
+    try {
+      if ('caches' in window) {
+        p.push(caches.keys().then(function (keys) {
+          if (keys && keys.length > 0) {
+            didClean = true;
+            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }
+        }).catch(function () {}));
+      }
+    } catch (e) {}
+    Promise.all(p).then(function () {
+      try { sessionStorage.setItem(FLAG, '1'); } catch (e) {}
+      if (didClean) {
+        var u = new URL(window.location.href);
+        u.searchParams.set('cleaned', Date.now());
+        window.location.replace(u.toString());
+      }
+    }).catch(function () {});
+  })();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
