@@ -1722,13 +1722,12 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                       )}
                     </th>
                   ))}
-                  <th style={{ ...thBase, cursor: 'default' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.filter(c => c.visible).length + 1}
+                    <td colSpan={columns.filter(c => c.visible).length}
                       style={{ textAlign: 'center', padding: '32px 0', color: 'var(--t3)', fontSize: '0.85rem' }}>
                       Sin resultados
                     </td>
@@ -1736,21 +1735,13 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                 ) : sorted.map((r) => (
                   <tr
                     key={r.id}
+                    onClick={() => handleEdit(r)}
+                    title="Click para editar"
                     style={{ borderBottom: '1px solid var(--b1)', cursor: 'pointer' }}
                     onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
                     onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                   >
                     {columns.filter(c => c.visible).map(col => renderCell(col.id, r))}
-                    <td style={{ padding: '8px 12px' }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => handleEdit(r)}
-                          style={{ border: '1px solid var(--accent)', borderRadius: 6, background: 'transparent', color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
-                          Editar
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
