@@ -128,12 +128,16 @@ export function POSLayout() {
     return subscribeCategories(currentRestaurant.id, setLocalCategories)
   }, [currentRestaurant?.id])
 
-  // Auto-select first category when categories load
+  // Auto-select first category cuando carga, o cuando la actual no existe en este restaurante.
+  // Evita el caso de selectedCategory persistido que apunta a una categoria de otro restaurante.
   useEffect(() => {
-    if (localCategories.length > 0 && selectedCategory === null) {
+    if (localCategories.length === 0) return
+    const isSubrec = selectedCategory === SUBRECIPES_CATEGORY_ID
+    const exists = isSubrec || localCategories.some((c) => c.id === selectedCategory)
+    if (!exists) {
       setSelectedCategory(localCategories[0].id)
     }
-  }, [localCategories])
+  }, [currentRestaurant?.id, localCategories]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync --accent CSS variable from store
   useEffect(() => {
