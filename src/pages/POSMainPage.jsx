@@ -149,22 +149,22 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
               const yieldUnit = recipe.yieldUnit || ''
               const costPerUnit = yield_ > 0 ? cost / yield_ : 0
               return (
-                <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--b1)',display:'flex',flexDirection:'column',gap:4}}>
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
-                    <span style={{color:'var(--t3)'}}>Costo total</span>
-                    <span style={{fontWeight:600,color:'var(--t2)'}}>
+                <div className="mt-2 pt-2 border-t flex flex-col gap-1" style={{ borderColor: 'var(--b1)' }}>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>Costo total</span>
+                    <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
                       {cost > 0 ? `$${Math.ceil(cost).toLocaleString('es-CO')}` : '—'}
                     </span>
                   </div>
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
-                    <span style={{color:'var(--t3)'}}>Rendimiento</span>
-                    <span style={{fontWeight:600,color:'var(--t2)'}}>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>Rendimiento</span>
+                    <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
                       {yield_ > 0 ? `${yield_} ${yieldUnit}` : '—'}
                     </span>
                   </div>
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
-                    <span style={{color:'var(--t3)'}}>Costo/{yieldUnit || 'u'}</span>
-                    <span style={{fontWeight:600,color:'var(--accent)'}}>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>Costo/{yieldUnit || 'u'}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
                       {costPerUnit > 0 ? `$${costPerUnit.toLocaleString('es-CO',{minimumFractionDigits:4,maximumFractionDigits:4})}` : '—'}
                     </span>
                   </div>
