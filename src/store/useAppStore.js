@@ -4,8 +4,6 @@ import { persist } from 'zustand/middleware'
 export const DEFAULT_ACCENT_DAY   = '#0833A2'
 export const DEFAULT_ACCENT_NIGHT = '#EA580C'
 
-const defaultForTheme = (theme) => theme === 'night' ? DEFAULT_ACCENT_NIGHT : DEFAULT_ACCENT_DAY
-
 export const useAppStore = create(
   persist(
     (set, get) => ({
@@ -19,13 +17,9 @@ export const useAppStore = create(
       currentRestaurant: null,
       setCurrentRestaurant: (restaurant) => set({ currentRestaurant: restaurant }),
 
-      // Theme: 'day' | 'night'
       theme: 'day',
       setTheme: (theme) => {
-        const state = get()
-        const color = theme === 'night'
-          ? (state.accentNight || DEFAULT_ACCENT_NIGHT)
-          : (state.accentDay   || DEFAULT_ACCENT_DAY)
+        const color = theme === 'night' ? DEFAULT_ACCENT_NIGHT : DEFAULT_ACCENT_DAY
         document.documentElement.style.setProperty('--accent', color)
         set({ theme, accentColor: color })
       },
@@ -38,16 +32,15 @@ export const useAppStore = create(
       showCosts: true,
       setShowCosts: (showCosts) => set({ showCosts }),
 
-      // Per-theme accent colors
-      accentDay:   DEFAULT_ACCENT_DAY,
-      accentNight: DEFAULT_ACCENT_NIGHT,
-      // accentColor = current active accent (kept for compatibility)
+      // accentColor = color activo en CSS (efimero, no se persiste).
+      // La personalizacion real vive por par (usuario, restaurante) en
+      // localStorage (src/lib/userRestaurantPrefs.js); el store no debe
+      // guardar el color personal porque contaminaria el selector de
+      // restaurantes que siempre muestra defaults.
       accentColor: DEFAULT_ACCENT_DAY,
       setAccentColor: (color) => {
         document.documentElement.style.setProperty('--accent', color)
-        const theme = get().theme
-        if (theme === 'night') set({ accentNight: color, accentColor: color })
-        else                   set({ accentDay:   color, accentColor: color })
+        set({ accentColor: color })
       },
 
       // Global search
@@ -84,16 +77,11 @@ export const useAppStore = create(
         language:        state.language,
         showCosts:       state.showCosts,
         currentRestaurant: state.currentRestaurant,
-        accentColor:     state.accentColor,
-        accentDay:       state.accentDay,
-        accentNight:     state.accentNight,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return
         const theme = state.theme || 'day'
-        const color = theme === 'night'
-          ? (state.accentNight || DEFAULT_ACCENT_NIGHT)
-          : (state.accentDay   || DEFAULT_ACCENT_DAY)
+        const color = theme === 'night' ? DEFAULT_ACCENT_NIGHT : DEFAULT_ACCENT_DAY
         state.accentColor = color
         document.documentElement.style.setProperty('--accent', color)
       },
