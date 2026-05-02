@@ -2311,7 +2311,7 @@ function VersionsTab({ restaurantId, isDark }) {
           <p style={{ fontSize: '0.88rem' }}>Sin registros para este módulo</p>
         </div>
       ) : (
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+        <div className="overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 240px)' }}>
           {visibleLogs.map((log) => (
             <div key={log.id} style={{ background: isDark ? '#1f2937' : '#fff', border: `1px solid ${borderCol}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
               {/* Header */}
@@ -4839,6 +4839,14 @@ export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
   const { canEdit, canManageUsers, isMaster } = useAuth()
   const { has } = usePlan()
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const onChange = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
   const navigate = useNavigate()
   const isDark = theme === 'night'
   const [section, setSection] = useState(null)
@@ -4855,7 +4863,7 @@ export function ConfigModal() {
     { key: 'units',         label: 'Unidades',           visible: canEdit },
     { key: 'categories',    label: 'Menús',              visible: canEdit },
     { key: 'suppliers',     label: 'Proveedores',        visible: canEdit },
-    { key: 'import',        label: 'Importación Masiva', visible: canEdit },
+    { key: 'import',        label: 'Importación Masiva', visible: canEdit && !isMobile },
     { key: 'recipes',       label: 'Gestión Recetas',    visible: canEdit },
     { key: 'replacer',      label: 'Reemplazar Item',    visible: canEdit, icon: ArrowUpDown },
     { key: 'descargas',     label: 'Descargas',          visible: canEdit, icon: Download },
