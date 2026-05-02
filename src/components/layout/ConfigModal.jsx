@@ -487,7 +487,7 @@ function IngredientsTab({ restaurantId, isDark }) {
       {/* Toolbar — never scrolls */}
       <div style={{ flexShrink: 0, padding: '12px 16px', borderBottom: `1px solid ${borderColor}` }}>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => { setDisplayMode('grid'); localStorage.setItem('mp-display-mode', 'grid') }} className="p-1.5 rounded-md transition-colors" style={displayMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
               <LayoutGrid className={cn('h-3.5 w-3.5', displayMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
@@ -734,7 +734,7 @@ function UnitsTab({ restaurantId, isDark }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -888,7 +888,7 @@ function MpCategoriesTab({ restaurantId, isDark }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -1108,7 +1108,7 @@ function CategoriesTab({ restaurantId, isDark }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -1334,7 +1334,7 @@ function SuppliersTab({ restaurantId, isDark }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -1654,7 +1654,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
       {/* ── Filtros + toggle vista ── */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Toggle Grid/Lista — siempre a la izquierda */}
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -2285,8 +2285,8 @@ function VersionsTab({ restaurantId, isDark }) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${borderCol}`, paddingBottom: 0 }}>
+      {/* Tabs — scroll horizontal en mobile si no caben */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${borderCol}`, paddingBottom: 0, overflowX: 'auto', whiteSpace: 'nowrap' }}>
         {TABS.map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             style={{
@@ -2295,6 +2295,7 @@ function VersionsTab({ restaurantId, isDark }) {
               borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
               color: activeTab === tab.id ? 'var(--accent)' : t2,
               transition: 'all 0.15s',
+              flexShrink: 0,
             }}
           >{tab.label}</button>
         ))}
@@ -2385,8 +2386,8 @@ function VersionsTab({ restaurantId, isDark }) {
                 const cellStyle = (border) => ({ padding: '5px 10px', borderTop: border ? `1px solid ${borderCol}` : 'none' })
 
                 return (
-                  <div style={{ background: isDark ? '#111827' : '#f9fafb', borderRadius: 6, overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
+                  <div style={{ background: isDark ? '#111827' : '#f9fafb', borderRadius: 6, overflow: 'auto' }}>
+                    <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: '0.76rem' }}>
                       <thead>
                         <tr style={{ background: isDark ? '#0f172a' : '#f3f4f6' }}>
                           <th style={{ ...thStyle, width: '32%' }}>Ingrediente</th>
@@ -2518,7 +2519,7 @@ function VerificationTab({ restaurantId, isDark }) {
 
       {/* Filters + toggle */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
             <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
@@ -2946,7 +2947,7 @@ function UsersAdminTab({ isDark }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Toggle Grid/Lista — izquierda */}
-          <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Grid">
               <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
@@ -4873,6 +4874,7 @@ export function ConfigModal() {
   useEffect(() => { if (!configOpen) setSection(null) }, [configOpen])
 
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('config-view-mode', mode) }
+  const effectiveViewMode = isMobile ? 'grid' : viewMode
 
   const CARDS = [
     { key: 'summary',       label: 'Resumen',            visible: canEdit, icon: FileSpreadsheet },
@@ -4928,8 +4930,8 @@ export function ConfigModal() {
             {section ? CARDS.find(c => c.key === section)?.label ?? 'Configuración' : 'Configuración'}
           </h2>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
-            {/* Grid/Lista toggle — solo en el home del modal */}
-            {!section && (
+            {/* Grid/Lista toggle — solo en el home del modal y solo en desktop */}
+            {!section && !isMobile && (
               <div style={{ display: 'flex', gap: 2, background: isDark ? '#1f2937' : '#f3f4f6', borderRadius: 8, padding: 3 }}>
                 <button
                   onClick={() => setView('grid')}
@@ -4957,7 +4959,7 @@ export function ConfigModal() {
           {!section ? (
             /* GRID / LISTA */
             <div className="flex-1 overflow-y-auto p-6">
-              {viewMode === 'grid' ? (
+              {effectiveViewMode === 'grid' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 12 }}>
                   {CARDS.map(({ key, label }) => {
                     const allTabs = [...PARAM_TABS, ...TABS]
