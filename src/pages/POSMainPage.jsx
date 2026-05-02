@@ -153,7 +153,7 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
                     <span style={{color:'var(--t3)'}}>Costo total</span>
                     <span style={{fontWeight:600,color:'var(--t2)'}}>
-                      {cost > 0 ? `$${cost.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
+                      {cost > 0 ? `$${Math.ceil(cost).toLocaleString('es-CO')}` : '—'}
                     </span>
                   </div>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem'}}>
