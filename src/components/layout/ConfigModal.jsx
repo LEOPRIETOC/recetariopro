@@ -1754,62 +1754,79 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
       {viewMode === 'grid' && (
         filtered.length === 0
           ? <p className={cn('text-center py-8 text-sm', isDark ? 'text-gray-600' : 'text-gray-400')}>Sin resultados</p>
-          : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+          : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
               {filtered.map((r) => {
                 const cost = calcRecipeTotalCost(r)
                 const price = parseFloat(r.sellingPrice) || 0
+                const isSub = r.isSubRecipe === true || r.type === 'subrecipe'
+                const yieldAmt = parseFloat(r.yieldAmount || r.yield) || 0
+                const yieldUnit = r.yieldUnit || ''
+                const costPerUnit = yieldAmt > 0 ? cost / yieldAmt : 0
                 return (
                   <div
                     key={r.id}
                     onClick={() => handleEdit(r)}
-                    style={{
-                      border: `1px solid ${isDark ? '#1f2937' : '#f3f4f6'}`,
-                      borderTop: '2px solid var(--accent)',
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: r.active === false
-                        ? (isDark ? '#0d1117' : '#f5f5f5')
-                        : (isDark ? '#111827' : '#fff'),
-                    }}
-                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)' }}
-                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                    className={cn(
+                      'rounded-2xl overflow-hidden cursor-pointer transition-all duration-200',
+                      'hover:shadow-lg hover:-translate-y-0.5',
+                      r.active === false && 'opacity-50',
+                      isDark ? 'bg-gray-900 border border-gray-800 hover:border-gray-600' : 'bg-white border border-gray-100 shadow-sm hover:shadow-md'
+                    )}
+                    style={isDark ? {} : { borderTopColor: 'var(--accent)', borderTopWidth: 2 }}
                   >
-                    {r.photoURL
-                      ? <img src={r.photoURL} alt={r.name || ''} style={{ width: '100%', height: 100, objectFit: 'cover' }} />
-                      : <div style={{ width: '100%', height: 8, backgroundColor: 'var(--accent)', opacity: 0.25 }} />
-                    }
-                    <div style={{ padding: 10 }}>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
-                        {r.isSubRecipe && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--goldBg)', color: 'var(--accent)' }}>
-                            Sub-receta
-                          </span>
-                        )}
-                        {r.active === false && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(220,38,38,0.12)', color: 'var(--red, #dc2626)' }}>
-                            Inactiva
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#f9fafb' : '#111827', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: '2.5em' }}>
+                    <div className={cn('w-full h-36', isDark ? 'bg-gray-800' : 'bg-gray-50')}>
+                      {r.photoURL && (
+                        <img src={r.photoURL} alt={r.name || ''} className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="p-3">
+                      {isSub && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
+                          style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
+                          Sub-receta
+                        </span>
+                      )}
+                      <h3 className={cn('font-display font-semibold text-sm leading-tight line-clamp-2', isDark ? 'text-white' : 'text-gray-900')}
+                        style={{ minHeight: '2.5em' }}>
                         {r.name}
-                      </div>
-                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--b1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                          <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Precio</span>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: price > 0 ? 'var(--accent)' : 'var(--t3)' }}>
-                            {price > 0 ? `$${price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
-                          </span>
+                      </h3>
+                      {isSub ? (
+                        <div className="mt-2 pt-2 border-t flex flex-col gap-1" style={{ borderColor: 'var(--b1)' }}>
+                          <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                            <span style={{ color: 'var(--t3)' }}>Costo total</span>
+                            <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
+                              {cost > 0 ? `$${Math.ceil(cost).toLocaleString('es-CO')}` : '—'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                            <span style={{ color: 'var(--t3)' }}>Rendimiento</span>
+                            <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
+                              {yieldAmt > 0 ? `${yieldAmt} ${yieldUnit}` : '—'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                            <span style={{ color: 'var(--t3)' }}>Costo/{yieldUnit || 'u'}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                              {costPerUnit > 0 ? `$${costPerUnit.toLocaleString('es-CO', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : '—'}
+                            </span>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                          <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Costo</span>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: cost > 0 ? 'var(--t2)' : 'var(--t3)' }}>
-                            {cost > 0 ? `$${cost.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
-                          </span>
+                      ) : (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--b1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Precio</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: price > 0 ? 'var(--accent)' : 'var(--t3)' }}>
+                              {price > 0 ? `$${price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--t3)' }}>Costo</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: cost > 0 ? 'var(--t2)' : 'var(--t3)' }}>
+                              {cost > 0 ? `$${cost.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -3375,43 +3392,49 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
           {search ? `Sin resultados para "${search}"` : 'No hay recetas todavía.'}
         </div>
       ) : effectiveViewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
           {rows.map((r) => (
             <div key={r.id}
               onClick={() => handleOpenRecipe(r.id)}
               title="Abrir receta"
-              style={{
-                background: bg2, border: `1px solid ${b1}`, borderRadius: 12, padding: 12,
-                cursor: 'pointer', opacity: r.active === false ? 0.55 : 1,
-                display: 'flex', flexDirection: 'column', gap: 6,
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-              onMouseOut={(e) => { e.currentTarget.style.borderColor = b1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-                <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.04em', background: r.isSub ? 'rgba(96,165,250,0.15)' : 'rgba(217,119,6,0.15)', color: r.isSub ? '#60a5fa' : '#d97706' }}>
-                  {r.isSub ? 'Sub-receta' : 'Receta'}
-                </span>
-                {r.active === false && <span style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: 700 }}>OCULTA</span>}
+              className={cn(
+                'rounded-2xl overflow-hidden cursor-pointer transition-all duration-200',
+                'hover:shadow-lg hover:-translate-y-0.5',
+                r.active === false && 'opacity-50',
+                isDark ? 'bg-gray-900 border border-gray-800 hover:border-gray-600' : 'bg-white border border-gray-100 shadow-sm hover:shadow-md'
+              )}
+              style={isDark ? {} : { borderTopColor: 'var(--accent)', borderTopWidth: 2 }}>
+              <div className={cn('w-full h-36', isDark ? 'bg-gray-800' : 'bg-gray-50')}>
+                {r.photoURL && (
+                  <img src={r.photoURL} alt={r.name || ''} className="w-full h-full object-cover" />
+                )}
               </div>
-              <div style={{ fontSize: '0.92rem', fontWeight: 600, color: ink, lineHeight: 1.25 }}>{r.name || '—'}</div>
-              <div style={{ fontSize: '0.7rem', color: t3, fontFamily: 'monospace' }}>
-                {r.code || '—'}{r.reference ? ' · ' + r.reference : ''}
-              </div>
-              <div style={{ borderTop: `1px solid ${b1}`, marginTop: 4, paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: t3 }}>Costo</span>
-                  <span style={{ fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums' }}>{formatNumber(r._cost)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: t3 }}>P. Venta</span>
-                  <span style={{ fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums' }}>{r._price > 0 ? formatNumber(r._price) : '—'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: t3 }}>Utilidad</span>
-                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r._price <= 0 ? t3 : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444' }}>
-                    {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+              <div className="p-3">
+                {r.isSub && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
+                    style={{ background: 'var(--goldBg)', color: 'var(--accent)' }}>
+                    Sub-receta
                   </span>
+                )}
+                <h3 className={cn('font-display font-semibold text-sm leading-tight line-clamp-2', isDark ? 'text-white' : 'text-gray-900')}
+                  style={{ minHeight: '2.5em' }}>
+                  {r.name || '—'}
+                </h3>
+                <div className="mt-2 pt-2 border-t flex flex-col gap-1" style={{ borderColor: 'var(--b1)' }}>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>Costo</span>
+                    <span style={{ fontWeight: 600, color: 'var(--t2)', fontVariantNumeric: 'tabular-nums' }}>{formatNumber(r._cost)}</span>
+                  </div>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>P. Venta</span>
+                    <span style={{ fontWeight: 600, color: 'var(--t2)', fontVariantNumeric: 'tabular-nums' }}>{r._price > 0 ? formatNumber(r._price) : '—'}</span>
+                  </div>
+                  <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
+                    <span style={{ color: 'var(--t3)' }}>Utilidad</span>
+                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r._price <= 0 ? 'var(--t3)' : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444' }}>
+                      {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
