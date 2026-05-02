@@ -433,7 +433,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Renglón 1: Referencia · Nombre */}
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'end' }}>
+          <div className="grid gap-2 items-end grid-cols-1 sm:grid-cols-[110px_1fr]">
             <div>
               <label style={labelCss}>Referencia</label>
               <span style={{
@@ -508,7 +508,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           </div>
 
           {/* Renglón 2: Cantidad · Unidad · Desp.% · Costo U. · Costo Total */}
-          <div style={{ display: 'grid', gridTemplateColumns: '90px 80px 80px 90px 1fr', gap: 8, alignItems: 'end' }}>
+          <div className="grid gap-2 items-end grid-cols-2 sm:grid-cols-[90px_80px_80px_90px_1fr]">
             <div>
               <label style={labelCss}>Cantidad</label>
               <input
