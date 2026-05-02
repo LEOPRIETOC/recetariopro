@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore'
 import { onAuthChange, getUserProfile } from '../services/auth'
 import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { getAccentForRestaurant } from '../lib/userRestaurantPrefs'
 
 // Module-level flag — resets on every page reload, prevents duplicate navigation
 // from multiple simultaneous useAuth() instances
@@ -55,7 +56,8 @@ export function useAuth() {
 
           if (found) {
             setCurrentRestaurant(found)
-            if (found.accentColor) setAccentColor(found.accentColor)
+            const theme = useAppStore.getState().theme || 'day'
+            setAccentColor(getAccentForRestaurant(firebaseUser.uid, found.id, theme))
           }
         }
 

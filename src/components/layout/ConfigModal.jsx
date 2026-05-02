@@ -22,6 +22,7 @@ import { cn, formatNumber, toTitleCase } from '../../lib/utils'
 import { calcRecipeTotalCost } from '../../utils/costUtils'
 import { PLANS, PLAN_IDS, FEATURE_LABELS, getPlan, isLicenseActive } from '../../lib/plans'
 import { usePlan } from '../../hooks/usePlan'
+import { setAccentForRestaurant } from '../../lib/userRestaurantPrefs'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
   importIngredients, upsertIngredientsByCode, upsertRecipesByCode, upsertRecipesWithIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
@@ -2650,10 +2651,11 @@ function AppearanceTab({ isDark }) {
     } catch { error('Error') } finally { setSaving(false) }
   }
 
-  const handleAccent = async (color) => {
+  const handleAccent = (color) => {
+    // Personalizacion por usuario y por restaurante — no toca el doc del restaurante
     setAccentColor(color)
-    if (currentRestaurant?.id) {
-      try { await updateAccentColor(currentRestaurant.id, color) } catch { /* silent */ }
+    if (user?.uid && currentRestaurant?.id) {
+      setAccentForRestaurant(user.uid, currentRestaurant.id, theme, color)
     }
     success('Color de acento actualizado')
   }

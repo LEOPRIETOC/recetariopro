@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { applyDefaultAccent, getAccentForRestaurant } from '../lib/userRestaurantPrefs'
 
 export default function RestaurantSelectorPage() {
   const navigate = useNavigate()
@@ -20,6 +21,11 @@ export default function RestaurantSelectorPage() {
   const css = isDark
     ? { '--bg': '#0a0e0b', '--bg2': '#111712', '--bg3': '#181f19', '--b1': 'rgba(255,255,255,0.06)', '--b2': 'rgba(255,255,255,0.10)', '--text': '#f0ece4', '--t2': '#8a8578', '--t3': '#4a4840', '--green': '#4a9e6e' }
     : { '--bg': '#f9fafb', '--bg2': '#ffffff', '--bg3': '#f3f4f6', '--b1': '#e5e7eb', '--b2': '#d1d5db', '--text': '#111827', '--t2': '#374151', '--t3': '#9ca3af', '--green': '#10b981' }
+
+  // En el selector siempre forzamos el color por defecto (no respetamos personalizacion).
+  useEffect(() => {
+    applyDefaultAccent(theme)
+  }, [theme])
 
   useEffect(() => {
     if (!user?.uid || userProfile === undefined) return
@@ -95,9 +101,10 @@ export default function RestaurantSelectorPage() {
 
   const enterRestaurant = (rest) => {
     setCurrentRestaurant(rest)
-    if (rest.accentColor) setAccentColor(rest.accentColor)
+    // Aplicar accent personalizado del par (usuario, restaurante) — no del doc del restaurante.
+    const personalAccent = getAccentForRestaurant(user?.uid, rest.id, theme)
+    setAccentColor(personalAccent)
     const s = rest.settings || {}
-    if (s.theme) setTheme(s.theme)
     if (s.language) { setLanguage(s.language); i18n.changeLanguage(s.language) }
     if (typeof s.showCosts === 'boolean') setShowCosts(s.showCosts)
     navigate('/')
