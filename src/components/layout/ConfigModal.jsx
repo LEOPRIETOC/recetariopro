@@ -3200,6 +3200,8 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
   const [typeFilter, setTypeFilter] = useState('all') // all | recipe | subrecipe
   const [sortBy, setSortBy] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('summary-view-mode') || 'list')
+  const setView = (m) => { setViewMode(m); localStorage.setItem('summary-view-mode', m) }
 
   const handleOpenRecipe = (id) => {
     if (!id) return
@@ -3302,6 +3304,15 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {/* Toggle Grid / Lista */}
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Tarjetas">
+              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Tabla">
+              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
           {/* Filtro por tipo */}
           <div style={{ display: 'flex', gap: 2, background: bg3, borderRadius: 8, padding: 3 }}>
             {[
@@ -3357,6 +3368,49 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
       ) : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>
           {search ? `Sin resultados para "${search}"` : 'No hay recetas todavía.'}
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          {rows.map((r) => (
+            <div key={r.id}
+              onClick={() => handleOpenRecipe(r.id)}
+              title="Abrir receta"
+              style={{
+                background: bg2, border: `1px solid ${b1}`, borderRadius: 12, padding: 12,
+                cursor: 'pointer', opacity: r.active === false ? 0.55 : 1,
+                display: 'flex', flexDirection: 'column', gap: 6,
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = b1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.04em', background: r.isSub ? 'rgba(96,165,250,0.15)' : 'rgba(217,119,6,0.15)', color: r.isSub ? '#60a5fa' : '#d97706' }}>
+                  {r.isSub ? 'Sub-receta' : 'Receta'}
+                </span>
+                {r.active === false && <span style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: 700 }}>OCULTA</span>}
+              </div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 600, color: ink, lineHeight: 1.25 }}>{r.name || '—'}</div>
+              <div style={{ fontSize: '0.7rem', color: t3, fontFamily: 'monospace' }}>
+                {r.code || '—'}{r.reference ? ' · ' + r.reference : ''}
+              </div>
+              <div style={{ borderTop: `1px solid ${b1}`, marginTop: 4, paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                  <span style={{ color: t3 }}>Costo</span>
+                  <span style={{ fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums' }}>{formatNumber(r._cost)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                  <span style={{ color: t3 }}>P. Venta</span>
+                  <span style={{ fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums' }}>{r._price > 0 ? formatNumber(r._price) : '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                  <span style={{ color: t3 }}>Utilidad</span>
+                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r._price <= 0 ? t3 : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444' }}>
+                    {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, overflow: 'hidden' }}>
@@ -4085,6 +4139,8 @@ function LicensesTab({ isDark }) {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all') // all | active | inactive | expiring
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('licenses-view-mode') || 'list')
+  const setView = (m) => { setViewMode(m); localStorage.setItem('licenses-view-mode', m) }
 
   useEffect(() => {
     setLoading(true)
@@ -4281,20 +4337,30 @@ function LicensesTab({ isDark }) {
             {visible.length} de {counts.total} restaurantes · {counts.active} activas · {counts.inactive} inactivas · {counts.expiring} por vencer
           </p>
         </div>
-        <button onClick={exportExcel} disabled={!visible.length}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${visible.length ? 'var(--accent)' : t3}`,
-            color: visible.length ? 'var(--accent)' : t3,
-            borderRadius: 8, padding: '8px 14px',
-            fontSize: '0.8rem', fontWeight: 600,
-            cursor: visible.length ? 'pointer' : 'not-allowed',
-            opacity: visible.length ? 1 : 0.5,
-            fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}>
-          <Download className="h-3.5 w-3.5" /> Exportar Excel
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+            <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Tarjetas">
+              <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+            <button onClick={() => setView('list')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'list' ? { background: 'var(--accent)' } : {}} title="Tabla">
+              <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
+            </button>
+          </div>
+          <button onClick={exportExcel} disabled={!visible.length}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${visible.length ? 'var(--accent)' : t3}`,
+              color: visible.length ? 'var(--accent)' : t3,
+              borderRadius: 8, padding: '8px 14px',
+              fontSize: '0.8rem', fontWeight: 600,
+              cursor: visible.length ? 'pointer' : 'not-allowed',
+              opacity: visible.length ? 1 : 0.5,
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            <Download className="h-3.5 w-3.5" /> Exportar Excel
+          </button>
+        </div>
       </div>
 
       {/* Filtros + búsqueda */}
@@ -4336,6 +4402,68 @@ function LicensesTab({ isDark }) {
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3 }}>Cargando…</div>
       ) : visible.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>Sin resultados.</div>
+      ) : viewMode === 'grid' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+          {visible.map((r) => {
+            const sub = r.subscription || {}
+            const planObj = getPlan(sub)
+            const active = isLicenseActive(sub)
+            const isCurrent = currentRestaurant?.id === r.id
+            const expiring = isExpiringSoon(sub)
+            const daysLeft = daysUntilEnd(sub)
+            return (
+              <div key={r.id}
+                onClick={() => startEdit(r)}
+                title="Click para editar"
+                style={{
+                  background: bg2,
+                  border: `1px solid ${isCurrent ? 'var(--accent)' : b1}`,
+                  borderLeft: isCurrent ? `3px solid var(--accent)` : `1px solid ${b1}`,
+                  borderRadius: 12, padding: 14, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)' }}
+                onMouseOut={(e) => { e.currentTarget.style.boxShadow = 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: isCurrent ? 700 : 600, color: ink, lineHeight: 1.2 }}>
+                    {r.name || '—'}
+                  </div>
+                  {isCurrent && (
+                    <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'var(--accent)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actual</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: planObj.color + '22', color: planObj.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{planObj.label}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: active ? 'rgba(22,163,74,0.12)' : 'rgba(192,72,72,0.12)', color: active ? '#16a34a' : '#c04848' }}>{active ? 'Activa' : 'Inactiva'}</span>
+                  {expiring && active && (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(245,158,11,0.18)', color: '#d97706' }}>⚠ {daysLeft}d</span>
+                  )}
+                </div>
+                <div style={{ borderTop: `1px solid ${b1}`, paddingTop: 6, fontSize: '0.75rem', color: t2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: t3 }}>Vigencia</span>
+                    <span>{fmtDate(sub.startDate)} → {fmtDate(sub.endDate)}</span>
+                  </div>
+                  {r.contact && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: t3 }}>Contacto</span>
+                      <span style={{ color: ink, fontWeight: 500 }}>{r.contact}</span>
+                    </div>
+                  )}
+                  {r.phone && (
+                    <a href={`tel:${r.phone}`} onClick={(e) => e.stopPropagation()}
+                      style={{ color: t2, textDecoration: 'none', fontSize: '0.74rem' }}>📞 {r.phone}</a>
+                  )}
+                  {r.ownerEmail && (
+                    <a href={`mailto:${r.ownerEmail}`} onClick={(e) => e.stopPropagation()}
+                      style={{ color: t2, textDecoration: 'none', fontSize: '0.74rem' }}>✉️ {r.ownerEmail}</a>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
