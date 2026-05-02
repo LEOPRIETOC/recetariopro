@@ -4083,15 +4083,86 @@ function LicensesTab({ isDark }) {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all') // all | active | inactive | expiring
 
   useEffect(() => {
     setLoading(true)
     getDocs(collection(db, 'restaurants')).then((snap) => {
       const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
       setRestaurants(arr)
     }).finally(() => setLoading(false))
   }, [])
+
+  const EXPIRING_DAYS = 30
+  const isExpiringSoon = (sub) => {
+    if (!sub?.endDate) return false
+    const end = new Date(sub.endDate).getTime()
+    const now = Date.now()
+    const diffDays = (end - now) / (1000 * 60 * 60 * 24)
+    return diffDays > 0 && diffDays <= EXPIRING_DAYS
+  }
+  const daysUntilEnd = (sub) => {
+    if (!sub?.endDate) return null
+    const end = new Date(sub.endDate).getTime()
+    return Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24))
+  }
+
+  // Filtra y ordena: current siempre primero, resto alfabetico
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let arr = restaurants
+    if (q) arr = arr.filter((r) => (r.name || '').toLowerCase().includes(q))
+    if (filter === 'active') arr = arr.filter((r) => isLicenseActive(r.subscription))
+    else if (filter === 'inactive') arr = arr.filter((r) => !isLicenseActive(r.subscription))
+    else if (filter === 'expiring') arr = arr.filter((r) => isExpiringSoon(r.subscription))
+    const sorted = [...arr].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'))
+    if (currentRestaurant?.id) {
+      const idx = sorted.findIndex((r) => r.id === currentRestaurant.id)
+      if (idx > -1) {
+        const [cur] = sorted.splice(idx, 1)
+        sorted.unshift(cur)
+      }
+    }
+    return sorted
+  }, [restaurants, search, filter, currentRestaurant?.id])
+
+  const counts = useMemo(() => ({
+    total: restaurants.length,
+    active: restaurants.filter((r) => isLicenseActive(r.subscription)).length,
+    inactive: restaurants.filter((r) => !isLicenseActive(r.subscription)).length,
+    expiring: restaurants.filter((r) => isExpiringSoon(r.subscription)).length,
+  }), [restaurants])
+
+  const exportExcel = () => {
+    const rows = visible.map((r) => {
+      const sub = r.subscription || {}
+      const planObj = getPlan(sub)
+      return {
+        Restaurante: r.name || '',
+        Plan: planObj.label,
+        Estado: isLicenseActive(sub) ? 'Activa' : 'Inactiva',
+        Inicio: sub.startDate || '',
+        Fin: sub.endDate || '',
+        DiasRestantes: daysUntilEnd(sub) ?? '',
+        ProximaAVencer: isExpiringSoon(sub) ? 'Sí' : 'No',
+        MaxRecetas: planObj.maxRecipes,
+        MaxUsuarios: planObj.maxUsers,
+      }
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = [
+      { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Licencias')
+    const fname = filter === 'inactive' ? 'licencias-inactivas'
+      : filter === 'expiring' ? 'licencias-por-vencer'
+      : filter === 'active' ? 'licencias-activas'
+      : 'licencias-todas'
+    XLSX.writeFile(wb, `${fname}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   const startEdit = (r) => {
     const sub = r.subscription || {}
@@ -4147,23 +4218,83 @@ function LicensesTab({ isDark }) {
     catch { return s }
   }
 
+  const FILTER_OPTIONS = [
+    { id: 'all',      label: 'Todas',           count: counts.total },
+    { id: 'active',   label: 'Activas',         count: counts.active },
+    { id: 'inactive', label: 'Inactivas',       count: counts.inactive },
+    { id: 'expiring', label: 'Por vencer ≤30d', count: counts.expiring },
+  ]
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>Licencias</h2>
-        <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
-          Plan, estado y vigencia de cada restaurante. Solo master.
-        </p>
+    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>Licencias</h2>
+          <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+            {visible.length} de {counts.total} restaurantes · {counts.active} activas · {counts.inactive} inactivas · {counts.expiring} por vencer
+          </p>
+        </div>
+        <button onClick={exportExcel} disabled={!visible.length}
+          style={{
+            background: 'transparent',
+            border: `1px solid ${visible.length ? 'var(--accent)' : t3}`,
+            color: visible.length ? 'var(--accent)' : t3,
+            borderRadius: 8, padding: '8px 14px',
+            fontSize: '0.8rem', fontWeight: 600,
+            cursor: visible.length ? 'pointer' : 'not-allowed',
+            opacity: visible.length ? 1 : 0.5,
+            fontFamily: 'inherit',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+          <Download className="h-3.5 w-3.5" /> Exportar Excel
+        </button>
+      </div>
+
+      {/* Filtros + búsqueda */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, background: bg3, borderRadius: 8, padding: 3 }}>
+          {FILTER_OPTIONS.map((opt) => (
+            <button key={opt.id} type="button" onClick={() => setFilter(opt.id)}
+              style={{
+                background: filter === opt.id ? (isDark ? '#374151' : '#fff') : 'transparent',
+                color: filter === opt.id ? 'var(--accent)' : t2,
+                border: 'none', borderRadius: 6,
+                padding: '6px 12px',
+                fontSize: '0.78rem', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              {opt.label} <span style={{ opacity: 0.6, fontWeight: 500 }}>({opt.count})</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+          <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: t3, pointerEvents: 'none' }} />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar restaurante por nombre…"
+            style={{
+              width: '100%', height: 34,
+              paddingLeft: 30, paddingRight: search ? 28 : 12,
+              background: bg2, color: ink,
+              border: `1px solid ${b1}`, borderRadius: 8,
+              fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
+            }} />
+          {search && (
+            <button type="button" onClick={() => setSearch('')}
+              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, border: 'none', background: 'none', color: t2, cursor: 'pointer', borderRadius: 4, fontSize: '1rem', lineHeight: 1 }}>×</button>
+          )}
+        </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3 }}>Cargando…</div>
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>Sin resultados.</div>
       ) : (
         <div style={{ background: bg2, border: `1px solid ${b1}`, borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ background: bg3 }}>
-                {['Restaurante', 'Plan', 'Estado', 'Inicio', 'Fin', ''].map((h, i) => (
+                {['Restaurante', 'Plan', 'Estado', 'Inicio', 'Fin'].map((h, i) => (
                   <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: t3, fontWeight: 700, borderBottom: `1px solid ${b1}` }}>
                     {h}
                   </th>
@@ -4171,13 +4302,36 @@ function LicensesTab({ isDark }) {
               </tr>
             </thead>
             <tbody>
-              {restaurants.map((r) => {
+              {visible.map((r) => {
                 const sub = r.subscription || {}
                 const planObj = getPlan(sub)
                 const active = isLicenseActive(sub)
+                const isCurrent = currentRestaurant?.id === r.id
+                const expiring = isExpiringSoon(sub)
+                const daysLeft = daysUntilEnd(sub)
                 return (
-                  <tr key={r.id} style={{ borderBottom: `1px solid ${b1}` }}>
-                    <td style={{ padding: '10px 14px', color: ink, fontWeight: 500 }}>{r.name || '—'}</td>
+                  <tr key={r.id}
+                    onClick={() => startEdit(r)}
+                    title="Click para editar"
+                    style={{
+                      borderBottom: `1px solid ${b1}`,
+                      cursor: 'pointer',
+                      background: isCurrent
+                        ? (isDark ? 'rgba(217,119,6,0.10)' : 'rgba(217,119,6,0.06)')
+                        : 'transparent',
+                      borderLeft: isCurrent ? `3px solid var(--accent)` : '3px solid transparent',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseOver={(e) => { if (!isCurrent) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#fafafa' }}
+                    onMouseOut={(e) => { if (!isCurrent) e.currentTarget.style.background = 'transparent' }}>
+                    <td style={{ padding: '10px 14px', color: ink, fontWeight: isCurrent ? 700 : 500 }}>
+                      {r.name || '—'}
+                      {isCurrent && (
+                        <span style={{ marginLeft: 8, fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'var(--accent)', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Actual
+                        </span>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 14px' }}>
                       <span style={{
                         fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: 6,
@@ -4191,15 +4345,14 @@ function LicensesTab({ isDark }) {
                         background: active ? 'rgba(22,163,74,0.12)' : 'rgba(192,72,72,0.12)',
                         color: active ? '#16a34a' : '#c04848',
                       }}>{active ? 'Activa' : 'Inactiva'}</span>
+                      {expiring && active && (
+                        <span style={{ marginLeft: 6, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(245,158,11,0.18)', color: '#d97706' }}>
+                          ⚠ {daysLeft}d
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.startDate)}</td>
                     <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.endDate)}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                      <button onClick={() => startEdit(r)}
-                        style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        Editar
-                      </button>
-                    </td>
                   </tr>
                 )
               })}
