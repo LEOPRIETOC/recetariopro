@@ -125,10 +125,11 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
         )}
         style={isDark ? {} : { borderTopColor: 'var(--accent)', borderTopWidth: 2 }}
       >
-        {recipe.photoURL
-          ? <img src={recipe.photoURL} alt={recipe.name || ''} className="w-full h-36 object-cover" />
-          : <div className="w-full h-2" style={{ backgroundColor: 'var(--accent)', opacity: 0.25 }} />
-        }
+        <div className={cn('w-full h-36', isDark ? 'bg-gray-800' : 'bg-gray-50')}>
+          {recipe.photoURL && (
+            <img src={recipe.photoURL} alt={recipe.name || ''} className="w-full h-full object-cover" />
+          )}
+        </div>
         <div className="p-3">
           {recipe.isSubRecipe && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full mb-1.5 inline-block"
