@@ -7,6 +7,7 @@ import './i18n'
 import { POSLayout } from './components/layout/POSLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import { UpdateBar } from './components/shared/UpdateBar'
+import { VersionFooter } from './components/shared/VersionFooter'
 import { LicenseBanner } from './components/shared/LicenseBanner'
 
 // Auth pages
@@ -45,6 +46,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <UpdateBar />
+      <VersionFooter />
       <BrowserRouter>
         <LicenseBanner />
         <Routes>

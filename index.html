@@ -11,10 +11,10 @@
     <meta http-equiv="Expires" content="0">
     <title>RecetarioPro</title>
     <script>
-      // ── Version gate ─────────────────────────────────────────────────────────
-      // Corre ANTES de que React monte. Compara el buildId del version.json con
-      // el guardado en localStorage. Si la version cargada es obsoleta, limpia
-      // caches + service workers y recarga con cache-bust.
+      // ── Service worker kill-switch ────────────────────────────────────────────
+      // El control de version (deteccion + modal bloqueante) lo maneja React via
+      // src/components/shared/UpdateBar.jsx. Aqui solo nos aseguramos de que no
+      // queden service workers viejos sirviendo HTML cacheado.
       (function () {
         try {
           if ('serviceWorker' in navigator) {
@@ -23,36 +23,6 @@
             }).catch(function () {});
           }
         } catch (e) {}
-
-        if (!('fetch' in window) || !('localStorage' in window)) return;
-        var KEY = 'app_buildId';
-        var prev = null;
-        try { prev = localStorage.getItem(KEY); } catch (e) {}
-
-        fetch('/version.json?ts=' + Date.now(), { cache: 'no-store' })
-          .then(function (r) { return r && r.ok ? r.json() : null; })
-          .then(function (data) {
-            if (!data || !data.buildId) return;
-            if (prev && prev !== data.buildId) {
-              var p = Promise.resolve();
-              try {
-                if ('caches' in window) {
-                  p = caches.keys().then(function (keys) {
-                    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-                  });
-                }
-              } catch (e) {}
-              p.catch(function () {}).then(function () {
-                try { localStorage.setItem(KEY, data.buildId); } catch (e) {}
-                var u = new URL(window.location.href);
-                u.searchParams.set('v', data.buildId);
-                window.location.replace(u.toString());
-              });
-            } else {
-              try { localStorage.setItem(KEY, data.buildId); } catch (e) {}
-            }
-          })
-          .catch(function () {});
       })();
     </script>
   </head>

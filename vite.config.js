@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const APP_VERSION = '2.12'
+const APP_VERSION = '2.13'
 const BUILD_ID = String(Date.now())
 const BUILD_TIME = new Date().toISOString()
 

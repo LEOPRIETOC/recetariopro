@@ -374,10 +374,6 @@ export function POSLayout() {
             >
               <span className="truncate">Sub-recetas</span>
             </button>
-
-            <div style={{ fontSize: '0.65rem', color: 'var(--t3)', padding: '4px 8px', opacity: 0.5 }}>
-              v{import.meta.env.VITE_APP_VERSION || '2.10'} · {import.meta.env.VITE_BUILD_TIME || 'dev'}
-            </div>
           </div>
         </aside>
 
