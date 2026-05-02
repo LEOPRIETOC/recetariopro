@@ -3297,17 +3297,9 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
-            Resumen de recetas
-          </h2>
-          <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
-            {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye ocultas)
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto lg:flex-shrink-0">
-          {/* Toggle Grid / Lista */}
-          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="flex items-center gap-3">
+          {/* Toggle Grid / Lista — siempre a la izquierda */}
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5 flex-shrink-0" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Tarjetas">
               <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
@@ -3315,6 +3307,16 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
               <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
           </div>
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>
+              Resumen de recetas
+            </h2>
+            <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+              {rows.length} de {recipes.length} {recipes.length === 1 ? 'item' : 'items'} (incluye ocultas)
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto lg:flex-shrink-0">
           {/* Filtro por tipo */}
           <div className="flex flex-wrap gap-0.5 rounded-lg p-0.5" style={{ background: bg3 }}>
             {[
@@ -4343,14 +4345,9 @@ function LicensesTab({ isDark }) {
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>Licencias</h2>
-          <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
-            {visible.length} de {counts.total} restaurantes · {counts.active} activas · {counts.inactive} inactivas · {counts.expiring} por vencer
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+        <div className="flex items-center gap-3">
+          {/* Toggle Grid / Lista — siempre a la izquierda */}
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border p-0.5 flex-shrink-0" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
             <button onClick={() => setView('grid')} className="p-1.5 rounded-md transition-colors" style={viewMode === 'grid' ? { background: 'var(--accent)' } : {}} title="Tarjetas">
               <LayoutGrid className={cn('h-3.5 w-3.5', viewMode === 'grid' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
@@ -4358,6 +4355,14 @@ function LicensesTab({ isDark }) {
               <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
             </button>
           </div>
+          <div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: ink, margin: '0 0 4px' }}>Licencias</h2>
+            <p style={{ color: t3, fontSize: '0.82rem', margin: 0 }}>
+              {visible.length} de {counts.total} restaurantes · {counts.active} activas · {counts.inactive} inactivas · {counts.expiring} por vencer
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={exportExcel} disabled={!visible.length}
             style={{
               background: 'transparent',
