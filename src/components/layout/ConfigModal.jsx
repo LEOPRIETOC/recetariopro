@@ -4164,6 +4164,15 @@ function LicensesTab({ isDark }) {
     XLSX.writeFile(wb, `${fname}_${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
+  const addPeriod = (startISO, billing) => {
+    if (!startISO) return ''
+    const d = new Date(startISO + 'T00:00:00')
+    if (Number.isNaN(d.getTime())) return ''
+    if (billing === 'annual') d.setFullYear(d.getFullYear() + 1)
+    else d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+
   const startEdit = (r) => {
     const sub = r.subscription || {}
     setEditing({
@@ -4171,9 +4180,26 @@ function LicensesTab({ isDark }) {
       name: r.name,
       plan: sub.plan && PLAN_IDS.includes(sub.plan) ? sub.plan : 'emprendedor',
       active: sub.active !== false,
+      billing: sub.billing === 'annual' ? 'annual' : 'monthly',
       startDate: typeof sub.startDate === 'string' ? sub.startDate.slice(0, 10) : '',
       endDate: typeof sub.endDate === 'string' ? sub.endDate.slice(0, 10) : '',
     })
+  }
+
+  // Cuando cambia start o billing, recalcula automaticamente endDate
+  const updateBilling = (billing) => {
+    setEditing((s) => ({
+      ...s,
+      billing,
+      endDate: s.startDate ? addPeriod(s.startDate, billing) : s.endDate,
+    }))
+  }
+  const updateStart = (startDate) => {
+    setEditing((s) => ({
+      ...s,
+      startDate,
+      endDate: startDate ? addPeriod(startDate, s.billing) : s.endDate,
+    }))
   }
 
   const handleSave = async () => {
@@ -4184,6 +4210,7 @@ function LicensesTab({ isDark }) {
       const newSub = {
         plan: editing.plan,
         active: !!editing.active,
+        billing: editing.billing === 'annual' ? 'annual' : 'monthly',
         startDate: editing.startDate || null,
         endDate: editing.endDate || null,
         updatedAt: new Date().toISOString(),
@@ -4399,11 +4426,41 @@ function LicensesTab({ isDark }) {
               </ul>
             </div>
 
+            {/* Billing toggle */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6, display: 'block' }}>Periodicidad</label>
+              <div style={{ display: 'inline-flex', gap: 2, background: bg3, borderRadius: 8, padding: 3 }}>
+                {[
+                  { id: 'monthly', label: 'Mensual' },
+                  { id: 'annual',  label: 'Anual' },
+                ].map((opt) => {
+                  const sel = editing.billing === opt.id
+                  return (
+                    <button key={opt.id} type="button"
+                      onClick={() => updateBilling(opt.id)}
+                      style={{
+                        background: sel ? (isDark ? '#374151' : '#fff') : 'transparent',
+                        color: sel ? 'var(--accent)' : t2,
+                        border: 'none', borderRadius: 6,
+                        padding: '6px 16px',
+                        fontSize: '0.82rem', fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p style={{ fontSize: '0.72rem', color: t3, marginTop: 6 }}>
+                La fecha de fin se calcula automáticamente: {editing.billing === 'annual' ? '+1 año' : '+1 mes'} desde el inicio. Puedes ajustarla manualmente si lo necesitas.
+              </p>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div>
                 <label style={{ fontSize: '0.7rem', color: t3, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6, display: 'block' }}>Inicio</label>
                 <input type="date" value={editing.startDate || ''}
-                  onChange={(e) => setEditing((s) => ({ ...s, startDate: e.target.value }))}
+                  onChange={(e) => updateStart(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', border: `1px solid ${b1}`, borderRadius: 8, background: bg2, color: ink, fontFamily: 'inherit', fontSize: '0.85rem' }} />
               </div>
               <div>
