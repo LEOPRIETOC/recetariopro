@@ -118,17 +118,6 @@ export default function RestaurantSelectorPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "'DM Sans', sans-serif", position: 'relative', ...css }}>
 
-      {isMaster && (
-        <button
-          onClick={() => navigate('/restaurants/new')}
-          style={{ position: 'absolute', top: 20, right: 20, background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s' }}
-          onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
-          onMouseOut={e => e.currentTarget.style.opacity = '1'}
-        >
-          + Nuevo restaurante
-        </button>
-      )}
-
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', color: 'var(--accent)', margin: '0 0 8px' }}>
           Selecciona un restaurante
@@ -138,12 +127,47 @@ export default function RestaurantSelectorPage() {
         </p>
       </div>
 
-      {restaurants.length === 0 ? (
+      {restaurants.length === 0 && !isMaster ? (
         <p style={{ color: 'var(--t3)', textAlign: 'center', padding: '60px 0' }}>
           No tienes restaurantes asignados.
         </p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 160px)', gap: 12, justifyContent: 'center', width: '100%', maxWidth: 700 }}>
+          {/* Card "Nuevo restaurante" — solo master, siempre primero */}
+          {isMaster && (
+            <div
+              onClick={() => navigate('/restaurants/new')}
+              style={{
+                background: 'var(--bg2)',
+                border: '2px dashed var(--accent)',
+                borderRadius: 12,
+                padding: 12,
+                cursor: 'pointer',
+                transition: 'background 0.25s, border-color 0.25s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                minHeight: 138,
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 8%, var(--bg2))' }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'var(--bg2)' }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 10,
+                background: 'var(--accent)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: '2rem', fontWeight: 300, color: '#fff', lineHeight: 1, marginTop: -4 }}>+</span>
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.88rem', color: 'var(--accent)', margin: 0, textAlign: 'center', lineHeight: 1.3, fontWeight: 600 }}>
+                Nuevo restaurante
+              </h2>
+              <span style={{ fontSize: '0.65rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Crear
+              </span>
+            </div>
+          )}
           {restaurants.map((rest) => {
             return (
               <div
