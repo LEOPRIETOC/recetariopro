@@ -1514,11 +1514,8 @@ export default function RecipeDetailPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* ── Sticky action bar ── */}
       <div
-        className="sticky-actions no-print"
+        className="sticky-actions no-print flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           padding: '10px 0',
           position: 'sticky', top: 0, zIndex: 50,
           background: isDark ? 'rgba(3,7,18,0.97)' : 'rgba(243,244,246,0.97)',
@@ -1529,7 +1526,7 @@ export default function RecipeDetailPage() {
         }}
       >
         {/* IZQUIERDA — Nombre receta */}
-        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '45%' }}>
+        <div className="flex flex-col w-full sm:max-w-[45%] min-w-0">
           <div style={{
             fontFamily: "'Playfair Display', serif",
             fontSize: '1.4rem',
@@ -1549,7 +1546,7 @@ export default function RecipeDetailPage() {
         </div>
 
         {/* DERECHA — Verificar / Imprimir / Guardar / Salir */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="flex gap-2 sm:gap-2.5 items-center flex-wrap sm:flex-nowrap">
           {!isNew && canEdit && (
             <button
               onClick={handleVerify}
