@@ -5,6 +5,18 @@ import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
 import { toTitleCase } from '../lib/utils'
+import { PLANS, PLAN_IDS } from '../lib/plans'
+
+// Misma logica que LicensesTab.addPeriod — manten la estructura de subscription
+// identica para que la licencia recien creada aparezca correctamente en la tab.
+const addPeriod = (startISO, billing) => {
+  if (!startISO) return ''
+  const d = new Date(startISO + 'T00:00:00')
+  if (Number.isNaN(d.getTime())) return ''
+  if (billing === 'annual') d.setFullYear(d.getFullYear() + 1)
+  else d.setMonth(d.getMonth() + 1)
+  return d.toISOString().slice(0, 10)
+}
 
 export default function RestaurantsManagePage() {
   const navigate = useNavigate()
@@ -19,6 +31,9 @@ export default function RestaurantsManagePage() {
     contact: '',
     phone: '',
     city: '',
+    plan: 'emprendedor',
+    billing: 'monthly',
+    active: true,
   })
   const [errors, setErrors] = useState({})
 
@@ -36,6 +51,11 @@ export default function RestaurantsManagePage() {
 
     setSaving(true)
     try {
+      const planId = PLAN_IDS.includes(form.plan) ? form.plan : 'emprendedor'
+      const billing = form.billing === 'annual' ? 'annual' : 'monthly'
+      const startDate = new Date().toISOString().slice(0, 10)
+      const endDate = addPeriod(startDate, billing)
+
       const ref = await addDoc(collection(db, 'restaurants'), {
         name: form.name.trim(),
         address: form.address.trim(),
@@ -44,7 +64,14 @@ export default function RestaurantsManagePage() {
         city: form.city.trim(),
         ownerId: user.uid,
         members: { [user.uid]: { role: 'master', joinedAt: serverTimestamp() } },
-        subscription: { plan: 'trial', status: 'trial', start: new Date().toISOString().slice(0, 10) },
+        subscription: {
+          plan: planId,
+          active: !!form.active,
+          billing,
+          startDate,
+          endDate,
+          updatedAt: new Date().toISOString(),
+        },
         settings: { showCosts: true, currency: 'USD', theme: 'day', language: 'es' },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -167,6 +194,92 @@ export default function RestaurantsManagePage() {
               <input type="text" value={form.contact} onChange={setField('contact')} placeholder="Juan Pérez"
                 style={{ ...inp }} onFocus={focus} onBlur={(e) => blur(e, '')} />
             </div>
+          </div>
+        </div>
+
+        {/* Card — Plan y suscripcion */}
+        <div style={{ background: card, border: `1px solid ${bdr}`, borderRadius: 16, overflow: 'hidden', marginBottom: 28 }}>
+          <div style={{ height: 4, background: 'var(--accent)' }} />
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <p style={sectionCss}>Plan y suscripción</p>
+
+            {/* Selector de plan */}
+            <div>
+              <label style={labelCss}>Plan</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {PLAN_IDS.map((pid) => {
+                  const p = PLANS[pid]
+                  const selected = form.plan === pid
+                  return (
+                    <button
+                      key={pid}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, plan: pid }))}
+                      style={{
+                        background: selected ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : (isDark ? '#1f2937' : '#fff'),
+                        border: `2px solid ${selected ? 'var(--accent)' : bdr}`,
+                        borderRadius: 10,
+                        padding: '12px 10px',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'center',
+                        transition: 'border-color 0.2s, background 0.2s',
+                      }}
+                    >
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, margin: '0 auto 8px' }} />
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: txt, marginBottom: 4 }}>{p.label}</div>
+                      <div style={{ fontSize: '0.7rem', color: lbl, lineHeight: 1.4 }}>
+                        {p.maxRecipes} recetas<br />{p.maxUsers} usuarios
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Periodicidad */}
+            <div>
+              <label style={labelCss}>Periodicidad</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  { id: 'monthly', label: 'Mensual', sub: '+1 mes desde hoy' },
+                  { id: 'annual',  label: 'Anual',   sub: '+1 año desde hoy' },
+                ].map((opt) => {
+                  const selected = form.billing === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, billing: opt.id }))}
+                      style={{
+                        background: selected ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : (isDark ? '#1f2937' : '#fff'),
+                        border: `2px solid ${selected ? 'var(--accent)' : bdr}`,
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'center',
+                        transition: 'border-color 0.2s, background 0.2s',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: txt, marginBottom: 2 }}>{opt.label}</div>
+                      <div style={{ fontSize: '0.7rem', color: lbl }}>{opt.sub}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Activa */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.85rem', color: txt, fontWeight: 600 }}>Licencia activa al crear</span>
+            </label>
           </div>
         </div>
 
