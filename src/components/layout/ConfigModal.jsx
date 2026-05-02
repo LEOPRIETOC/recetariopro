@@ -4088,8 +4088,21 @@ function LicensesTab({ isDark }) {
 
   useEffect(() => {
     setLoading(true)
-    getDocs(collection(db, 'restaurants')).then((snap) => {
-      const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    Promise.all([
+      getDocs(collection(db, 'restaurants')),
+      getDocs(collection(db, 'users')),
+    ]).then(([restSnap, userSnap]) => {
+      const usersByUid = new Map()
+      userSnap.docs.forEach((d) => {
+        const u = d.data()
+        if (u?.uid) usersByUid.set(u.uid, u)
+        else usersByUid.set(d.id, u)
+      })
+      const arr = restSnap.docs.map((d) => {
+        const data = d.data()
+        const owner = data.ownerId ? usersByUid.get(data.ownerId) : null
+        return { id: d.id, ...data, ownerEmail: owner?.email || data.email || '' }
+      })
       setRestaurants(arr)
     }).finally(() => setLoading(false))
   }, [])
@@ -4141,19 +4154,26 @@ function LicensesTab({ isDark }) {
       return {
         Restaurante: r.name || '',
         Plan: planObj.label,
+        Periodicidad: sub.billing === 'annual' ? 'Anual' : sub.billing === 'monthly' ? 'Mensual' : '',
         Estado: isLicenseActive(sub) ? 'Activa' : 'Inactiva',
         Inicio: sub.startDate || '',
         Fin: sub.endDate || '',
         DiasRestantes: daysUntilEnd(sub) ?? '',
         ProximaAVencer: isExpiringSoon(sub) ? 'Sí' : 'No',
+        Contacto: r.contact || '',
+        Telefono: r.phone || '',
+        Email: r.ownerEmail || '',
+        Ciudad: r.city || '',
+        Direccion: r.address || '',
         MaxRecetas: planObj.maxRecipes,
         MaxUsuarios: planObj.maxUsers,
       }
     })
     const ws = XLSX.utils.json_to_sheet(rows)
     ws['!cols'] = [
-      { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
-      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+      { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 18 }, { wch: 28 },
+      { wch: 16 }, { wch: 28 }, { wch: 12 }, { wch: 12 },
     ]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Licencias')
@@ -4321,7 +4341,7 @@ function LicensesTab({ isDark }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ background: bg3 }}>
-                {['Restaurante', 'Plan', 'Estado', 'Inicio', 'Fin'].map((h, i) => (
+                {['Restaurante', 'Plan', 'Estado', 'Fin', 'Contacto'].map((h, i) => (
                   <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: t3, fontWeight: 700, borderBottom: `1px solid ${b1}` }}>
                     {h}
                   </th>
@@ -4378,8 +4398,39 @@ function LicensesTab({ isDark }) {
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.startDate)}</td>
                     <td style={{ padding: '10px 14px', color: t2, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{fmtDate(sub.endDate)}</td>
+                    <td style={{ padding: '10px 14px' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {r.contact && (
+                          <span style={{ fontSize: '0.78rem', color: ink, fontWeight: 500 }}>{r.contact}</span>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, fontSize: '0.72rem' }}>
+                          {r.phone && (
+                            <a href={`tel:${r.phone}`} style={{ color: t2, textDecoration: 'none' }} title={`Llamar: ${r.phone}`}>
+                              📞 {r.phone}
+                            </a>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, fontSize: '0.72rem' }}>
+                          {r.ownerEmail && (
+                            <a href={`mailto:${r.ownerEmail}`} style={{ color: t2, textDecoration: 'none' }} title={`Enviar correo: ${r.ownerEmail}`}>
+                              ✉️ {r.ownerEmail}
+                            </a>
+                          )}
+                        </div>
+                        {r.phone && (
+                          <a href={`https://wa.me/${String(r.phone).replace(/[^0-9]/g, '')}`}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{ color: '#25D366', fontSize: '0.7rem', textDecoration: 'none', fontWeight: 600 }}
+                            title="WhatsApp">
+                            💬 WhatsApp
+                          </a>
+                        )}
+                        {!r.contact && !r.phone && !r.ownerEmail && (
+                          <span style={{ fontSize: '0.72rem', color: t3, fontStyle: 'italic' }}>Sin datos</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
