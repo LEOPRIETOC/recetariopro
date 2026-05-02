@@ -3202,6 +3202,15 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
   const [sortDir, setSortDir] = useState('asc')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('summary-view-mode') || 'list')
   const setView = (m) => { setViewMode(m); localStorage.setItem('summary-view-mode', m) }
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const onChange = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const effectiveViewMode = isMobile ? 'grid' : viewMode
 
   const handleOpenRecipe = (id) => {
     if (!id) return
@@ -3369,7 +3378,7 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>
           {search ? `Sin resultados para "${search}"` : 'No hay recetas todavía.'}
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : effectiveViewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
           {rows.map((r) => (
             <div key={r.id}
@@ -4141,6 +4150,15 @@ function LicensesTab({ isDark }) {
   const [filter, setFilter] = useState('all') // all | active | inactive | expiring
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('licenses-view-mode') || 'list')
   const setView = (m) => { setViewMode(m); localStorage.setItem('licenses-view-mode', m) }
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const onChange = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const effectiveViewMode = isMobile ? 'grid' : viewMode
 
   useEffect(() => {
     setLoading(true)
@@ -4402,7 +4420,7 @@ function LicensesTab({ isDark }) {
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3 }}>Cargando…</div>
       ) : visible.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: t3, fontSize: '0.85rem' }}>Sin resultados.</div>
-      ) : viewMode === 'grid' ? (
+      ) : effectiveViewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {visible.map((r) => {
             const sub = r.subscription || {}
