@@ -34,6 +34,7 @@ import { uploadRecipeFile } from '../services/storage'
 import { compressImage } from '../utils/imageUtils'
 import { getConvertedPrice } from '../utils/costUtils'
 import { assertVersionFresh } from '../utils/versionCheck'
+import { usePlan } from '../hooks/usePlan'
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 function formatDate(ts) {
@@ -879,6 +880,7 @@ export default function RecipeDetailPage() {
   const location = useLocation()
   const { currentRestaurant, theme, openConfig, userProfile } = useAppStore()
   const { isAdmin, canEdit, canSeeCosts, isUsuario, isMaster, user: authUser } = useAuth()
+  const { plan, active: licenseActive, has, maxRecipes } = usePlan()
   // canEdit covers master+superadmin+admin; use it for all edit-gating
   const { success, error } = useToast()
   const isDark = theme === 'night'
@@ -1306,6 +1308,17 @@ export default function RecipeDetailPage() {
 
   const onSubmit = async (data) => {
     if (!currentRestaurant?.id) { error('No hay restaurante configurado'); return }
+    if (!licenseActive) {
+      error('La licencia del restaurante no está activa. Contacta al administrador.')
+      return
+    }
+    if (isNew) {
+      const currentCount = (allRecipes || []).length
+      if (currentCount >= maxRecipes) {
+        error(`Has alcanzado el límite de ${maxRecipes} recetas/sub-recetas del plan ${plan.label}. Actualiza tu plan para crear más.`)
+        return
+      }
+    }
     setSaving(true)
     try {
       // Bloquea el guardado si la version cargada esta obsoleta — fuerza recarga.
@@ -1353,7 +1366,8 @@ export default function RecipeDetailPage() {
           clean.totalCost = isNaN(base + waste) ? 0 : base + waste
           return clean
         })
-      const useManualCostFlag = !!data.useManualCost
+      // Si el plan no permite autoCost, fuerza siempre manual
+      const useManualCostFlag = has('autoCost') ? !!data.useManualCost : true
       const manualCostVal = parseFloat(data.manualCost) || 0
       const payload = {
         ...data,
@@ -1890,13 +1904,18 @@ export default function RecipeDetailPage() {
                 </span>
               </CardHeader>
               <CardContent className="space-y-3">
-                {canSeeCosts && (
+                {canSeeCosts && has('autoCost') && (
                   <div className="flex items-center justify-between">
                     <div>
                       <p className={cn('text-xs font-medium', isDark ? 'text-gray-300' : 'text-gray-700')}>Costo manual</p>
                       <p className={cn('text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>Sobreescribe el calculado</p>
                     </div>
                     <Switch checked={useManualCost} onCheckedChange={(v) => setValue('useManualCost', v)} />
+                  </div>
+                )}
+                {canSeeCosts && !has('autoCost') && (
+                  <div className={cn('text-xs px-3 py-2 rounded-lg', isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500')}>
+                    Tu plan {plan.label} solo permite costo manual. Actualiza para activar el cálculo automático.
                   </div>
                 )}
                 {canSeeCosts && useManualCost && (
@@ -2103,69 +2122,75 @@ export default function RecipeDetailPage() {
               </div>
             )}
 
-            {/* Photo + Video */}
-            <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gold-600" /> Foto y Video</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {isNew && (
-                  <p className={cn('text-xs rounded-lg px-3 py-2', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
-                    Guarda la receta primero para subir archivos multimedia.
-                  </p>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" /> Foto</Label>
-                    <div className="relative">
-                      <DropZone
-                        accept="image/jpeg,image/png,image/webp"
-                        label="Foto de la receta"
-                        icon={ImageIcon}
-                        progress={photoProgress}
-                        previewURL={photoPreview}
-                        isDark={isDark}
-                        onDrop={handlePhotoDrop}
-                      />
-                      {photoUploading && (
-                        <div style={{
-                          position: 'absolute', inset: 0, borderRadius: '0.75rem',
-                          background: 'rgba(0,0,0,0.5)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#fff', fontSize: '0.8rem', fontWeight: 600,
-                        }}>
-                          {photoProgress === 0 ? 'Optimizando imagen...' : `Subiendo ${photoProgress}%`}
+            {/* Photo + Video — solo si el plan los habilita */}
+            {(has('photos') || has('videos')) && (
+              <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gold-600" /> Foto y Video</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {isNew && (
+                    <p className={cn('text-xs rounded-lg px-3 py-2', isDark ? 'bg-gray-800 text-gray-500' : 'bg-gray-50 text-gray-400')}>
+                      Guarda la receta primero para subir archivos multimedia.
+                    </p>
+                  )}
+                  <div className={cn('grid gap-3', has('photos') && has('videos') ? 'grid-cols-2' : 'grid-cols-1')}>
+                    {has('photos') && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" /> Foto</Label>
+                        <div className="relative">
+                          <DropZone
+                            accept="image/jpeg,image/png,image/webp"
+                            label="Foto de la receta"
+                            icon={ImageIcon}
+                            progress={photoProgress}
+                            previewURL={photoPreview}
+                            isDark={isDark}
+                            onDrop={handlePhotoDrop}
+                          />
+                          {photoUploading && (
+                            <div style={{
+                              position: 'absolute', inset: 0, borderRadius: '0.75rem',
+                              background: 'rgba(0,0,0,0.5)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontSize: '0.8rem', fontWeight: 600,
+                            }}>
+                              {photoProgress === 0 ? 'Optimizando imagen...' : `Subiendo ${photoProgress}%`}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {photoPreview && (
-                      <button type="button" onClick={handleRemovePhoto}
-                        className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
-                        Quitar foto
-                      </button>
+                        {photoPreview && (
+                          <button type="button" onClick={handleRemovePhoto}
+                            className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
+                            Quitar foto
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {has('videos') && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Video</Label>
+                        <DropZone
+                          accept="video/mp4,video/quicktime,video/webm"
+                          label="Video de preparación"
+                          icon={Video}
+                          progress={videoProgress}
+                          fileName={videoURL ? videoURL.split('/').pop().split('?')[0].replace(/^\d+_/, '') : null}
+                          fileSize={null}
+                          disabled={isNew}
+                          isDark={isDark}
+                          onDrop={(file) => handleUpload(file, 'video')}
+                        />
+                        {videoURL && !isNew && (
+                          <button type="button" onClick={() => { setVideoURL(''); setVideoProgress(null) }}
+                            className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
+                            Quitar video
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Video</Label>
-                    <DropZone
-                      accept="video/mp4,video/quicktime,video/webm"
-                      label="Video de preparación"
-                      icon={Video}
-                      progress={videoProgress}
-                      fileName={videoURL ? videoURL.split('/').pop().split('?')[0].replace(/^\d+_/, '') : null}
-                      fileSize={null}
-                      disabled={isNew}
-                      isDark={isDark}
-                      onDrop={(file) => handleUpload(file, 'video')}
-                    />
-                    {videoURL && !isNew && (
-                      <button type="button" onClick={() => { setVideoURL(''); setVideoProgress(null) }}
-                        className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
-                        Quitar video
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Version info */}
             {!isNew && recipe && (

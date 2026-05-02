@@ -21,6 +21,7 @@ import { useTableSort } from '../../hooks/useTableSort.jsx'
 import { cn, formatNumber, toTitleCase } from '../../lib/utils'
 import { calcRecipeTotalCost } from '../../utils/costUtils'
 import { PLANS, PLAN_IDS, FEATURE_LABELS, getPlan, isLicenseActive } from '../../lib/plans'
+import { usePlan } from '../../hooks/usePlan'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
   importIngredients, upsertIngredientsByCode, upsertRecipesByCode, upsertRecipesWithIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
@@ -4448,6 +4449,7 @@ function RestauranteTab({ currentRestaurant, isDark }) {
 export function ConfigModal() {
   const { configOpen, configTab, setConfigTab, closeConfig, currentRestaurant, theme } = useAppStore()
   const { canEdit, canManageUsers, isMaster } = useAuth()
+  const { has } = usePlan()
   const navigate = useNavigate()
   const isDark = theme === 'night'
   const [section, setSection] = useState(null)
@@ -4468,8 +4470,8 @@ export function ConfigModal() {
     { key: 'recipes',       label: 'Gestión Recetas',    visible: canEdit },
     { key: 'replacer',      label: 'Reemplazar Item',    visible: canEdit, icon: ArrowUpDown },
     { key: 'descargas',     label: 'Descargas',          visible: canEdit, icon: Download },
-    { key: 'sales',         label: 'Ventas',             visible: canEdit },
-    { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit },
+    { key: 'sales',         label: 'Ventas',             visible: canEdit && (has('bcg') || has('topSells')) },
+    { key: 'analytics',     label: 'Análisis BCG',       visible: canEdit && has('bcg') },
     { key: 'versions',      label: 'Historial',          visible: canEdit },
     { key: 'verification',  label: 'Verificación',       visible: canEdit, icon: SlidersHorizontal },
     { key: 'users',         label: 'Usuarios',           visible: canManageUsers },

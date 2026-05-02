@@ -7,6 +7,7 @@ import './i18n'
 import { POSLayout } from './components/layout/POSLayout'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import { UpdateBar } from './components/shared/UpdateBar'
+import { LicenseBanner } from './components/shared/LicenseBanner'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'
@@ -45,6 +46,7 @@ export default function App() {
     <ThemeProvider>
       <UpdateBar />
       <BrowserRouter>
+        <LicenseBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

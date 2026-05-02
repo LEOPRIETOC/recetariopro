@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '../lib/firebase'
 import { useAppStore } from '../store/useAppStore'
 import { useAuth } from '../hooks/useAuth'
+import { usePlan } from '../hooks/usePlan'
 import { createUserWithRole, updateUserRole, deactivateUser, sendUserPasswordReset, generateTempPassword, validateStrongPassword, PASSWORD_POLICY } from '../services/auth'
 import { toTitleCase } from '../lib/utils'
 import { useToast } from '../components/ui/toast'
@@ -118,7 +119,7 @@ function CreatedCredentialsModal({ name, email, password, onClose }) {
 }
 
 // ── Create user modal ──────────────────────────────────────────────────────────
-function CreateUserModal({ onClose, onCreated, restaurants, creator, currentRestaurantId }) {
+function CreateUserModal({ onClose, onCreated, restaurants, creator, currentRestaurantId, planLabel, maxUsers, currentUserCount, licenseActive }) {
   const { error } = useToast()
   const [saving, setSaving] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
@@ -157,6 +158,11 @@ function CreateUserModal({ onClose, onCreated, restaurants, creator, currentRest
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) { error('Completa todos los campos'); return }
     if (!validateStrongPassword(form.password)) { setPwdError(PASSWORD_POLICY.message); return }
     if (!form.restaurantIds.length) { error('Asigna al menos un restaurante'); return }
+    if (!licenseActive) { error('La licencia del restaurante no está activa.'); return }
+    if (typeof maxUsers === 'number' && currentUserCount >= maxUsers) {
+      error(`Has alcanzado el límite de ${maxUsers} usuarios del plan ${planLabel}. Actualiza tu plan para crear más.`)
+      return
+    }
     setSaving(true)
     try {
       await createUserWithRole(form, creator.uid)
@@ -296,6 +302,7 @@ function EditRoleModal({ member, onClose, onSaved, creator }) {
 export default function UsersPage() {
   const { currentRestaurant, theme } = useAppStore()
   const { user, isMaster, isAdmin, canManageUsers } = useAuth()
+  const { plan, active: licenseActive, maxUsers } = usePlan()
   const { success, error } = useToast()
   const isDark = theme === 'night'
 
@@ -396,17 +403,29 @@ export default function UsersPage() {
             Gestión de usuarios
           </h1>
           <p style={{ color: t3, fontSize: '0.85rem', margin: 0 }}>
-            {members.length} miembro{members.length !== 1 ? 's' : ''} en este restaurante
+            {members.length} de {maxUsers} miembro{maxUsers !== 1 ? 's' : ''} ({plan.label})
           </p>
         </div>
-        {canManageUsers && (
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{ background: 'var(--accent, #d97706)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontFamily: 'inherit', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <UserPlus className="h-4 w-4" /> Nuevo usuario
-          </button>
-        )}
+        {canManageUsers && (() => {
+          const atLimit = members.length >= maxUsers
+          const disabled = atLimit || !licenseActive
+          return (
+            <button
+              onClick={() => setShowCreate(true)}
+              disabled={disabled}
+              title={!licenseActive ? 'Licencia inactiva' : atLimit ? `Límite del plan ${plan.label} alcanzado` : ''}
+              style={{
+                background: 'var(--accent, #d97706)', color: '#fff', border: 'none', borderRadius: 10,
+                padding: '10px 18px', fontFamily: 'inherit', fontWeight: 600,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <UserPlus className="h-4 w-4" /> Nuevo usuario
+            </button>
+          )
+        })()}
       </div>
 
       {/* Table */}
@@ -537,6 +556,10 @@ export default function UsersPage() {
           restaurants={restaurants}
           creator={creator}
           currentRestaurantId={currentRestaurant?.id}
+          planLabel={plan.label}
+          maxUsers={maxUsers}
+          currentUserCount={members.length}
+          licenseActive={licenseActive}
         />
       )}
       {editMember && (
