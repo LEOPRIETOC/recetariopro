@@ -2109,6 +2109,7 @@ export default function RecipeDetailPage() {
                   {recipe?.isSubRecipe ? 'Esta preparación es una sub-receta' : 'Esta preparación es una receta de menú'}
                 </div>
                 <button
+                  type="button"
                   onClick={() => { setConvertModal(true); setConvertData({}) }}
                   style={{ width: '100%', background: 'transparent', border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`, borderRadius: 8, color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '9px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
                   onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
@@ -2255,10 +2256,12 @@ export default function RecipeDetailPage() {
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
               <button
+                type="button"
                 onClick={() => { setConvertModal(false); setConvertData({}) }}
                 style={{ background: 'transparent', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem', padding: '9px 20px', cursor: 'pointer' }}
               >Cancelar</button>
               <button
+                type="button"
                 onClick={handleConfirmConvert}
                 disabled={converting}
                 style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '9px 20px', cursor: converting ? 'not-allowed' : 'pointer', opacity: converting ? 0.7 : 1 }}
