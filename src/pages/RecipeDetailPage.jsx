@@ -1713,6 +1713,41 @@ export default function RecipeDetailPage() {
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
               <CardHeader><CardTitle>Información básica</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                {/* Portada — foto y/o video visibles, solo si existen */}
+                {(photoPreview || videoURL) && (
+                  <div
+                    className="grid gap-3"
+                    style={{ gridTemplateColumns: photoPreview && videoURL ? 'repeat(2, minmax(0, 1fr))' : '1fr' }}
+                  >
+                    {photoPreview && (
+                      <div
+                        className={cn('rounded-xl overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
+                        style={{ aspectRatio: '4 / 3', background: '#000' }}
+                      >
+                        <img
+                          src={photoPreview}
+                          alt={watch('name') || 'Foto de la receta'}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      </div>
+                    )}
+                    {videoURL && (
+                      <div
+                        className={cn('rounded-xl overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
+                        style={{ aspectRatio: '4 / 3', background: '#000' }}
+                      >
+                        <video
+                          src={videoURL}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Code + Reference */}
                 <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px' }}>
                   <div className="space-y-1.5">
@@ -2252,6 +2287,20 @@ export default function RecipeDetailPage() {
                           isDark={isDark}
                           onDrop={(file) => handleUpload(file, 'video')}
                         />
+                        {videoURL && (
+                          <div
+                            className={cn('rounded-lg overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
+                            style={{ background: '#000' }}
+                          >
+                            <video
+                              src={videoURL}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              style={{ width: '100%', display: 'block', background: '#000' }}
+                            />
+                          </div>
+                        )}
                         {videoURL && !isNew && (
                           <button type="button" onClick={() => { setVideoURL(''); setVideoProgress(null) }}
                             className={cn('text-xs', isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500')}>
