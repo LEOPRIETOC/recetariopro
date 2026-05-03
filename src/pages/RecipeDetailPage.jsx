@@ -1830,13 +1830,10 @@ export default function RecipeDetailPage() {
                 <CardTitle>Ingredientes</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {/* Capture row — siempre visible arriba (sticky en mobile y desktop) */}
+                {/* Capture row — siempre arriba del listado, scrollea con la pagina */}
                 {fields[0] && (
                   <div
                     style={{
-                      position: 'sticky',
-                      top: 0,
-                      zIndex: 5,
                       background: isDark ? '#0f172a' : '#fafafa',
                       borderBottom: `2px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
                     }}
