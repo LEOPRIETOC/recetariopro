@@ -1713,38 +1713,17 @@ export default function RecipeDetailPage() {
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
               <CardHeader><CardTitle>Información básica</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* Portada — foto y/o video visibles, solo si existen */}
-                {(photoPreview || videoURL) && (
+                {/* Portada — solo la foto. El video se reproduce en su card abajo. */}
+                {photoPreview && (
                   <div
-                    className="grid gap-3"
-                    style={{ gridTemplateColumns: photoPreview && videoURL ? 'repeat(2, minmax(0, 1fr))' : '1fr' }}
+                    className={cn('rounded-xl overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
+                    style={{ aspectRatio: '4 / 3', background: '#000' }}
                   >
-                    {photoPreview && (
-                      <div
-                        className={cn('rounded-xl overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
-                        style={{ aspectRatio: '4 / 3', background: '#000' }}
-                      >
-                        <img
-                          src={photoPreview}
-                          alt={watch('name') || 'Foto de la receta'}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
-                      </div>
-                    )}
-                    {videoURL && (
-                      <div
-                        className={cn('rounded-xl overflow-hidden border', isDark ? 'border-gray-800' : 'border-gray-200')}
-                        style={{ aspectRatio: '4 / 3', background: '#000' }}
-                      >
-                        <video
-                          src={videoURL}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
-                        />
-                      </div>
-                    )}
+                    <img
+                      src={photoPreview}
+                      alt={watch('name') || 'Foto de la receta'}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
                   </div>
                 )}
 
