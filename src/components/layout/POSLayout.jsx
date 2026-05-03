@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useAuth } from '../../hooks/useAuth'
@@ -19,7 +19,12 @@ import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import { subscribeCategories, updateCategoryOrder } from '../../services/restaurants'
 import { Toaster } from '../ui/toast'
-import { ConfigModal } from './ConfigModal'
+
+// ConfigModal pesa ~5000 lineas + xlsx + radix dialogs. Lo cargamos solo
+// cuando el usuario abre Configuracion para no inflar el bundle inicial.
+const ConfigModal = lazy(() =>
+  import('./ConfigModal').then((m) => ({ default: m.ConfigModal }))
+)
 
 // Special virtual ID for the Sub-recetas section
 export const SUBRECIPES_CATEGORY_ID = '__subrecipes__'
@@ -79,6 +84,7 @@ export function POSLayout() {
     selectedCategory, setSelectedCategory,
     currentRestaurant, openConfig, accentColor,
     setUser, setUserProfile, setCurrentRestaurant,
+    configOpen,
   } = useAppStore()
   const isDark = theme === 'night'
   const location = useLocation()
@@ -386,7 +392,11 @@ export function POSLayout() {
       </div>
 
       <Toaster />
-      <ConfigModal />
+      {configOpen && (
+        <Suspense fallback={null}>
+          <ConfigModal />
+        </Suspense>
+      )}
 
       {/* ── Modal de inactividad ─────────────────────────────────────────── */}
       {/* ── Modal Salir ──────────────────────────────────────────────────── */}

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAppStore } from './store/useAppStore'
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import './i18n'
 
 // Layout
@@ -10,16 +10,26 @@ import { UpdateBar } from './components/shared/UpdateBar'
 import { VersionFooter } from './components/shared/VersionFooter'
 import { LicenseBanner } from './components/shared/LicenseBanner'
 
-// Auth pages
+// Auth pages — eager (camino critico de login)
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 
-// App pages
+// App pages — lazy split para que el bundle inicial sea pequeno.
+// POSMainPage es la pantalla principal, queda eager.
 import POSMainPage from './pages/POSMainPage'
-import RecipeDetailPage from './pages/RecipeDetailPage'
 import RestaurantSelectorPage from './pages/RestaurantSelectorPage'
-import RestaurantsManagePage from './pages/RestaurantsManagePage'
+const RecipeDetailPage     = lazy(() => import('./pages/RecipeDetailPage'))
+const RestaurantsManagePage = lazy(() => import('./pages/RestaurantsManagePage'))
+
+function PageFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
+}
 
 function ThemeProvider({ children }) {
   const theme = useAppStore((s) => s.theme)
@@ -56,11 +66,11 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/restaurants" element={<RestaurantSelectorPage />} />
-            <Route path="/restaurants/new" element={<RestaurantsManagePage />} />
+            <Route path="/restaurants/new" element={<Suspense fallback={<PageFallback />}><RestaurantsManagePage /></Suspense>} />
             <Route element={<POSLayout />}>
               <Route path="/" element={<POSMainPage />} />
-              <Route path="/recipes/new" element={<RecipeDetailPage />} />
-              <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+              <Route path="/recipes/new" element={<Suspense fallback={<PageFallback />}><RecipeDetailPage /></Suspense>} />
+              <Route path="/recipes/:id" element={<Suspense fallback={<PageFallback />}><RecipeDetailPage /></Suspense>} />
             </Route>
           </Route>
 

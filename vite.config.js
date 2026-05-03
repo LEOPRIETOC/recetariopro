@@ -29,11 +29,26 @@ export default defineConfig({
     },
   ],
   build: {
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
         entryFileNames: 'assets/[name].[hash].js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash].[ext]',
+        // Code-splitting manual para que el bundle inicial sea pequeno y los
+        // libs pesados se carguen solo cuando alguna pagina los necesita.
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('firebase')) return 'firebase'
+          if (id.includes('xlsx')) return 'xlsx'
+          if (id.includes('jspdf') || id.includes('html2canvas')) return 'pdf'
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts'
+          if (id.includes('@radix-ui')) return 'radix'
+          if (id.includes('lucide-react')) return 'lucide'
+          if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) return 'forms'
+          if (id.includes('@dnd-kit')) return 'dnd'
+          return undefined
+        },
       },
     },
   },
