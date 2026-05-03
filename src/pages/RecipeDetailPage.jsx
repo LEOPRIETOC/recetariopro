@@ -229,7 +229,15 @@ const getIngBadge = (ref) => {
   return { color: 'var(--t2)', bg: 'var(--bg3)', label: r || '—' }
 }
 
-function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, nameInputRef, isAdmin }) {
+// Estructura por defecto de un ingrediente vacio. Usada para el "capture row"
+// fijo arriba de la lista (donde se captura el siguiente ingrediente sin tener
+// que clickear "agregar nueva fila" cada vez).
+const EMPTY_INGREDIENT = {
+  ingredientId: '', description: '', quantity: null, unit: '',
+  pricePerUnit: 0, purchaseUnit: '', wasteMargin: 0, type: 'ingredient',
+}
+
+function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, onCommit, isCapture, nameInputRef, isAdmin }) {
   const [query, setQuery] = useState(toTitleCase(field.description || field.ingredientName || ''))
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [dropRect, setDropRect] = useState(null)
@@ -417,6 +425,17 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const staticFieldCls = cn('w-full px-2 h-7 text-sm rounded-lg border flex items-center justify-center font-medium',
     isDark ? 'bg-gray-900 border-gray-800 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700')
 
+  // En modo capture, Enter en cualquier input agrega el ingrediente a la lista
+  // (si description y quantity son validos). El callback onCommit hace la
+  // validacion de nuevo, asi que aca solo bloqueamos el submit del form.
+  const handleCaptureKey = (e) => {
+    if (!isCapture) return
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onCommit && onCommit()
+    }
+  }
+
   return (
     <>
       <div
@@ -462,6 +481,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 }}
                 onFocus={() => { updateDropRect(); setShowSuggestions(true) }}
                 onBlur={() => setTimeout(() => { setShowSuggestions(false); setDropRect(null) }, 150)}
+                onKeyDown={handleCaptureKey}
                 placeholder="Buscar materia prima o sub-receta…"
                 className={inputCls}
               />
@@ -518,6 +538,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 min="0"
                 placeholder="0"
                 {...register(`ingredients.${index}.quantity`, { valueAsNumber: true })}
+                onKeyDown={handleCaptureKey}
                 className={cn(inputCls, 'text-right')}
               />
             </div>
@@ -537,7 +558,12 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 placeholder="0"
                 {...register(`ingredients.${index}.wasteMargin`, { valueAsNumber: true })}
                 onKeyDown={(e) => {
-                  if (e.key === 'Tab' && !e.shiftKey) {
+                  if (isCapture && e.key === 'Enter') {
+                    e.preventDefault()
+                    onCommit && onCommit()
+                    return
+                  }
+                  if (!isCapture && e.key === 'Tab' && !e.shiftKey && onAddRow) {
                     const desc = watch(`ingredients.${index}.description`)
                     const q = watch(`ingredients.${index}.quantity`)
                     if (desc && q) { e.preventDefault(); onAddRow() }
@@ -568,26 +594,40 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           </div>
         </div>
 
-        {/* Acciones — alto de los 2 renglones, apiladas */}
+        {/* Acciones — alto de los 2 renglones, apiladas. En capture: solo "Agregar" */}
         <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button type="button"
-            onClick={() => {
-              if (!watch(`ingredients.${index}.ingredientId`)) return
-              setShowSourceModal(true)
-            }}
-            disabled={!watch(`ingredients.${index}.ingredientId`)}
-            title="Ver y editar la fuente del costo"
-            className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
-              isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-900/30' : 'text-blue-500 hover:text-blue-700 hover:bg-blue-50',
-              !watch(`ingredients.${index}.ingredientId`) && 'opacity-30 cursor-not-allowed')}>
-            <Info className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => remove(index)}
-            title="Eliminar ingrediente"
-            className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
-              isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-400 hover:text-red-600 hover:bg-red-50')}>
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {isCapture ? (
+            <button type="button"
+              onClick={() => onCommit && onCommit()}
+              disabled={!watch(`ingredients.${index}.description`) || !(parseFloat(watch(`ingredients.${index}.quantity`)) > 0)}
+              title="Agregar ingrediente a la receta"
+              className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors text-white font-bold',
+                'disabled:opacity-30 disabled:cursor-not-allowed')}
+              style={{ background: 'var(--accent)' }}>
+              <Plus className="h-5 w-5" />
+            </button>
+          ) : (
+            <>
+              <button type="button"
+                onClick={() => {
+                  if (!watch(`ingredients.${index}.ingredientId`)) return
+                  setShowSourceModal(true)
+                }}
+                disabled={!watch(`ingredients.${index}.ingredientId`)}
+                title="Ver y editar la fuente del costo"
+                className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
+                  isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-900/30' : 'text-blue-500 hover:text-blue-700 hover:bg-blue-50',
+                  !watch(`ingredients.${index}.ingredientId`) && 'opacity-30 cursor-not-allowed')}>
+                <Info className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => remove(index)}
+                title="Eliminar ingrediente"
+                className={cn('flex-1 flex items-center justify-center rounded-lg transition-colors',
+                  isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' : 'text-red-400 hover:text-red-600 hover:bg-red-50')}>
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -918,17 +958,18 @@ export default function RecipeDetailPage() {
   const [convertData, setConvertData] = useState({})
   const [converting, setConverting] = useState(false)
 
-  const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, watch, setValue, reset, getValues, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '', code: '', categoryId: '', menuCode: '', item: '', reference: '',
       isSubRecipe: typeFromUrl === 'subrecipe',
-      useManualCost: false, manualCost: 0, recipeType: typeFromUrl, ingredients: [],
+      useManualCost: false, manualCost: 0, recipeType: typeFromUrl,
+      ingredients: [EMPTY_INGREDIENT],
       preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '', sellingPrice: 0,
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'ingredients' })
+  const { fields, append, remove, insert, update } = useFieldArray({ control, name: 'ingredients' })
   const ingredients = watch('ingredients') || []
   const isSubRecipe = watch('isSubRecipe')
   const useManualCost = watch('useManualCost')
@@ -1019,10 +1060,13 @@ export default function RecipeDetailPage() {
           )
           return matched?.abbreviation || raw
         })(),
-        ingredients: (r.ingredients || []).map((ing) => ({
-          ...ing,
-          description: ing.description || ing.ingredientName || '',
-        })),
+        ingredients: [
+          EMPTY_INGREDIENT,
+          ...(r.ingredients || []).map((ing) => ({
+            ...ing,
+            description: ing.description || ing.ingredientName || '',
+          })),
+        ],
         photoURL: r.photoURL || '',
         videoURL: r.videoURL || '',
       })
@@ -1297,13 +1341,20 @@ export default function RecipeDetailPage() {
     setDupErrors((prev) => ({ ...prev, [field]: dup ? `Ya existe una receta con este campo` : null }))
   }
 
-  // Auto-add new ingredient row (change 8)
-  const handleAddRow = () => {
-    append({ ingredientId: '', description: '', quantity: null, unit: '', pricePerUnit: 0, purchaseUnit: '', wasteMargin: 0, type: 'ingredient' })
-    setTimeout(() => {
-      const refs = nameInputRefs.current
-      if (refs[refs.length - 1]) refs[refs.length - 1].focus()
-    }, 50)
+  // El capture row es el field[0]. Al "commit", tomamos sus valores actuales,
+  // los insertamos como segunda fila (queda justo debajo del capture, visible
+  // de inmediato), reseteamos el field[0] a vacio y forzamos remount con
+  // captureKey para limpiar el state local del autocomplete.
+  const [captureKey, setCaptureKey] = useState(0)
+  const handleCaptureCommit = () => {
+    const data = getValues('ingredients.0')
+    const desc = (data?.description || '').trim()
+    const qty = parseFloat(data?.quantity)
+    if (!desc || !(qty > 0)) return
+    insert(1, { ...data, description: desc })
+    update(0, EMPTY_INGREDIENT)
+    setCaptureKey((k) => k + 1)
+    setTimeout(() => { nameInputRefs.current[0]?.focus() }, 60)
   }
 
   const onSubmit = async (data) => {
@@ -1779,50 +1830,77 @@ export default function RecipeDetailPage() {
                 <CardTitle>Ingredientes</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {fields.length === 0 ? (
-                  <div className={cn('mx-6 mb-4 text-center py-6 rounded-xl border-2 border-dashed', isDark ? 'border-gray-800 text-gray-600' : 'border-gray-200 text-gray-400')}>
-                    <p className="text-sm">No hay ingredientes. Agrega el primero.</p>
+                {/* Capture row — siempre visible arriba (sticky en mobile y desktop) */}
+                {fields[0] && (
+                  <div
+                    style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 5,
+                      background: isDark ? '#0f172a' : '#fafafa',
+                      borderBottom: `2px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
+                    }}
+                  >
+                    <div style={{ padding: '6px 16px 0', fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Nuevo ingrediente
+                    </div>
+                    <IngredientRow
+                      key={`capture-${fields[0].id}-${captureKey}`}
+                      index={0}
+                      field={fields[0]}
+                      allIngredients={allIngredients}
+                      allSubrecipes={allSubrecipes}
+                      allUnits={allUnits}
+                      remove={remove}
+                      register={register}
+                      watch={watch}
+                      setValue={setValue}
+                      isDark={isDark}
+                      restaurantId={currentRestaurant?.id}
+                      onCommit={handleCaptureCommit}
+                      isCapture
+                      nameInputRef={(el) => { nameInputRefs.current[0] = el }}
+                      isAdmin={isAdmin}
+                    />
                   </div>
-                ) : (
+                )}
+
+                {/* Lista de ingredientes ya agregados */}
+                {fields.length > 1 ? (
                   <>
                     <div>
-                      {fields.map((field, index) => (
-                        <IngredientRow
-                          key={field.id}
-                          index={index}
-                          field={field}
-                          allIngredients={allIngredients}
-                          allSubrecipes={allSubrecipes}
-                          allUnits={allUnits}
-                          remove={remove}
-                          register={register}
-                          watch={watch}
-                          setValue={setValue}
-                          isDark={isDark}
-                          restaurantId={currentRestaurant?.id}
-                          onAddRow={handleAddRow}
-                          nameInputRef={(el) => { nameInputRefs.current[index] = el }}
-                          isAdmin={isAdmin}
-                        />
-                      ))}
+                      {fields.slice(1).map((field, i) => {
+                        const realIdx = i + 1
+                        return (
+                          <IngredientRow
+                            key={field.id}
+                            index={realIdx}
+                            field={field}
+                            allIngredients={allIngredients}
+                            allSubrecipes={allSubrecipes}
+                            allUnits={allUnits}
+                            remove={remove}
+                            register={register}
+                            watch={watch}
+                            setValue={setValue}
+                            isDark={isDark}
+                            restaurantId={currentRestaurant?.id}
+                            nameInputRef={(el) => { nameInputRefs.current[realIdx] = el }}
+                            isAdmin={isAdmin}
+                          />
+                        )
+                      })}
                     </div>
                     <div className={cn('flex justify-between px-4 py-2 border-t font-medium text-sm', isDark ? 'border-gray-800' : 'border-gray-100')}>
                       <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Total ingredientes</span>
                       <span className="font-bold" style={{ color: 'var(--accent)' }}>{formatNumber(totalCostCalc)}</span>
                     </div>
                   </>
+                ) : (
+                  <div className={cn('mx-6 my-4 text-center py-6 rounded-xl border-2 border-dashed', isDark ? 'border-gray-800 text-gray-600' : 'border-gray-200 text-gray-400')}>
+                    <p className="text-sm">Aún no hay ingredientes. Captúralos arriba.</p>
+                  </div>
                 )}
-                {/* Add ingredient button */}
-                <div className="px-4 pb-4">
-                  <button
-                    type="button"
-                    onClick={handleAddRow}
-                    className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: 'var(--accent)' }}
-                  >
-                    <Plus className="h-4 w-4" /> Nuevo ingrediente
-                  </button>
-                </div>
               </CardContent>
             </Card>
 
