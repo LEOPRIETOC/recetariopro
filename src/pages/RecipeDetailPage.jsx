@@ -248,6 +248,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const [showSourceModal, setShowSourceModal] = useState(false)
   const quantityInputRef = useRef(null)
   const localInputRef = useRef(null)
+  const referenceInputRef = useRef(null)
   const { success } = useToast()
 
   const updateDropRect = () => {
@@ -271,6 +272,14 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
       setValue(`ingredients.${index}.unit`, normalizedUnit)
     }
   }, [normalizedUnit]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Al abrir el modal "Agregar a MP", el nombre ya viene pre-llenado desde el
+  // buscador. Movemos el foco directo a Referencia para no perder un Tab.
+  useEffect(() => {
+    if (showQuickAdd) {
+      setTimeout(() => { referenceInputRef.current?.focus() }, 60)
+    }
+  }, [showQuickAdd])
   const purchaseUnit = watch(`ingredients.${index}.purchaseUnit`) || ''
   const wasteMargin = parseFloat(watch(`ingredients.${index}.wasteMargin`)) || 0
   const rowType = watch(`ingredients.${index}.type`) || 'ingredient'
@@ -680,6 +689,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 <div>
                   <label style={{ fontSize: '0.7rem', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 3 }}>Referencia</label>
                   <input
+                    ref={referenceInputRef}
                     value={quickAddData.reference || ''}
                     onChange={e => setQuickAddData(d => ({ ...d, reference: e.target.value }))}
                     placeholder="MP1000001"
