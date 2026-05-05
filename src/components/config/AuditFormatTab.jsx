@@ -9,7 +9,7 @@
 // No modifica datos. Solo lee + lista. La correccion la decide el usuario.
 
 import { useState, useMemo } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import {
   toTitleCase,
@@ -166,10 +166,151 @@ async function runAudit(restaurantId) {
   return issues
 }
 
+// ─── Backup completo del restaurante ──────────────────────────────────────────
+const BACKUP_COLLECTIONS = [
+  'recipes', 'materias_primas', 'categories', 'mp_categories',
+  'units', 'suppliers', 'sales_data',
+]
+
+async function downloadBackup(restaurantId, restaurantName) {
+  if (!restaurantId) throw new Error('No hay restaurante activo')
+  const out = { restaurantId, restaurantName, exportedAt: new Date().toISOString(), collections: {} }
+
+  for (const colName of BACKUP_COLLECTIONS) {
+    try {
+      const snap = await getDocs(collection(db, 'restaurants', restaurantId, colName))
+      out.collections[colName] = snap.docs.map((d) => ({ _id: d.id, ...d.data() }))
+    } catch (err) {
+      console.warn(`[backup] no pude leer ${colName}`, err?.message)
+      out.collections[colName] = { error: err?.message || 'unreadable' }
+    }
+  }
+
+  // JSON
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+  const safeName = (restaurantName || 'restaurante').replace(/[^a-z0-9]/gi, '_').toLowerCase()
+  const jsonBlob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' })
+  const jsonUrl = URL.createObjectURL(jsonBlob)
+  const a = document.createElement('a')
+  a.href = jsonUrl
+  a.download = `respaldo_${safeName}_${stamp}.json`
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(jsonUrl)
+
+  // Excel — una hoja por coleccion (campos top-level del doc; las columnas
+  // anidadas como ingredients[] van como JSON en una celda)
+  const wb = XLSX.utils.book_new()
+  for (const [colName, docs] of Object.entries(out.collections)) {
+    if (!Array.isArray(docs) || docs.length === 0) continue
+    const flat = docs.map((d) => {
+      const row = {}
+      for (const [k, v] of Object.entries(d)) {
+        row[k] = (v && typeof v === 'object') ? JSON.stringify(v) : v
+      }
+      return row
+    })
+    const ws = XLSX.utils.json_to_sheet(flat)
+    XLSX.utils.book_append_sheet(wb, ws, colName.slice(0, 31))
+  }
+  XLSX.writeFile(wb, `respaldo_${safeName}_${stamp}.xlsx`)
+
+  return out
+}
+
+// ─── Aplicar correcciones ────────────────────────────────────────────────────
+// Agrupa los issues por documento (cada update toca el doc 1 sola vez) y
+// los aplica en lotes de hasta 400 (limite de firestore: 500).
+async function applyFixes(restaurantId, issues) {
+  if (!restaurantId || !issues?.length) return { updated: 0 }
+
+  // Agrupar por (kind + id)
+  const byDoc = new Map()
+  for (const i of issues) {
+    const key = `${i.kind}:${i.id}`
+    if (!byDoc.has(key)) byDoc.set(key, { kind: i.kind, id: i.id, fields: [] })
+    byDoc.get(key).fields.push(i)
+  }
+
+  // Para arrays anidados (ingredients[N].field), necesitamos cargar el doc actual
+  const recipesNeedingLoad = []
+  for (const docInfo of byDoc.values()) {
+    if (docInfo.kind === 'recipe' || docInfo.kind === 'subrecipe') {
+      const hasNested = docInfo.fields.some((f) => f.field.startsWith('ingredients['))
+      if (hasNested) recipesNeedingLoad.push(docInfo.id)
+    }
+  }
+
+  const recipeCache = new Map()
+  if (recipesNeedingLoad.length) {
+    const recsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+    recsSnap.docs.forEach((d) => recipeCache.set(d.id, d.data()))
+  }
+
+  let updated = 0
+  let batch = writeBatch(db)
+  let ops = 0
+
+  const flush = async () => {
+    if (ops === 0) return
+    await batch.commit()
+    batch = writeBatch(db)
+    ops = 0
+  }
+
+  const collectionFor = (kind) => ({
+    recipe: 'recipes', subrecipe: 'recipes',
+    mp: 'materias_primas',
+    category: 'categories',
+    mpcat: 'mp_categories',
+    unit: 'units',
+  })[kind]
+
+  for (const docInfo of byDoc.values()) {
+    const colName = collectionFor(docInfo.kind)
+    if (!colName) continue
+    const ref = doc(db, 'restaurants', restaurantId, colName, docInfo.id)
+    const updates = { updatedAt: serverTimestamp() }
+
+    // Campos directos
+    const directFields = docInfo.fields.filter((f) => !f.field.startsWith('ingredients['))
+    for (const f of directFields) {
+      updates[f.field] = f.suggested
+    }
+
+    // Ingredientes anidados (solo recetas/sub-recetas)
+    const ingFields = docInfo.fields.filter((f) => f.field.startsWith('ingredients['))
+    if (ingFields.length) {
+      const current = recipeCache.get(docInfo.id)
+      if (current?.ingredients) {
+        const ingredients = current.ingredients.map((ing) => ({ ...ing }))
+        for (const f of ingFields) {
+          const m = f.field.match(/ingredients\[(\d+)\]\.(\w+)/)
+          if (!m) continue
+          const idx = parseInt(m[1], 10)
+          const subField = m[2]
+          if (ingredients[idx]) ingredients[idx][subField] = f.suggested
+        }
+        updates.ingredients = ingredients
+      }
+    }
+
+    batch.update(ref, updates)
+    ops++
+    updated++
+    if (ops >= 400) { await flush() }
+  }
+  await flush()
+  return { updated }
+}
+
 export default function AuditFormatTab({ restaurantId, isDark }) {
   const [running, setRunning] = useState(false)
   const [issues, setIssues] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [backupDone, setBackupDone] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const handleRun = async () => {
     setRunning(true)
@@ -181,6 +322,36 @@ export default function AuditFormatTab({ restaurantId, isDark }) {
       alert('Error ejecutando auditoría: ' + (err?.message || 'desconocido'))
     } finally {
       setRunning(false)
+    }
+  }
+
+  const handleBackup = async () => {
+    setBackingUp(true)
+    try {
+      await downloadBackup(restaurantId, '')
+      setBackupDone(true)
+    } catch (err) {
+      console.error('[AuditFormat] backup error', err)
+      alert('Error descargando respaldo: ' + (err?.message || 'desconocido'))
+    } finally {
+      setBackingUp(false)
+    }
+  }
+
+  const handleApply = async () => {
+    if (!issues?.length) return
+    setApplying(true)
+    try {
+      const { updated } = await applyFixes(restaurantId, issues)
+      setConfirmOpen(false)
+      alert(`Correcciones aplicadas: ${updated} documento(s) actualizado(s).\n\nEjecutá la auditoría de nuevo para verificar.`)
+      // Re-correr la auditoria automaticamente para mostrar el resultado
+      await handleRun()
+    } catch (err) {
+      console.error('[AuditFormat] apply error', err)
+      alert('Error aplicando correcciones: ' + (err?.message || 'desconocido'))
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -269,6 +440,101 @@ export default function AuditFormatTab({ restaurantId, isDark }) {
           </button>
         )}
       </div>
+
+      {issues && issues.length > 0 && (
+        <div style={{
+          background: backupDone ? 'rgba(16,185,129,0.08)' : (isDark ? '#1f2937' : '#fef3c7'),
+          border: `1px solid ${backupDone ? '#10b981' : '#f59e0b'}`,
+          borderRadius: 12, padding: '14px 16px', marginBottom: 16,
+        }}>
+          <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 6, color: backupDone ? '#059669' : (isDark ? '#fef3c7' : '#92400e') }}>
+            {backupDone ? '✓ Respaldo descargado' : '⚠ Antes de aplicar correcciones, descargá un respaldo'}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: t2, marginBottom: 10, lineHeight: 1.5 }}>
+            La operación es masiva e <strong>irreversible</strong>. Descargá un respaldo
+            (JSON + Excel con todas las colecciones) antes de aplicar.
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleBackup}
+              disabled={backingUp}
+              style={{
+                background: backupDone ? 'transparent' : '#0833A2',
+                color: backupDone ? '#059669' : '#fff',
+                border: backupDone ? '1px solid #10b981' : 'none',
+                borderRadius: 8, padding: '8px 16px',
+                fontFamily: 'inherit', fontWeight: 700, fontSize: '0.82rem',
+                cursor: backingUp ? 'wait' : 'pointer', opacity: backingUp ? 0.7 : 1,
+              }}
+            >
+              {backingUp ? 'Descargando…' : (backupDone ? 'Descargar respaldo de nuevo' : '1. Descargar respaldo')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              disabled={!backupDone || applying}
+              title={!backupDone ? 'Primero descargá el respaldo' : 'Aplicar las correcciones'}
+              style={{
+                background: backupDone ? '#dc2626' : '#9ca3af',
+                color: '#fff', border: 'none',
+                borderRadius: 8, padding: '8px 16px',
+                fontFamily: 'inherit', fontWeight: 700, fontSize: '0.82rem',
+                cursor: !backupDone ? 'not-allowed' : (applying ? 'wait' : 'pointer'),
+                opacity: !backupDone ? 0.5 : (applying ? 0.7 : 1),
+              }}
+            >
+              {applying ? 'Aplicando…' : `2. Aplicar ${issues.length} corrección${issues.length === 1 ? '' : 'es'}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div style={{
+            background: card, border: `1px solid ${b1}`, borderRadius: 16,
+            padding: '24px 22px', maxWidth: 440, width: '100%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: ink }}>
+              Confirmar aplicación
+            </h3>
+            <p style={{ margin: '10px 0 16px', fontSize: '0.85rem', color: t2, lineHeight: 1.5 }}>
+              Se modificarán <strong>{issues?.length || 0}</strong> campo(s) en Firestore.
+              Esta operación <strong>no se puede deshacer</strong> desde la app.
+              Ya tenés el respaldo descargado por si necesitás restaurar.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                disabled={applying}
+                style={{
+                  background: 'transparent', color: t2,
+                  border: `1px solid ${b1}`, borderRadius: 8,
+                  padding: '8px 18px', fontFamily: 'inherit', fontWeight: 600,
+                  fontSize: '0.85rem', cursor: 'pointer',
+                }}
+              >Cancelar</button>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={applying}
+                style={{
+                  background: '#dc2626', color: '#fff', border: 'none',
+                  borderRadius: 8, padding: '8px 18px', fontFamily: 'inherit',
+                  fontWeight: 700, fontSize: '0.85rem',
+                  cursor: applying ? 'wait' : 'pointer', opacity: applying ? 0.7 : 1,
+                }}
+              >{applying ? 'Aplicando…' : 'Sí, aplicar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {counts && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
