@@ -1149,9 +1149,40 @@ export default function RecipeDetailPage() {
     }
   }
 
+  // Modal de cambios sin guardar — se abre si el usuario intenta salir con
+  // hasUnsavedChanges=true. exitAfterSaveRef se setea cuando el usuario elige
+  // "Guardar y salir" para que, al detectar que hasUnsavedChanges paso a false
+  // (guardado exitoso), el useEffect dispare la salida.
+  const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
+  const exitAfterSaveRef = useRef(false)
+
   const safeNavigate = () => {
+    if (hasUnsavedChanges) {
+      setUnsavedModalOpen(true)
+    } else {
+      exitToOrigin()
+    }
+  }
+
+  const discardAndExit = () => {
+    setHasUnsavedChanges(false)
+    setUnsavedModalOpen(false)
     exitToOrigin()
   }
+
+  const saveAndExit = () => {
+    exitAfterSaveRef.current = true
+    handleSave()
+  }
+
+  useEffect(() => {
+    if (!hasUnsavedChanges && exitAfterSaveRef.current) {
+      exitAfterSaveRef.current = false
+      setUnsavedModalOpen(false)
+      exitToOrigin()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges])
 
   const handleConfirmConvert = async () => {
     if (!recipe || !currentRestaurant?.id) return
@@ -2369,6 +2400,88 @@ export default function RecipeDetailPage() {
                 disabled={converting}
                 style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.85rem', padding: '9px 20px', cursor: converting ? 'not-allowed' : 'pointer', opacity: converting ? 0.7 : 1 }}
               >{converting ? 'Convirtiendo...' : 'Confirmar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: cambios sin guardar al salir */}
+      {unsavedModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div style={{
+            background: isDark ? '#111712' : '#fff',
+            border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
+            borderRadius: 16, padding: '24px 22px',
+            maxWidth: 440, width: '100%',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: '50%',
+              background: '#f59e0b22', color: '#f59e0b',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px', fontSize: 24, fontWeight: 800,
+            }}>!</div>
+            <h3 style={{
+              margin: 0, fontSize: '1.05rem', fontWeight: 700,
+              color: isDark ? '#f0ece4' : '#111827', textAlign: 'center',
+            }}>
+              Cambios sin guardar
+            </h3>
+            <p style={{
+              margin: '10px 0 18px',
+              fontSize: '0.88rem',
+              color: isDark ? '#9ca3af' : '#6b7280',
+              textAlign: 'center', lineHeight: 1.5,
+            }}>
+              Si salís sin guardar perdés todos los cambios realizados.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                onClick={saveAndExit}
+                disabled={saving}
+                style={{
+                  background: 'var(--accent)', color: '#fff', border: 'none',
+                  borderRadius: 10, padding: '11px 16px',
+                  fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9rem',
+                  cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1,
+                }}
+              >
+                {saving ? 'Guardando…' : 'Guardar y salir'}
+              </button>
+              <button
+                type="button"
+                onClick={discardAndExit}
+                disabled={saving}
+                style={{
+                  background: 'transparent', color: '#dc2626',
+                  border: '1px solid #dc2626', borderRadius: 10,
+                  padding: '11px 16px',
+                  fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Salir sin guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setUnsavedModalOpen(false)}
+                disabled={saving}
+                style={{
+                  background: 'transparent',
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                  border: 'none', borderRadius: 10,
+                  padding: '8px 16px',
+                  fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+                  cursor: 'pointer', marginTop: 4,
+                }}
+              >
+                Seguir editando
+              </button>
             </div>
           </div>
         </div>
