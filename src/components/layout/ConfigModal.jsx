@@ -268,7 +268,15 @@ function IngredientsTab({ restaurantId, isDark }) {
       }
       success('Guardado correctamente')
       goToList()
-    } catch { error('Error al guardar') }
+    } catch (err) {
+      console.error('[IngredientsTab] save error:', err)
+      const msg = err?.code === 'permission-denied'
+        ? 'Sin permisos para modificar materias primas. Pedí acceso a un admin.'
+        : err?.code === 'unavailable'
+          ? 'Sin conexión. Reintentá cuando vuelvas a estar online.'
+          : `Error al guardar: ${err?.message || err?.code || 'desconocido'}`
+      error(msg)
+    }
     finally { setSaving(false) }
   }
 
@@ -420,14 +428,14 @@ function IngredientsTab({ restaurantId, isDark }) {
             </div>
             <div className="col-md-3 col-6">
               <Label className="form-label">Valor presentación *</Label>
-              <Input type="number" step="0.01" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
+              <Input type="number" step="1" min="0" {...register('value')} className={errors.value ? 'border-red-400' : ''} />
               {errors.value && <p className="text-xs text-red-500 mt-1">{errors.value.message}</p>}
             </div>
             <div className="col-md-3 col-6">
               <Label className="form-label">Precio por {watchedUnitName || 'unidad'}</Label>
               <Input
                 readOnly
-                value={pricePerUnit > 0 ? pricePerUnit.toFixed(2) : '—'}
+                value={pricePerUnit > 0 ? Math.round(pricePerUnit).toLocaleString('es-CO') : '—'}
                 style={{ color: 'var(--accent)', fontWeight: 600 }}
               />
             </div>
@@ -536,7 +544,7 @@ function IngredientsTab({ restaurantId, isDark }) {
                       <div>
                         <p style={{ fontSize: '0.58rem', color: 'var(--t3)', marginBottom: 1 }}>Precio/{ing.useUnit || ing.unit || 'u'}</p>
                         <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)' }}>
-                          {ing.pricePerUnit != null ? `$${Number(ing.pricePerUnit).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : '—'}
+                          {ing.pricePerUnit != null ? `$${Math.round(Number(ing.pricePerUnit)).toLocaleString('es-CO')}` : '—'}
                         </p>
                       </div>
                     </div>
@@ -636,8 +644,8 @@ function IngredientsTab({ restaurantId, isDark }) {
                 <td style={{ padding: '10px 12px', fontWeight: 500, color: isDark ? '#f9fafb' : '#1f2937', whiteSpace: 'nowrap', minWidth: '160px' }}>{ing.name || ing.description}</td>
                 <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.useUnit || ing.unit || '—'}</td>
                 <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#9ca3af' : '#6b7280', whiteSpace: 'nowrap' }}>{ing.quantityPerPresentation ?? '—'}</td>
-                <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#d1d5db' : '#374151', whiteSpace: 'nowrap' }}>{ing.value != null ? formatNumber(ing.value) : '—'}</td>
-                <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: isDark ? '#d97706' : '#92400e', whiteSpace: 'nowrap' }}>{formatNumber(ing.pricePerUnit)}</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: isDark ? '#d1d5db' : '#374151', whiteSpace: 'nowrap' }}>{ing.value != null ? formatNumber(ing.value, 0) : '—'}</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: isDark ? '#d97706' : '#92400e', whiteSpace: 'nowrap' }}>{formatNumber(ing.pricePerUnit, 0)}</td>
                 <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{ing.category && <Badge variant="secondary">{ing.category}</Badge>}</td>
                 <td style={{ padding: '10px 12px', color: isDark ? '#9ca3af' : '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.supplier || '—'}</td>
                 {/* Acciones — sticky right */}
