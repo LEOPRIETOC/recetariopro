@@ -237,7 +237,7 @@ const EMPTY_INGREDIENT = {
   pricePerUnit: 0, purchaseUnit: '', wasteMargin: 0, type: 'ingredient',
 }
 
-function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, onCommit, isCapture, nameInputRef, isAdmin }) {
+function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, remove, register, watch, setValue, isDark, restaurantId, onAddRow, onCommit, isCapture, nameInputRef, isAdmin, canEdit }) {
   const [query, setQuery] = useState(toTitleCase(field.description || field.ingredientName || ''))
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [dropRect, setDropRect] = useState(null)
@@ -666,7 +666,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
             description: watch(`ingredients.${index}.description`),
           }}
           isDark={isDark}
-          canEdit={!!isAdmin}
+          canEdit={!!canEdit}
         />
       )}
 
@@ -1941,6 +1941,7 @@ export default function RecipeDetailPage() {
                       isCapture
                       nameInputRef={(el) => { nameInputRefs.current[0] = el }}
                       isAdmin={isAdmin}
+                      canEdit={canEdit}
                     />
                   </div>
                 )}
@@ -1967,6 +1968,7 @@ export default function RecipeDetailPage() {
                             restaurantId={currentRestaurant?.id}
                             nameInputRef={(el) => { nameInputRefs.current[realIdx] = el }}
                             isAdmin={isAdmin}
+                            canEdit={canEdit}
                           />
                         )
                       })}
