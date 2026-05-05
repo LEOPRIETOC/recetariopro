@@ -4919,6 +4919,7 @@ export function ConfigModal() {
     { key: 'users',         label: 'Usuarios',           visible: canManageUsers },
     { key: 'appearance',    label: 'Personalización',    visible: isMaster },
     { key: 'subscription',  label: 'Licencias',          visible: isMaster, icon: CreditCard },
+    { key: 'audit_format',  label: 'Auditoría Formato',  visible: isMaster, icon: ShieldCheck },
     { key: 'restaurante',   label: 'Restaurante',        visible: canEdit, icon: Store },
   ].filter(c => c.visible).sort((a, b) => a.label.localeCompare(b.label, 'es'))
 
