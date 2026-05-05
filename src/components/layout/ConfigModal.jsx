@@ -672,10 +672,12 @@ function IngredientsTab({ restaurantId, isDark }) {
 // ── Units Tab ────────────────────────────────────────────────────────────────
 function UnitsTab({ restaurantId, isDark }) {
   const { success, error } = useToast()
+  const { isMaster } = useAuth()
   const [units, setUnits] = useState([])
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [normalizing, setNormalizing] = useState(false)
   const [unitCode, setUnitCode] = useState('')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('units-view-mode') || 'grid')
 
@@ -740,6 +742,85 @@ function UnitsTab({ restaurantId, isDark }) {
     try { await deleteUnit(restaurantId, u.id); success('Eliminada') } catch { error('Error') }
   }
 
+  // Normaliza casing de unidades en TODA la base del restaurante:
+  //  - units.{abbreviation} → MAYUS, units.{name} → Title Case
+  //  - recipes/*.yieldUnit → MAYUS
+  //  - recipes/*.ingredients[].unit y .purchaseUnit → MAYUS
+  //  - materias_primas/*.unit, useUnit, purchaseUnit → MAYUS
+  const handleNormalizeAll = async () => {
+    if (!confirm('Esto va a poner en MAYÚSCULAS todas las abreviaturas de unidades en la base (units, materias primas, recetas y sub-recetas). ¿Continuar?')) return
+    setNormalizing(true)
+    let changedUnits = 0, changedMps = 0, changedRecipes = 0
+    try {
+      // 1) Colección units
+      const unitsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'units'))
+      let batch = writeBatch(db); let ops = 0
+      const flush = async () => { if (ops > 0) { await batch.commit(); batch = writeBatch(db); ops = 0 } }
+      for (const d of unitsSnap.docs) {
+        const data = d.data()
+        const newAbbr = (data.abbreviation || '').toUpperCase()
+        const newName = toTitleCase(data.name || '')
+        if (newAbbr !== data.abbreviation || newName !== data.name) {
+          batch.update(d.ref, { abbreviation: newAbbr, name: newName, updatedAt: serverTimestamp() })
+          ops++; changedUnits++
+          if (ops >= 400) await flush()
+        }
+      }
+      await flush()
+
+      // 2) Materias primas
+      const mpsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'materias_primas'))
+      batch = writeBatch(db); ops = 0
+      for (const d of mpsSnap.docs) {
+        const m = d.data()
+        const updates = {}
+        if (m.unit && m.unit !== m.unit.toUpperCase()) updates.unit = m.unit.toUpperCase()
+        if (m.useUnit && m.useUnit !== m.useUnit.toUpperCase()) updates.useUnit = m.useUnit.toUpperCase()
+        if (m.purchaseUnit && m.purchaseUnit !== m.purchaseUnit.toUpperCase()) updates.purchaseUnit = m.purchaseUnit.toUpperCase()
+        if (Object.keys(updates).length) {
+          updates.updatedAt = serverTimestamp()
+          batch.update(d.ref, updates)
+          ops++; changedMps++
+          if (ops >= 400) await flush()
+        }
+      }
+      await flush()
+
+      // 3) Recetas y sub-recetas
+      const recsSnap = await getDocs(collection(db, 'restaurants', restaurantId, 'recipes'))
+      batch = writeBatch(db); ops = 0
+      for (const d of recsSnap.docs) {
+        const r = d.data()
+        const updates = {}
+        if (r.yieldUnit && r.yieldUnit !== r.yieldUnit.toUpperCase()) {
+          updates.yieldUnit = r.yieldUnit.toUpperCase()
+        }
+        let ingsChanged = false
+        const newIngs = (r.ingredients || []).map((ing) => {
+          const out = { ...ing }
+          if (ing.unit && ing.unit !== ing.unit.toUpperCase()) { out.unit = ing.unit.toUpperCase(); ingsChanged = true }
+          if (ing.purchaseUnit && ing.purchaseUnit !== ing.purchaseUnit.toUpperCase()) { out.purchaseUnit = ing.purchaseUnit.toUpperCase(); ingsChanged = true }
+          return out
+        })
+        if (ingsChanged) updates.ingredients = newIngs
+        if (Object.keys(updates).length) {
+          updates.updatedAt = serverTimestamp()
+          batch.update(d.ref, updates)
+          ops++; changedRecipes++
+          if (ops >= 400) await flush()
+        }
+      }
+      await flush()
+
+      success(`Normalizadas: ${changedUnits} unidades, ${changedMps} MPs, ${changedRecipes} recetas/sub-recetas`)
+    } catch (err) {
+      console.error('[normalize] error', err)
+      error('Error normalizando: ' + (err?.message || 'desconocido'))
+    } finally {
+      setNormalizing(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -751,8 +832,13 @@ function UnitsTab({ restaurantId, isDark }) {
             <ListIcon className={cn('h-3.5 w-3.5', viewMode === 'list' ? 'text-white' : isDark ? 'text-gray-500' : 'text-gray-400')} />
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {units.length === 0 && <Button variant="outline" size="sm" onClick={seedDefaults}>Cargar predeterminadas</Button>}
+          {isMaster && units.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleNormalizeAll} disabled={normalizing} title="Pone en MAYÚSCULAS las unidades en units, materias primas y recetas">
+              {normalizing ? 'Normalizando…' : 'Normalizar mayúsculas'}
+            </Button>
+          )}
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Nueva</Button>
         </div>
       </div>
