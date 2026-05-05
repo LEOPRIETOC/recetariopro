@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal, FileSpreadsheet, Search, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { X, Package, Ruler, Tag, Users, BarChart3, Settings, CreditCard, Sun, Moon, Plus, Pencil, Trash2, Upload, Download, ChevronUp, ChevronDown, ChevronRight, History, ShoppingCart, Palette, FileText, ToggleLeft, ToggleRight, Truck, LayoutGrid, List as ListIcon, GripVertical, FolderOpen, FileUp, Store, ExternalLink, SlidersHorizontal, FileSpreadsheet, Search, ArrowUp, ArrowDown, ArrowUpDown, ShieldCheck } from 'lucide-react'
+import AuditFormatTab from '../config/AuditFormatTab'
 import BulkImportTab from '../BulkImportTab'
 import * as XLSX from 'xlsx'
 import {
@@ -70,6 +71,7 @@ const TABS = [
   { id: 'users',            icon: Users,        label: 'Usuarios' },
   { id: 'appearance',       icon: Settings,     label: 'Personalización', masterOnly: true },
   { id: 'subscription',     icon: CreditCard,   label: 'Licencias', masterOnly: true },
+  { id: 'audit_format',     icon: ShieldCheck,  label: 'Auditoría formato', masterOnly: true },
   { id: 'restaurants_link', icon: Store,        label: 'Restaurantes', masterOnly: true },
 ]
 
@@ -5068,6 +5070,7 @@ export function ConfigModal() {
                 {configTab === 'appearance' && isMaster && <AppearanceTab isDark={isDark} />}
                 {configTab === 'users' && <UsersAdminTab isDark={isDark} />}
                 {configTab === 'subscription' && isMaster && <LicensesTab isDark={isDark} />}
+                {configTab === 'audit_format' && isMaster && <AuditFormatTab restaurantId={currentRestaurant?.id} isDark={isDark} />}
                 {configTab === 'subscription' && !isMaster && (
                   <div className={cn('text-center py-16', isDark ? 'text-gray-500' : 'text-gray-400')}>
                     <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
