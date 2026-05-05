@@ -7,7 +7,7 @@ import { useToast } from './ui/toast'
 import { X, Save, ExternalLink } from 'lucide-react'
 import { formatNumber } from '../lib/utils'
 
-export function IngredientSourceModal({ open, onClose, restaurantId, ingredientRow, isDark, canEdit }) {
+export function IngredientSourceModal({ open, onClose, restaurantId, ingredientRow, isDark, canEdit, onSaved }) {
   const navigate = useNavigate()
   const { success, error } = useToast()
   const [loading, setLoading] = useState(true)
@@ -68,10 +68,19 @@ export function IngredientSourceModal({ open, onClose, restaurantId, ingredientR
     if (v < 0) { error('El valor de presentación es inválido'); return }
     setSaving(true)
     try {
+      const newPrice = q > 0 ? v / q : 0
       await updateIngredient(restaurantId, source.id, {
         quantityPerPresentation: q,
         value: v,
-        pricePerUnit: q > 0 ? v / q : 0,
+        pricePerUnit: newPrice,
+      })
+      // Notifica al row de la receta para que actualice su pricePerUnit
+      // local sin tener que recargar la receta completa.
+      onSaved?.({
+        ingredientId: source.id,
+        pricePerUnit: newPrice,
+        value: v,
+        quantityPerPresentation: q,
       })
       success('Materia prima actualizada')
       onClose?.()

@@ -667,6 +667,12 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
           }}
           isDark={isDark}
           canEdit={!!canEdit}
+          onSaved={(updated) => {
+            // El usuario edito la MP de origen desde el modal — refresca el
+            // pricePerUnit del ingrediente actual en el form para que se vea
+            // el costo nuevo sin recargar.
+            setValue(`ingredients.${index}.pricePerUnit`, updated.pricePerUnit, { shouldDirty: true })
+          }}
         />
       )}
 
