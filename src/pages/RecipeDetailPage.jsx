@@ -425,14 +425,29 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
   const staticFieldCls = cn('w-full px-2 h-7 text-sm rounded-lg border flex items-center justify-center font-medium',
     isDark ? 'bg-gray-900 border-gray-800 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700')
 
-  // En modo capture, Enter en cualquier input agrega el ingrediente a la lista
-  // (si description y quantity son validos). El callback onCommit hace la
-  // validacion de nuevo, asi que aca solo bloqueamos el submit del form.
+  // En modo capture, Enter desde cantidad o Desp.% confirma el ingrediente.
   const handleCaptureKey = (e) => {
     if (!isCapture) return
     if (e.key === 'Enter') {
       e.preventDefault()
       onCommit && onCommit()
+    }
+  }
+
+  // En el input de nombre (capture): Enter o Tab → si hay matches en el
+  // dropdown, selecciona el primero (autocompleta MP/sub-receta y mueve foco
+  // a cantidad). Si no hay matches, solo mueve el foco a cantidad.
+  const handleCaptureNameKey = (e) => {
+    if (!isCapture) return
+    if (e.key !== 'Enter' && e.key !== 'Tab') return
+    if (e.shiftKey) return // Shift+Tab navega hacia atras, no interferimos
+    e.preventDefault()
+    if (ingMatches.length > 0) {
+      handleSelectIngredient(ingMatches[0])
+    } else if (subMatches.length > 0) {
+      handleSelectSubrecipe(subMatches[0])
+    } else {
+      quantityInputRef.current?.focus()
     }
   }
 
@@ -481,7 +496,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                 }}
                 onFocus={() => { updateDropRect(); setShowSuggestions(true) }}
                 onBlur={() => setTimeout(() => { setShowSuggestions(false); setDropRect(null) }, 150)}
-                onKeyDown={handleCaptureKey}
+                onKeyDown={handleCaptureNameKey}
                 placeholder="Buscar materia prima o sub-receta…"
                 className={inputCls}
               />
@@ -1381,7 +1396,20 @@ export default function RecipeDetailPage() {
     const data = getValues('ingredients.0')
     const desc = (data?.description || '').trim()
     const qty = parseFloat(data?.quantity)
-    if (!desc || !(qty > 0)) return
+    if (!desc) {
+      error('Escribí el nombre del ingrediente y elegilo de la lista')
+      return
+    }
+    // Solo se permiten ingredientes que existan en MPs o sub-recetas (con ingredientId).
+    // No se aceptan nombres "libres" — fuerza al usuario a crear primero la MP.
+    if (!data?.ingredientId) {
+      error('Seleccioná el ingrediente de la lista de materias primas o sub-recetas')
+      return
+    }
+    if (!(qty > 0)) {
+      error('Ingresá una cantidad mayor a 0')
+      return
+    }
     insert(1, { ...data, description: desc })
     update(0, EMPTY_INGREDIENT)
     setCaptureKey((k) => k + 1)
