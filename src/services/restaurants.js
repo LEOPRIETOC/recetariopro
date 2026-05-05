@@ -128,9 +128,19 @@ export async function getRecipe(restaurantId, recipeId) {
   return { id: snap.id, ...snap.data() }
 }
 
+// Garantiza casing requerido por el proyecto sin importar de donde venga la
+// llamada (UI, importacion masiva, scripts). Regla: nombres de receta y
+// sub-receta SIEMPRE en MAYUSCULAS. yieldUnit en MAYUSCULAS.
+function normalizeRecipePayload(data) {
+  const out = { ...data }
+  if (typeof out.name === 'string') out.name = out.name.toUpperCase()
+  if (typeof out.yieldUnit === 'string') out.yieldUnit = out.yieldUnit.toUpperCase()
+  return out
+}
+
 export async function createRecipe(restaurantId, data) {
   return addDoc(collection(db, 'restaurants', restaurantId, 'recipes'), {
-    ...cleanForFirestore(data),
+    ...cleanForFirestore(normalizeRecipePayload(data)),
     active: true,
     version: 1,
     order: Date.now(),
@@ -154,7 +164,7 @@ export async function updateRecipe(restaurantId, recipeId, data) {
     )
   }
   return updateDoc(recipeRef, {
-    ...cleanForFirestore(data),
+    ...cleanForFirestore(normalizeRecipePayload(data)),
     version: (currentSnap.data()?.version || 1) + 1,
     updatedAt: serverTimestamp(),
   })
