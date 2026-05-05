@@ -364,7 +364,7 @@ export default function RecipesPage() {
         return <td key={colId} className="px-4 py-2.5 text-xs text-amber-600 font-medium">{recipe.sellingPrice != null ? `$${Number(recipe.sellingPrice).toLocaleString('es-CO')}` : '—'}</td>
       case 'margen': {
         const m = calculateMargin(recipe.totalCost || 0, recipe.sellingPrice || 0)
-        return <td key={colId} className={cn('px-4 py-2.5 text-xs font-medium', m >= 60 ? 'text-emerald-500' : m >= 40 ? 'text-amber-500' : 'text-red-500')}>{recipe.sellingPrice ? `${m.toFixed(1)}%` : '—'}</td>
+        return <td key={colId} className={cn('px-4 py-2.5 text-xs font-medium', m >= 60 ? 'text-emerald-500' : m >= 40 ? 'text-amber-500' : 'text-red-500')}>{recipe.sellingPrice ? `${Math.round(m)}%` : '—'}</td>
       }
       case 'creacion':
         return <td key={colId} className={cn('px-4 py-2.5 text-xs', isDark ? 'text-gray-600' : 'text-gray-400')}>{recipe.createdAt?.toDate?.()?.toLocaleDateString('es-ES') || '—'}</td>

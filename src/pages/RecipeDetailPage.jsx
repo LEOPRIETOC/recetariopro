@@ -769,7 +769,7 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
                   <div style={{ gridColumn: '1 / -1' }}>
                     <span style={{ fontSize: '0.78rem', color: 'var(--t3)' }}>
                       Precio por unidad de uso:&nbsp;
-                      <strong style={{ color: 'var(--accent)' }}>${quickAddData.pricePerUnit?.toFixed(2)}</strong>
+                      <strong style={{ color: 'var(--accent)' }}>${Math.round(quickAddData.pricePerUnit || 0).toLocaleString('es-CO')}</strong>
                       {quickAddData.useUnit ? ` / ${quickAddData.useUnit}` : ''}
                     </span>
                   </div>

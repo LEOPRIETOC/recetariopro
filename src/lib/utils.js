@@ -5,9 +5,10 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
-// Format number without currency symbol — "28.500,00"
-export function formatNumber(value, decimals = 2) {
-  if (value === null || value === undefined || isNaN(Number(value))) return '0,00'
+// Format number without currency symbol — sin decimales por defecto.
+// Si necesitas decimales puntualmente, pasa el segundo argumento (raro).
+export function formatNumber(value, decimals = 0) {
+  if (value === null || value === undefined || isNaN(Number(value))) return '0'
   return Number(value).toLocaleString('de-DE', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -20,7 +21,7 @@ export function formatCurrency(value) {
 }
 
 export function formatPercent(value) {
-  return `${(value || 0).toFixed(1)}%`
+  return `${Math.round(value || 0)}%`
 }
 
 export function generateId() {

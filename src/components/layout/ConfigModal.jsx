@@ -1612,7 +1612,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
       case 'margen': {
         const costo = recipe.totalCost || 0
         const precio = recipe.sellingPrice || 0
-        const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
+        const margen = precio > 0 ? Math.round(((precio - costo) / precio) * 100) : null
         return (
           <td key={colId} style={{ padding: '8px 12px' }}>
             {margen !== null ? (
@@ -1818,7 +1818,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                           <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
                             <span style={{ color: 'var(--t3)' }}>Costo/{yieldUnit || 'u'}</span>
                             <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                              {costPerUnit > 0 ? `$${costPerUnit.toLocaleString('es-CO', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}` : '—'}
+                              {costPerUnit > 0 ? `$${Math.round(costPerUnit).toLocaleString('es-CO')}` : '—'}
                             </span>
                           </div>
                         </div>
@@ -1974,7 +1974,7 @@ function AnalyticsTab({ restaurantId, isDark, onGoToSales }) {
             <div key={i} className={cn('flex items-center justify-between p-3 rounded-xl border', isDark ? 'border-gray-800' : 'border-gray-100')}>
               <span className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-800')}>{d.name}</span>
               <div className="flex items-center gap-3">
-                <span className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{d.qty.toFixed(0)} uds · {d.margin.toFixed(1)}%</span>
+                <span className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{Math.round(d.qty)} uds · {Math.round(d.margin)}%</span>
                 <Badge variant="secondary">{d.quadrant}</Badge>
               </div>
             </div>
@@ -3444,7 +3444,7 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
                   <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
                     <span style={{ color: 'var(--t3)' }}>Utilidad</span>
                     <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r._price <= 0 ? 'var(--t3)' : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444' }}>
-                      {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+                      {r._price > 0 ? `${Math.round(r._utility)}%` : '—'}
                     </span>
                   </div>
                 </div>
@@ -3535,7 +3535,7 @@ function SummaryTab({ restaurantId, isDark, onClose }) {
                       fontWeight: 700,
                       color: r._price <= 0 ? t3 : r._utility >= 50 ? '#10b981' : r._utility >= 20 ? '#d97706' : '#ef4444',
                     }}>
-                      {r._price > 0 ? `${r._utility.toFixed(1)}%` : '—'}
+                      {r._price > 0 ? `${Math.round(r._utility)}%` : '—'}
                     </td>
                   </tr>
                 ))}

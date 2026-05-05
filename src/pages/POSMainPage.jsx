@@ -165,7 +165,7 @@ function RecipeCard({ recipe, categories, canSeeCosts, canEdit, isDark, onToggle
                   <div className="flex flex-col lg:flex-row lg:justify-between text-xs">
                     <span style={{ color: 'var(--t3)' }}>Costo/{yieldUnit || 'u'}</span>
                     <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
-                      {costPerUnit > 0 ? `$${costPerUnit.toLocaleString('es-CO',{minimumFractionDigits:4,maximumFractionDigits:4})}` : '—'}
+                      {costPerUnit > 0 ? `$${Math.round(costPerUnit).toLocaleString('es-CO')}` : '—'}
                     </span>
                   </div>
                 </div>
@@ -243,7 +243,7 @@ function renderCell(colId, recipe) {
     case 'margen': {
       const costo = recipe.costPerPortion || 0
       const precio = recipe.salePrice || 0
-      const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : null
+      const margen = precio > 0 ? Math.round(((precio - costo) / precio) * 100) : null
       return (
         <td key={colId} style={{ padding: '8px 12px' }}>
           {margen !== null

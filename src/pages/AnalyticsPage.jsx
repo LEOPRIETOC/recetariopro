@@ -40,7 +40,7 @@ const CustomTooltip = ({ active, payload }) => {
     <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-xl text-sm">
       <p className="font-semibold text-gray-800">{d.name}</p>
       <p className="text-gray-500">Ventas: {d.popularity.toFixed(0)}</p>
-      <p className="text-gray-500">Margen: {d.margin.toFixed(1)}%</p>
+      <p className="text-gray-500">Margen: {Math.round(d.margin)}%</p>
       <p className="text-gray-500">Precio: {formatCurrency(d.salePrice)}</p>
     </div>
   )
@@ -272,7 +272,7 @@ export default function AnalyticsPage() {
                             <span className={cn('truncate', isDark ? 'text-gray-300' : 'text-gray-700')}>{item.name}</span>
                             <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                               <span className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{item.popularity.toFixed(0)} uds</span>
-                              <Badge variant="secondary" style={{ background: color + '20', color }}>{item.margin.toFixed(1)}%</Badge>
+                              <Badge variant="secondary" style={{ background: color + '20', color }}>{Math.round(item.margin)}%</Badge>
                             </div>
                           </div>
                         ))}
