@@ -23,6 +23,7 @@ import { calcRecipeTotalCost } from '../../utils/costUtils'
 import { PLANS, PLAN_IDS, FEATURE_LABELS, getPlan, isLicenseActive } from '../../lib/plans'
 import { usePlan } from '../../hooks/usePlan'
 import { setAccentForRestaurant } from '../../lib/userRestaurantPrefs'
+import { migrateSubrecipeRefs } from '../../lib/migrateSubrecipeRefs'
 import {
   subscribeIngredients, createIngredient, updateIngredient, deleteIngredient,
   importIngredients, upsertIngredientsByCode, upsertRecipesByCode, upsertRecipesWithIngredients, subscribeCategories, createCategory, updateCategory, deleteCategory,
@@ -1484,10 +1485,12 @@ const GESTION_FIELD_MAP = {
 function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const navigate = useNavigate()
   const { success, error } = useToast()
+  const { canEdit } = useAuth()
   const { currentRestaurant } = useAppStore()
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
   const [units, setUnits] = useState([])
+  const [migratingRefs, setMigratingRefs] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [menuFilter, setMenuFilter] = useState('all')
@@ -1697,7 +1700,59 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
           </SelectContent>
         </Select>
       </div>
-      <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{filtered.length} recetas</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>{filtered.length} recetas</p>
+        {canEdit && (currentRestaurant?.settings?.subrecipeRefsMigrationRuns || 0) < 2 && (
+          <button
+            onClick={async () => {
+              if (migratingRefs) return
+              setMigratingRefs(true)
+              try {
+                const dry = await migrateSubrecipeRefs(restaurantId, { dryRun: true })
+                let summary
+                if (dry.ingredientsFixed === 0) {
+                  success('No hay sub-recetas sin referencia. Todo limpio.')
+                  summary = { ingredientsFixed: 0, recipesAffected: 0 }
+                } else {
+                  const ok = window.confirm(
+                    `Se encontraron ${dry.ingredientsFixed} ingredientes sub-receta sin referencia ` +
+                    `en ${dry.recipesAffected} recetas.\n\n¿Reparar ahora?`
+                  )
+                  if (!ok) { setMigratingRefs(false); return }
+                  const res = await migrateSubrecipeRefs(restaurantId, { dryRun: false })
+                  success(`Reparadas ${res.ingredientsFixed} referencias en ${res.recipesAffected} recetas.`)
+                  summary = res
+                }
+                // Incrementa el contador. A las 2 ejecuciones, el boton se oculta solo.
+                const prev = currentRestaurant?.settings?.subrecipeRefsMigrationRuns || 0
+                await updateRestaurantSettings(restaurantId, {
+                  subrecipeRefsMigrationRuns: prev + 1,
+                })
+              } catch (e) {
+                console.error(e)
+                error('Error al reparar referencias: ' + (e?.message || 'desconocido'))
+              } finally {
+                setMigratingRefs(false)
+              }
+            }}
+            disabled={migratingRefs}
+            title="Repara ingredientes de tipo sub-receta que quedaron sin campo reference (se autodestruye despues de 2 ejecuciones)"
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--accent)',
+              borderRadius: 8,
+              color: 'var(--accent)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '5px 12px',
+              cursor: migratingRefs ? 'not-allowed' : 'pointer',
+              opacity: migratingRefs ? 0.6 : 1,
+            }}
+          >
+            {migratingRefs ? 'Reparando…' : '🔧 Reparar refs sub-recetas'}
+          </button>
+        )}
+      </div>
 
       {/* ── Vista Lista ── */}
       {viewMode === 'list' && (

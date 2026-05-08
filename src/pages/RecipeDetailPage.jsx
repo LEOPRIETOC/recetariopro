@@ -370,6 +370,8 @@ function IngredientRow({ index, field, allIngredients, allSubrecipes, allUnits, 
     setCompatibleUnits(allUnits)
     setValue(`ingredients.${index}.ingredientId`, sr.id)
     setValue(`ingredients.${index}.description`, displayName)
+    setValue(`ingredients.${index}.ingredientName`, displayName)
+    setValue(`ingredients.${index}.reference`, sr.reference || sr.code || '')
     setValue(`ingredients.${index}.unit`, sr.yieldUnit || 'und')
     setValue(`ingredients.${index}.purchaseUnit`, '')
     setValue(`ingredients.${index}.pricePerUnit`, unitCost)
