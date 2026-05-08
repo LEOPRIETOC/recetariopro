@@ -1486,7 +1486,7 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
   const navigate = useNavigate()
   const { success, error } = useToast()
   const { canEdit } = useAuth()
-  const { currentRestaurant } = useAppStore()
+  const { currentRestaurant, setCurrentRestaurant } = useAppStore()
   const [recipes, setRecipes] = useState([])
   const [categories, setCategories] = useState([])
   const [units, setUnits] = useState([])
@@ -1725,9 +1725,22 @@ function RecipeManagementTab({ restaurantId, isDark, onClose }) {
                 }
                 // Incrementa el contador. A las 2 ejecuciones, el boton se oculta solo.
                 const prev = currentRestaurant?.settings?.subrecipeRefsMigrationRuns || 0
+                const next = prev + 1
                 await updateRestaurantSettings(restaurantId, {
-                  subrecipeRefsMigrationRuns: prev + 1,
+                  subrecipeRefsMigrationRuns: next,
                 })
+                // El store no tiene subscribe en vivo a currentRestaurant: si
+                // no lo refrescamos a mano, el boton no se oculta hasta el
+                // proximo login. Mergeamos el campo localmente.
+                if (currentRestaurant?.id === restaurantId) {
+                  setCurrentRestaurant({
+                    ...currentRestaurant,
+                    settings: {
+                      ...(currentRestaurant.settings || {}),
+                      subrecipeRefsMigrationRuns: next,
+                    },
+                  })
+                }
               } catch (e) {
                 console.error(e)
                 error('Error al reparar referencias: ' + (e?.message || 'desconocido'))

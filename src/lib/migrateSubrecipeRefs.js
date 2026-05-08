@@ -25,7 +25,29 @@ export async function migrateSubrecipeRefs(restaurantId, { dryRun = false } = {}
   const allRecipes = recipesSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
   const byId = new Map(allRecipes.map((r) => [r.id, r]))
+  // Tambien indexamos por code y reference (en lowercase) porque importaciones
+  // legacy a veces guardan el codigo en `ingredientId` en vez del Firestore docId.
+  const byCode = new Map()
+  for (const r of allRecipes) {
+    if (r.code) byCode.set(String(r.code).toLowerCase(), r)
+    if (r.reference) byCode.set(String(r.reference).toLowerCase(), r)
+  }
   const isSub = (r) => !!r && (r.isSubRecipe === true || r.type === 'subrecipe')
+
+  const resolveSub = (ing) => {
+    // 1) por Firestore docId
+    let src = ing?.ingredientId ? byId.get(ing.ingredientId) : null
+    if (src && isSub(src)) return src
+    // 2) por code/reference que pueda venir en ingredientId, reference o item
+    const candidates = [ing?.ingredientId, ing?.reference, ing?.item]
+      .filter(Boolean)
+      .map((v) => String(v).toLowerCase())
+    for (const c of candidates) {
+      const hit = byCode.get(c)
+      if (hit && isSub(hit)) return hit
+    }
+    return null
+  }
 
   const plan = []
 
@@ -36,16 +58,21 @@ export async function migrateSubrecipeRefs(restaurantId, { dryRun = false } = {}
     let recipeChanged = false
     const fixedRows = []
     const newIngs = ings.map((ing) => {
-      const looksLikeSub =
-        ing?.type === 'subrecipe' ||
-        (ing?.ingredientId && isSub(byId.get(ing.ingredientId)))
+      // Si ya tiene reference que parece sub-receta (ONISUB/BARSB), no tocar
+      if (ing?.reference && /^(ONISUB|BARSB)/i.test(ing.reference)) return ing
 
-      if (!looksLikeSub) return ing
-      if (ing.reference) return ing // ya tiene reference, no tocar
+      const src = resolveSub(ing)
+      // type === 'subrecipe' con src null lo dejamos pasar igual: si tiene type
+      // pero no resuelve, no podemos hacer mucho. Solo arreglamos si encontramos src.
+      if (!src) {
+        // Caso especial: type === 'subrecipe' y NO tiene reference: no podemos
+        // resolverlo, lo dejamos como esta.
+        return ing
+      }
+      if (ing.reference && ing.type === 'subrecipe') return ing // ya esta bien
 
-      const src = byId.get(ing.ingredientId)
-      const ref = src?.reference || src?.code || ''
-      if (!ref) return ing // no se pudo resolver, dejar igual
+      const ref = src.reference || src.code || ''
+      if (!ref) return ing // src sin reference ni code, no se puede arreglar
 
       recipeChanged = true
       fixedRows.push({
@@ -69,6 +96,31 @@ export async function migrateSubrecipeRefs(restaurantId, { dryRun = false } = {}
   }
 
   if (dryRun) {
+    // Diagnostico para la consola del browser. Util si el numero esperado no
+    // coincide con el detectado: muestra el detalle por receta.
+    const subRecipesCount = allRecipes.filter(isSub).length
+    console.groupCollapsed(`[migrateSubrecipeRefs] dry-run: ${allRecipes.length} recetas, ${subRecipesCount} sub-recetas`)
+    console.log('Recetas afectadas:', plan.length, '| Ingredientes a reparar:', plan.reduce((acc, p) => acc + p.fixedRows.length, 0))
+    if (plan.length > 0) {
+      console.table(plan.flatMap((p) => p.fixedRows.map((f) => ({ receta: p.recipeName, ingrediente: f.name, nuevaRef: f.newRef }))))
+    } else {
+      // Debug extra: mostrar primeras filas de ingredientes que apuntan a sub-recetas
+      // pero ya tienen reference, para confirmar que la deteccion funciona.
+      const sample = []
+      for (const r of allRecipes.slice(0, 50)) {
+        for (const ing of (r.ingredients || [])) {
+          const src = resolveSub(ing)
+          if (src) sample.push({ receta: r.name, ingrediente: ing.description || ing.ingredientName, type: ing.type || '—', reference: ing.reference || '—', resolved: src.code || src.reference })
+        }
+      }
+      if (sample.length) {
+        console.log('Sub-recetas detectadas (ya con reference, no requieren fix):')
+        console.table(sample.slice(0, 20))
+      } else {
+        console.warn('No se detectaron ingredientes que apunten a sub-recetas. Revisa que las sub-recetas existan y que los ingredientes tengan ingredientId, reference o item correctos.')
+      }
+    }
+    console.groupEnd()
     return {
       dryRun: true,
       recipesAffected: plan.length,
