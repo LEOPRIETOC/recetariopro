@@ -14,6 +14,10 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
 
   const printDate = new Date().toLocaleDateString('es-ES')
   const twoCol = ingList.length > 6
+  const isSubRecipe = recipe?.isSubRecipe === true || recipe?.type === 'subrecipe'
+  const yieldAmount = recipe?.yieldAmount
+  const yieldUnit = recipe?.yieldUnit
+  const showYieldBanner = isSubRecipe && yieldAmount && Number(yieldAmount) > 0
 
   const [imageLoaded, setImageLoaded] = useState(!recipe?.photoURL)
 
@@ -230,6 +234,30 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* YIELD BANNER (only sub-recipes) */}
+        {showYieldBanner && (
+          <div style={{
+            background: '#c9a84c',
+            color: '#111',
+            borderRadius: 8,
+            padding: '10px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>
+            <span>Rendimiento de la sub-receta:</span>
+            <span style={{ fontSize: 14 }}>
+              {yieldAmount} {yieldUnit || ''}
+            </span>
           </div>
         )}
 
