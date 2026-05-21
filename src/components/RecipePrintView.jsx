@@ -111,7 +111,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
 
       {/* ── HEADER ── */}
       <div style={{
-        background: '#111111',
+        background: '#c9a84c',
         padding: '24px 32px',
         display: 'flex',
         alignItems: 'center',
@@ -125,7 +125,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           width: 100,
           height: 100,
           borderRadius: '50%',
-          border: '3px solid #c9a84c',
+          border: '3px solid #111111',
           overflow: 'hidden',
           flexShrink: 0,
           background: '#222',
@@ -152,7 +152,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           {restaurantName && (
             <div style={{
               fontSize: 10,
-              color: '#c9a84c',
+              color: 'rgba(0,0,0,0.7)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               marginBottom: 6,
@@ -163,7 +163,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           <h1 style={{
             fontFamily: "'Playfair Display', serif",
             fontSize: 22,
-            color: '#ffffff',
+            color: '#111111',
             fontWeight: 700,
             margin: '0 0 6px',
             lineHeight: 1.2,
@@ -171,12 +171,12 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
             {recipe?.name}
           </h1>
           {(recipe?.code || recipe?.reference || recipe?.item) && (
-            <div style={{ fontSize: 10, color: '#888' }}>
+            <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.6)' }}>
               {[recipe.code, recipe.item, recipe.reference].filter(Boolean).join(' · ')}
             </div>
           )}
           {recipe?.portions && (
-            <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+            <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.6)', marginTop: 2 }}>
               Porciones: {recipe.portions}
             </div>
           )}
@@ -298,19 +298,19 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
 
       {/* ── FOOTER ── */}
       <div style={{
-        background: '#111111',
+        background: '#c9a84c',
         padding: '12px 32px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         fontSize: 9,
-        color: '#888',
+        color: 'rgba(0,0,0,0.65)',
         flexShrink: 0,
         position: 'relative',
         zIndex: 1,
       }}>
         <span>{restaurantName}</span>
-        <span style={{ color: '#c9a84c', fontWeight: 600 }}>RecetarioPro</span>
+        <span style={{ color: '#111111', fontWeight: 700 }}>RecetarioPro</span>
         <span>v{recipe?.version || 1} · {printDate}</span>
       </div>
 

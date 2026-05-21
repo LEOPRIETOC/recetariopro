@@ -281,8 +281,8 @@ input[type=number] {
 
   /* ── Header ── */
   .print-header {
-    background: #111111;
-    color: #ffffff;
+    background: #c9a84c;
+    color: #111111;
     text-align: center;
     padding: 6mm 12mm 5mm;
     page-break-inside: avoid;
@@ -291,12 +291,12 @@ input[type=number] {
     font-size: 7pt;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
+    color: rgba(0,0,0,0.65);
     margin-bottom: 1.5mm;
   }
   .print-menu-name {
     font-size: 7.5pt;
-    color: rgba(255,255,255,0.45);
+    color: rgba(0,0,0,0.55);
     text-transform: uppercase;
     letter-spacing: 0.15em;
     margin-bottom: 2mm;
@@ -304,14 +304,14 @@ input[type=number] {
   .print-header-line {
     width: 20mm;
     height: 0.5pt;
-    background: rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.35);
     margin: 2mm auto;
   }
   .print-recipe-title {
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 20pt;
     font-weight: 700;
-    color: #ffffff;
+    color: #111111;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     line-height: 1.15;
@@ -340,7 +340,7 @@ input[type=number] {
     height: 58mm;
     border-radius: 50%;
     overflow: hidden;
-    border: 3pt solid #111;
+    border: 3pt solid #c9a84c;
     box-shadow: 0 4pt 16pt rgba(0,0,0,0.18);
     flex-shrink: 0;
     background: #222;
@@ -359,26 +359,26 @@ input[type=number] {
     width: 58mm;
     height: 58mm;
     border-radius: 50%;
-    background: #111;
+    background: #c9a84c;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255,255,255,0.3);
+    color: rgba(0,0,0,0.45);
     font-size: 8pt;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    border: 3pt solid #111;
+    border: 3pt solid #c9a84c;
   }
   .print-menu-box {
     width: 100%;
-    background: #111;
+    background: #c9a84c;
     border-radius: 8pt;
     padding: 4mm 6mm;
     text-align: center;
   }
   .print-menu-label {
     font-size: 6pt;
-    color: rgba(255,255,255,0.45);
+    color: rgba(0,0,0,0.6);
     text-transform: uppercase;
     letter-spacing: 0.18em;
     margin-bottom: 1.5mm;
@@ -386,7 +386,7 @@ input[type=number] {
   .print-menu-value {
     font-size: 11pt;
     font-weight: 700;
-    color: #ffffff;
+    color: #111111;
     letter-spacing: 0.04em;
   }
 
@@ -414,8 +414,8 @@ input[type=number] {
     margin-top: -2mm;
   }
   .print-meta-chip {
-    background: #111;
-    color: #fff;
+    background: #c9a84c;
+    color: #111111;
     font-size: 6.5pt;
     font-weight: 700;
     letter-spacing: 0.1em;
