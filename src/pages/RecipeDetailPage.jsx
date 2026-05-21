@@ -876,8 +876,8 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
 
           {recipe?.isSubRecipe && Number(recipe?.yieldAmount) > 0 && (
             <div style={{
-              background: '#c9a84c',
-              color: '#111',
+              background: '#111',
+              color: '#fff',
               borderRadius: '4pt',
               padding: '4mm 6mm',
               margin: '0 0 6mm',
