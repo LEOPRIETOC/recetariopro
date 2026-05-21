@@ -21,7 +21,28 @@
       "Bash(npx firebase *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel ls *)",
+      "Bash(curl -s \"https://app.inom.pro/version.json?ts=$\\(date +%s\\)\")",
+      "Bash(gh repo *)",
+      "Bash(curl *)",
+      "Bash(find C:\\\\INOMRECETARIO *)",
+      "Bash(vercel link *)",
+      "Bash(vercel --prod --yes --cwd /c/INOMRECETARIO/landing)",
+      "mcp__plugin_vercel_vercel__get_project",
+      "Bash(grep -n \"const { isAdmin, canEdit, canSeeCosts, isUsuario, isMaster, user: authUser } = useAuth\" src/pages/RecipeDetailPage.jsx)",
+      "Bash(grep -n \"const CARDS = \\\\[\\\\|const { canEdit, canManageUsers, isMaster }\" src/components/layout/ConfigModal.jsx)",
+      "Bash(grep -n \"viewMode === 'grid' ? \\(\\\\s*$\\\\|const \\\\[viewMode, setViewMode\\\\] = useState\" src/components/layout/ConfigModal.jsx2)",
+      "Bash(npx vercel *)",
+      "Bash(tasklist)",
+      "Bash(netstat -ano)",
+      "Bash(dir C:inomrecetario *)",
+      "PowerShell(Get-ChildItem src -Name -Recurse | Where-Object { $_ -match '\\\\.\\(tsx|ts|jsx|js\\)$' })",
+      "Bash(awk 'NR==798,NR==929' src/pages/RecipeDetailPage.jsx)",
+      "Bash(git revert *)",
+      "Bash(git rm *)"
     ]
   }
 }

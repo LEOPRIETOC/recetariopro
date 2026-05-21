@@ -1,15 +1,29 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useReactToPrint } from 'react-to-print'
 import { useAppStore } from '../store/useAppStore'
-import { RecipePrintView } from './RecipePrintView'
+import { PrintRecipe } from './PrintRecipe'
 import { RecipeNotes } from './RecipeNotes'
+import { subscribeCategories } from '../services/restaurants'
 
 export function RecipeReadOnlyView({ recipe: recipeProp, restaurantId, userId, isDark }) {
   const navigate = useNavigate()
   const { currentRestaurant } = useAppStore()
-  const [showPrint, setShowPrint] = useState(false)
+  const printRef = useRef()
+  const [categories, setCategories] = useState([])
+  const handlePrint = useReactToPrint({ contentRef: printRef })
+  const onPrintClick = () => {
+    document.body.setAttribute('data-rest-name', currentRestaurant?.name || 'RecetarioPro')
+    setTimeout(() => handlePrint(), 150)
+  }
   // Local mirror so adding/removing notes refreshes the list immediately
   const [recipe, setRecipe] = useState(recipeProp)
+
+  useEffect(() => {
+    if (!restaurantId) return
+    const unsub = subscribeCategories(restaurantId, setCategories)
+    return () => unsub && unsub()
+  }, [restaurantId])
 
   const t3  = isDark ? '#6b7280' : '#9ca3af'
   const ink = isDark ? '#f9fafb' : '#111827'
@@ -52,7 +66,7 @@ export function RecipeReadOnlyView({ recipe: recipeProp, restaurantId, userId, i
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button
-            onClick={() => setShowPrint(true)}
+            onClick={onPrintClick}
             style={{
               background: 'transparent',
               border: '1px solid var(--b2)',
@@ -224,14 +238,15 @@ export function RecipeReadOnlyView({ recipe: recipeProp, restaurantId, userId, i
         </div>
       </div>
 
-      {/* Print view */}
-      {showPrint && (
-        <RecipePrintView
+      {/* Hidden print view (rendered on demand by useReactToPrint) */}
+      <div className="hidden">
+        <PrintRecipe
           recipe={recipe}
-          restaurant={currentRestaurant}
-          onClose={() => setShowPrint(false)}
+          categories={categories}
+          restaurantName={currentRestaurant?.name}
+          forwardRef={printRef}
         />
-      )}
+      </div>
     </div>
   )
 }
