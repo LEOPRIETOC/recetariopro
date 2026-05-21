@@ -876,9 +876,6 @@ export default function RecipeDetailPage() {
 
   const [allRecipes, setAllRecipes] = useState([])
   const [dupErrors, setDupErrors] = useState({})
-  // hasUnsavedChanges viene de formState.isDirty (react-hook-form). True solo cuando
-  // el usuario realmente toca un campo, no cuando se carga la receta via reset().
-  const hasUnsavedChanges = isDirty
   const [pendingNavigation, setPendingNavigation] = useState(null)
   const [marginContribution, setMarginContribution] = useState(35)
   const [taxRate, setTaxRate] = useState(8)
@@ -896,6 +893,10 @@ export default function RecipeDetailPage() {
       preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '', sellingPrice: 0,
     },
   })
+
+  // hasUnsavedChanges viene de formState.isDirty (react-hook-form). True solo cuando
+  // el usuario realmente toca un campo, no cuando se carga la receta via reset().
+  const hasUnsavedChanges = isDirty
 
   const { fields, append, remove, insert, update } = useFieldArray({ control, name: 'ingredients' })
   const ingredients = watch('ingredients') || []
