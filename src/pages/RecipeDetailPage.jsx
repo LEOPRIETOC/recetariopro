@@ -874,6 +874,31 @@ const PrintRecipe = ({ recipe, categories, allIngredients, restaurantName, forwa
             <p style={{ fontSize: '8.5pt', color: '#aaa', margin: '0 0 8mm' }}>Sin ingredientes</p>
           )}
 
+          {recipe?.isSubRecipe && Number(recipe?.yieldAmount) > 0 && (
+            <div style={{
+              background: '#c9a84c',
+              color: '#111',
+              borderRadius: '4pt',
+              padding: '4mm 6mm',
+              margin: '0 0 6mm',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6pt',
+              fontSize: '9.5pt',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact',
+            }}>
+              <span>Rendimiento de la sub-receta:</span>
+              <span style={{ fontSize: '11pt' }}>
+                {recipe.yieldAmount} {recipe.yieldUnit || ''}
+              </span>
+            </div>
+          )}
+
           <h2 className="print-section-title">Procedimiento</h2>
           {prepSteps.length > 0 ? (
             <ol className="print-prep-list">
