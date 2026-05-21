@@ -1,7 +1,32 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'child_process'
 
-const APP_VERSION = '2.13'
+// Version = 2.MES.DIA.N donde N es el numero de commits del dia (hora Colombia).
+// El primer deploy del dia da N=1, el segundo N=2, etc.
+function getColombiaToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date())
+  return {
+    year:  +parts.find((p) => p.type === 'year').value,
+    month: +parts.find((p) => p.type === 'month').value,
+    day:   +parts.find((p) => p.type === 'day').value,
+  }
+}
+function computeAppVersion() {
+  const { year, month, day } = getColombiaToday()
+  let n = 1
+  try {
+    const since = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`
+    const out = execSync(`git log --since="${since}" --oneline`, { encoding: 'utf8' })
+    n = out.split('\n').filter(Boolean).length || 1
+  } catch { /* sin git fallback a 1 */ }
+  return `2.${month}.${day}.${n}`
+}
+
+const APP_VERSION = computeAppVersion()
 const BUILD_ID = String(Date.now())
 const BUILD_TIME = new Date().toISOString()
 
