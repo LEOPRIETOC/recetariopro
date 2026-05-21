@@ -24,3 +24,16 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Claude Code / tooling artifacts
+.claude/scheduled_tasks.lock
+create_result.json
+gitbranch.json
+link_patch.json
+link_result.json
+link2_result.json
+patch_result.json
+patch2_result.json
+proj_dev.json
+v10_patch.json
+vercel_proj.json
