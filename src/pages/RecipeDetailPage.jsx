@@ -876,7 +876,9 @@ export default function RecipeDetailPage() {
 
   const [allRecipes, setAllRecipes] = useState([])
   const [dupErrors, setDupErrors] = useState({})
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  // hasUnsavedChanges viene de formState.isDirty (react-hook-form). True solo cuando
+  // el usuario realmente toca un campo, no cuando se carga la receta via reset().
+  const hasUnsavedChanges = isDirty
   const [pendingNavigation, setPendingNavigation] = useState(null)
   const [marginContribution, setMarginContribution] = useState(35)
   const [taxRate, setTaxRate] = useState(8)
@@ -884,7 +886,7 @@ export default function RecipeDetailPage() {
   const [convertData, setConvertData] = useState({})
   const [converting, setConverting] = useState(false)
 
-  const { register, handleSubmit, control, watch, setValue, reset, getValues, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, watch, setValue, reset, getValues, formState: { errors, isDirty } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '', code: '', categoryId: '', menuCode: '', item: '', reference: '',
@@ -1061,11 +1063,6 @@ export default function RecipeDetailPage() {
     subrecipePricesRefreshedRef.current = recipe.id
   }, [recipe?.id, allSubrecipes]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mark form dirty on any field change
-  useEffect(() => {
-    const sub = watch(() => setHasUnsavedChanges(true))
-    return () => sub.unsubscribe()
-  }, [watch])
 
   const exitToOrigin = () => {
     if (location?.state?.from === 'gestion') {
@@ -1091,7 +1088,6 @@ export default function RecipeDetailPage() {
   }
 
   const discardAndExit = () => {
-    setHasUnsavedChanges(false)
     setUnsavedModalOpen(false)
     exitToOrigin()
   }
@@ -1447,7 +1443,7 @@ export default function RecipeDetailPage() {
         const docRef = await createRecipe(restaurantId, safePayload)
         console.log('Receta creada con ID:', docRef.id)
         success('Receta creada exitosamente')
-        setHasUnsavedChanges(false)
+        reset(getValues())
         await logAction({
           restaurantId,
           userId: authUser?.uid,
@@ -1472,7 +1468,7 @@ export default function RecipeDetailPage() {
         await updateRecipe(restaurantId, id, safePayload)
         console.log('Receta actualizada:', id)
         success('Receta guardada exitosamente')
-        setHasUnsavedChanges(false)
+        reset(getValues())
         await logAction({
           restaurantId,
           userId: authUser?.uid,
@@ -2407,21 +2403,6 @@ export default function RecipeDetailPage() {
                 }}
               >
                 Salir sin guardar
-              </button>
-              <button
-                type="button"
-                onClick={() => setUnsavedModalOpen(false)}
-                disabled={saving}
-                style={{
-                  background: 'transparent',
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                  border: 'none', borderRadius: 10,
-                  padding: '8px 16px',
-                  fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: 'pointer', marginTop: 4,
-                }}
-              >
-                Seguir editando
               </button>
             </div>
           </div>
