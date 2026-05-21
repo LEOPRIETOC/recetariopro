@@ -34,7 +34,7 @@ import {
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
-import { setMasterRole, createUserWithRole, updateUserRole } from '../../services/auth'
+import { setMasterRole, createUserWithRole, updateUserRole, validateStrongPassword, PASSWORD_POLICY, generateTempPassword } from '../../services/auth'
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../lib/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -2918,7 +2918,7 @@ function UsersAdminTab({ isDark }) {
   // ── Create user ──
   const handleCreate = async () => {
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) { error('Completa todos los campos'); return }
-    if (form.password.length < 6) { error('La contraseña debe tener al menos 6 caracteres'); return }
+    if (!validateStrongPassword(form.password)) { error(PASSWORD_POLICY.message); return }
     setSaving(true)
     try {
       await createUserWithRole(
@@ -3066,19 +3066,30 @@ function UsersAdminTab({ isDark }) {
               <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
             </UField>
             <UField label="Contraseña temporal *">
-              <div style={{ position: 'relative' }}>
-                <input
-                  style={{ ...uInput(isDark), paddingRight: 38 }}
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Mín. 6 caracteres"
-                />
-                <button type="button" onClick={() => setShowPassword(v => !v)}
-                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af', fontSize: '1rem', padding: 2, lineHeight: 1 }}>
-                  {showPassword ? '🙈' : '👁'}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    style={{ ...uInput(isDark), paddingRight: 38 }}
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    placeholder="Generar o escribir"
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af', fontSize: '1rem', padding: 2, lineHeight: 1 }}>
+                    {showPassword ? '🙈' : '👁'}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setForm(f => ({ ...f, password: generateTempPassword(12) })); setShowPassword(true) }}
+                  style={{ background: isDark ? '#181f19' : '#f3f4f6', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#d1d5db'}`, borderRadius: 8, padding: '0 10px', cursor: 'pointer', color: isDark ? '#9ca3af' : '#6b7280', fontFamily: 'inherit', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                  title="Generar contraseña fuerte"
+                >
+                  Generar
                 </button>
               </div>
+              <p style={{ fontSize: '0.7rem', color: 'var(--t3)', marginTop: 4 }}>{PASSWORD_POLICY.message}</p>
             </UField>
             <UField label="Rol *">
               <select style={uInput(isDark)} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
