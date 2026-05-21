@@ -158,10 +158,13 @@ function CreateUserModal({ onClose, onCreated, restaurants, creator, currentRest
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) { error('Completa todos los campos'); return }
     if (!validateStrongPassword(form.password)) { setPwdError(PASSWORD_POLICY.message); return }
     if (!form.restaurantIds.length) { error('Asigna al menos un restaurante'); return }
-    if (!licenseActive) { error('La licencia del restaurante no está activa.'); return }
-    if (typeof maxUsers === 'number' && currentUserCount >= maxUsers) {
-      error(`Has alcanzado el límite de ${maxUsers} usuarios del plan ${planLabel}. Actualiza tu plan para crear más.`)
-      return
+    // Master (operador de la plataforma) saltea checks de licencia/limite del restaurante.
+    if (!creator.isMaster) {
+      if (!licenseActive) { error('La licencia del restaurante no está activa.'); return }
+      if (typeof maxUsers === 'number' && currentUserCount >= maxUsers) {
+        error(`Has alcanzado el límite de ${maxUsers} usuarios del plan ${planLabel}. Actualiza tu plan para crear más.`)
+        return
+      }
     }
     setSaving(true)
     try {
@@ -407,13 +410,14 @@ export default function UsersPage() {
           </p>
         </div>
         {canManageUsers && (() => {
-          const atLimit = members.length >= maxUsers
-          const disabled = atLimit || !licenseActive
+          // Master saltea licencia/limite del restaurante (es el operador de la plataforma)
+          const atLimit = !isMaster && members.length >= maxUsers
+          const disabled = !isMaster && (atLimit || !licenseActive)
           return (
             <button
               onClick={() => setShowCreate(true)}
               disabled={disabled}
-              title={!licenseActive ? 'Licencia inactiva' : atLimit ? `Límite del plan ${plan.label} alcanzado` : ''}
+              title={isMaster ? '' : (!licenseActive ? 'Licencia inactiva' : atLimit ? `Límite del plan ${plan.label} alcanzado` : '')}
               style={{
                 background: 'var(--accent, #d97706)', color: '#fff', border: 'none', borderRadius: 10,
                 padding: '10px 18px', fontFamily: 'inherit', fontWeight: 600,
