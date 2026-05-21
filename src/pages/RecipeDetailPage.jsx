@@ -1300,6 +1300,8 @@ export default function RecipeDetailPage() {
   // de inmediato), reseteamos el field[0] a vacio y forzamos remount con
   // captureKey para limpiar el state local del autocomplete.
   const [captureKey, setCaptureKey] = useState(0)
+  // Capture row visible solo cuando el usuario presiona "Nuevo ingrediente"
+  const [showCapture, setShowCapture] = useState(false)
   const handleCaptureCommit = () => {
     const data = getValues('ingredients.0')
     const desc = (data?.description || '').trim()
@@ -1807,20 +1809,47 @@ export default function RecipeDetailPage() {
 
             {/* Ingredients */}
             <Card className={cn(isDark && 'bg-gray-900 border-gray-800')}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Ingredientes</CardTitle>
+                {!showCapture && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      update(0, EMPTY_INGREDIENT)
+                      setCaptureKey((k) => k + 1)
+                      setShowCapture(true)
+                      setTimeout(() => { nameInputRefs.current[0]?.focus() }, 60)
+                    }}
+                    style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none',
+                      borderRadius: 8, padding: '6px 12px',
+                      fontFamily: 'inherit', fontWeight: 600, fontSize: '0.8rem',
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Nuevo ingrediente
+                  </button>
+                )}
               </CardHeader>
               <CardContent className="p-0">
-                {/* Capture row — siempre arriba del listado, scrollea con la pagina */}
-                {fields[0] && (
+                {/* Capture row — solo se muestra al presionar "Nuevo ingrediente" */}
+                {showCapture && fields[0] && (
                   <div
                     style={{
                       background: isDark ? '#0f172a' : '#fafafa',
                       borderBottom: `2px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
                     }}
                   >
-                    <div style={{ padding: '6px 16px 0', fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Nuevo ingrediente
+                    <div style={{ padding: '6px 16px 0', fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Nuevo ingrediente</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCapture(false)}
+                        title="Cerrar"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#9ca3af' : '#6b7280', padding: 2, fontSize: '0.85rem', lineHeight: 1 }}
+                      >
+                        ✕
+                      </button>
                     </div>
                     <IngredientRow
                       key={`capture-${fields[0].id}-${captureKey}`}
