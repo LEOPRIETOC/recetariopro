@@ -1323,7 +1323,7 @@ export default function RecipeDetailPage() {
     insert(1, { ...data, description: desc })
     update(0, EMPTY_INGREDIENT)
     setCaptureKey((k) => k + 1)
-    setTimeout(() => { nameInputRefs.current[0]?.focus() }, 60)
+    setShowCapture(false)
   }
 
   const onSubmit = async (data) => {
