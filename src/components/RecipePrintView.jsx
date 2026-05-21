@@ -125,7 +125,7 @@ export function RecipePrintView({ recipe, restaurant, onClose }) {
           width: 100,
           height: 100,
           borderRadius: '50%',
-          border: 'none',
+          border: '1px solid rgba(0,0,0,0.25)',
           overflow: 'hidden',
           flexShrink: 0,
           background: '#222',

@@ -340,7 +340,7 @@ input[type=number] {
     height: 58mm;
     border-radius: 50%;
     overflow: hidden;
-    border: none;
+    border: 0.5pt solid rgba(0,0,0,0.25);
     box-shadow: 0 4pt 16pt rgba(0,0,0,0.18);
     flex-shrink: 0;
     background: #222;
