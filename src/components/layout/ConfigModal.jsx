@@ -2999,39 +2999,44 @@ function UsersAdminTab({ isDark }) {
   const handleEditSave = async () => {
     if (!editUser) return
     if (!editData.name?.trim()) { error('El nombre es requerido'); return }
+    // Validar que el nuevo rol no sea mas alto que el del editor
+    if (!roleOptions.includes(editData.role)) {
+      error(`No podés asignar el rol "${editData.role}" — está por encima de tu nivel.`)
+      return
+    }
     setEditSaving(true)
     try {
-      // Update user doc
-      await updateDoc(doc(db, 'users', editUser.uid), {
-        name: editData.name.trim(),
-        role: editData.role,
-        updatedAt: serverTimestamp(),
-      })
-      // Update role via service (handles role-specific logic)
-      await updateUserRole(editUser.uid, editData.role, editUser.restaurantIds || [currentRestaurant.id])
-      // Update members map in restaurant
+      // SOLO actualizar la membresia del restaurante actual.
+      // No tocamos users/{uid}.role para no afectar otros restaurantes.
       await updateDoc(doc(db, 'restaurants', currentRestaurant.id), {
         [`members.${editUser.uid}.role`]: editData.role,
         [`members.${editUser.uid}.name`]: editData.name.trim(),
       })
+      const prevRole = getEffectiveRole(editUser)
       const changes = []
       if (editUser.name !== editData.name.trim()) changes.push({ field: 'nombre', before: editUser.name, after: editData.name.trim() })
-      if (editUser.role !== editData.role) changes.push({ field: 'rol', before: editUser.role, after: editData.role })
+      if (prevRole !== editData.role) changes.push({ field: 'rol (en este restaurante)', before: prevRole, after: editData.role })
       await logAction({
         restaurantId: currentRestaurant.id, userId: userProfile?.uid,
         userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role,
         action: 'edit', module: 'user', entityId: editUser.uid, entityName: editData.name.trim(), changes,
       })
-      success('Usuario actualizado')
+      success('Cambios aplicados en este restaurante')
       setEditUser(null)
       loadUsers()
     } catch { error('Error al actualizar') } finally { setEditSaving(false) }
   }
 
+  // Rol efectivo del usuario en este restaurante (members.role) o el global como fallback
+  const getEffectiveRole = (targetUser) => {
+    const uid = targetUser?.uid || targetUser?.id
+    return currentRestaurant?.members?.[uid]?.role || targetUser?.role || 'usuario'
+  }
+
   // ── Permisos por jerarquía ──
   // canManage: puede editar/eliminar al usuario objetivo
   const canManage = (targetUser) => {
-    const targetRole = targetUser?.role || 'usuario'
+    const targetRole = getEffectiveRole(targetUser)
     if ((targetUser?.uid || targetUser?.id) === (user?.uid)) return false // nunca a sí mismo
     if (isMaster) return true
     if (isAdmin) return targetRole === 'admin' || targetRole === 'usuario'
@@ -3238,7 +3243,7 @@ function UsersAdminTab({ isDark }) {
             </thead>
             <tbody>
               {users.map((u) => {
-                const role = u.role || 'usuario'
+                const role = getEffectiveRole(u)
                 return (
                   <tr key={u.uid || u.id}
                     style={{ borderBottom: `1px solid ${borderCol}` }}
@@ -3274,7 +3279,7 @@ function UsersAdminTab({ isDark }) {
         /* ── Vista Grid ── */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
           {users.map((u) => {
-            const role = u.role || 'usuario'
+            const role = getEffectiveRole(u)
             const roleBg = role === 'master' ? 'rgba(0,0,0,0.3)' : role === 'superadmin' ? 'rgba(234,88,12,0.15)' : role === 'admin' ? 'rgba(22,163,74,0.15)' : 'rgba(100,100,100,0.15)'
             const roleColor = role === 'master' ? 'var(--accent)' : role === 'superadmin' ? 'var(--accent)' : role === 'admin' ? 'var(--green)' : t2
             const roleLabel = role === 'master' ? 'Master' : role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Admin' : 'Usuario'
@@ -3355,7 +3360,7 @@ function UsersAdminTab({ isDark }) {
             </UField>
 
             {/* Rol */}
-            <UField label="Rol *">
+            <UField label="Rol en este restaurante *">
               <select
                 style={uInput(isDark)}
                 value={editData.role}
@@ -3363,6 +3368,9 @@ function UsersAdminTab({ isDark }) {
               >
                 {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
+              <p style={{ fontSize: '0.7rem', color: t3, margin: '4px 0 0' }}>
+                Solo cambia el rol en este restaurante. Su rol en otros restaurantes no se modifica.
+              </p>
             </UField>
 
             {/* Nueva contraseña (opcional) */}
