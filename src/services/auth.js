@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore'
 import { auth, db, default as firebaseApp } from '../lib/firebase'
 
 // ── Password policy ────────────────────────────────────────────────────────────
@@ -125,6 +125,29 @@ export async function changeUserPassword(currentPassword, newPassword) {
     mustChangePassword: false,
     passwordChangedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+  })
+}
+
+// ── Buscar usuario por email (exact match) ─────────────────────────────────────
+export async function findUserByEmail(email) {
+  if (!email) return null
+  const normalized = email.trim().toLowerCase()
+  const snap = await getDocs(query(collection(db, 'users'), where('email', '==', normalized)))
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { id: d.id, ...d.data() }
+}
+
+// ── Agregar un usuario YA existente a otro restaurante con un rol especifico ──
+// No modifica el rol global del usuario; solo agrega la membresia en este restaurante.
+export async function addExistingUserToRestaurant(uid, restaurantId, role) {
+  if (!uid || !restaurantId || !role) throw new Error('Faltan datos para agregar el usuario')
+  await updateDoc(doc(db, 'users', uid), {
+    restaurantIds: arrayUnion(restaurantId),
+    updatedAt: serverTimestamp(),
+  })
+  await updateDoc(doc(db, 'restaurants', restaurantId), {
+    [`members.${uid}`]: { role, joinedAt: serverTimestamp() },
   })
 }
 

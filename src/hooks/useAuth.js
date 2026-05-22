@@ -78,7 +78,11 @@ export function useAuth() {
     return unsubscribe
   }, [])
 
-  const rawRole = userProfile?.role?.toLowerCase() || ''
+  // Rol efectivo: si el restaurante actual tiene un rol especifico para este
+  // usuario (members[uid].role), ese gana sobre el role global de userProfile.
+  // Esto permite que el mismo usuario tenga rol distinto en cada restaurante.
+  const memberRole = currentRestaurant?.members?.[user?.uid]?.role
+  const rawRole = (memberRole || userProfile?.role || '').toLowerCase()
   const role = rawRole === 'superadmin' ? 'admin' : (rawRole === 'chef' ? 'usuario' : rawRole)
   const isMaster  = role === 'master'
   const isAdmin   = role === 'admin'

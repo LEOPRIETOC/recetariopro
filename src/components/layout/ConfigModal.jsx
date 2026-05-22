@@ -34,7 +34,7 @@ import {
   subscribeMpCategories, getNextMpCategoryCode, createMpCategory, updateMpCategory,
   deleteMpCategory, checkMpCategoryInUse,
 } from '../../services/restaurants'
-import { setMasterRole, createUserWithRole, updateUserRole, validateStrongPassword, PASSWORD_POLICY, generateTempPassword } from '../../services/auth'
+import { setMasterRole, createUserWithRole, updateUserRole, validateStrongPassword, PASSWORD_POLICY, generateTempPassword, findUserByEmail, addExistingUserToRestaurant } from '../../services/auth'
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../lib/firebase'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -2886,6 +2886,58 @@ function UsersAdminTab({ isDark }) {
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // ── Add existing user form state ──
+  const [showAddExisting, setShowAddExisting] = useState(false)
+  const [addExistingEmail, setAddExistingEmail] = useState('')
+  const [foundUser, setFoundUser] = useState(null)
+  const [searching, setSearching] = useState(false)
+  const [addExistingRole, setAddExistingRole] = useState('usuario')
+  const [addExistingSaving, setAddExistingSaving] = useState(false)
+
+  const resetAddExisting = () => {
+    setShowAddExisting(false)
+    setAddExistingEmail('')
+    setFoundUser(null)
+    setSearching(false)
+    setAddExistingRole('usuario')
+  }
+
+  const handleSearchExisting = async () => {
+    const email = addExistingEmail.trim().toLowerCase()
+    if (!email) { error('Ingresa un correo'); return }
+    setSearching(true)
+    setFoundUser(null)
+    try {
+      const u = await findUserByEmail(email)
+      if (!u) { error('No se encontró ningún usuario con ese correo'); return }
+      const alreadyMember = !!currentRestaurant?.members?.[u.uid]
+      if (alreadyMember) { error('Este usuario ya es miembro de este restaurante'); return }
+      setFoundUser(u)
+      setAddExistingRole(u.role === 'master' ? 'admin' : (u.role || 'usuario'))
+    } catch (err) {
+      error(err.message || 'Error al buscar')
+    } finally { setSearching(false) }
+  }
+
+  const handleAddExisting = async () => {
+    if (!foundUser || !currentRestaurant?.id) return
+    setAddExistingSaving(true)
+    try {
+      await addExistingUserToRestaurant(foundUser.uid, currentRestaurant.id, addExistingRole)
+      await logAction({
+        restaurantId: currentRestaurant.id, userId: userProfile?.uid,
+        userName: userProfile?.name || userProfile?.email, userRole: userProfile?.role,
+        action: 'create', module: 'user', entityName: foundUser.name || foundUser.email,
+        changes: [{ field: 'rol', after: addExistingRole }, { field: 'tipo', after: 'agregado existente' }],
+      })
+      success(`${foundUser.name || foundUser.email} agregado a este restaurante`)
+      resetAddExisting()
+      loadUsers()
+    } catch (err) {
+      error(err.message || 'Error al agregar')
+    } finally { setAddExistingSaving(false) }
+  }
+
   const roleOptions = isMaster
     ? ['master', 'admin', 'usuario']
     : isAdmin ? ['admin', 'usuario'] : []
@@ -3048,11 +3100,70 @@ function UsersAdminTab({ isDark }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
+          <Button size="sm" variant="outline" onClick={() => { resetAddExisting(); setShowAddExisting(true); setShowCreate(false) }}>
+            Agregar existente
+          </Button>
+          <Button size="sm" onClick={() => { setShowCreate((v) => !v); setShowAddExisting(false) }}>
             <Plus className="h-3.5 w-3.5" /> Nuevo usuario
           </Button>
         </div>
       </div>
+
+      {/* Add existing form */}
+      {showAddExisting && (
+        <div style={{ background: isDark ? '#181f19' : '#f9fafb', border: `1px solid ${borderCol}`, borderRadius: 12, padding: 18 }}>
+          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: ink, marginBottom: 14 }}>Agregar usuario existente al restaurante</p>
+          {!foundUser ? (
+            <>
+              <UField label="Correo del usuario *">
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    style={{ ...uInput(isDark), flex: 1 }}
+                    type="email"
+                    value={addExistingEmail}
+                    onChange={(e) => setAddExistingEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchExisting() } }}
+                    placeholder="correo@ejemplo.com"
+                    autoFocus
+                  />
+                  <Button size="sm" onClick={handleSearchExisting} disabled={searching}>
+                    {searching ? 'Buscando...' : 'Buscar'}
+                  </Button>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: 'var(--t3)', marginTop: 6 }}>
+                  El usuario debe haberse registrado previamente en otra empresa. Su contraseña no se modifica.
+                </p>
+              </UField>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                <Button variant="outline" size="sm" onClick={resetAddExisting}>Cancelar</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ background: isDark ? '#0d110e' : '#fff', border: `1px solid ${borderCol}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--t3)', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 4 }}>Usuario encontrado</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: ink }}>{foundUser.name || '(sin nombre)'}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--t3)' }}>{foundUser.email}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--t3)', marginTop: 4 }}>Rol global actual: <strong style={{ color: ink }}>{foundUser.role || 'usuario'}</strong></div>
+              </div>
+              <UField label="Rol en este restaurante *">
+                <select style={uInput(isDark)} value={addExistingRole} onChange={(e) => setAddExistingRole(e.target.value)}>
+                  {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <p style={{ fontSize: '0.72rem', color: 'var(--t3)', marginTop: 4 }}>
+                  Este rol aplica solo en este restaurante. Su rol en otros restaurantes no cambia.
+                </p>
+              </UField>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                <Button variant="outline" size="sm" onClick={resetAddExisting}>Cancelar</Button>
+                <Button size="sm" onClick={handleAddExisting} disabled={addExistingSaving}>
+                  {addExistingSaving ? 'Agregando...' : 'Agregar a este restaurante'}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Create form */}
       {showCreate && (
