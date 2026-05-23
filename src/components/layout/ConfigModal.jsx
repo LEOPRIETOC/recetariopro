@@ -2988,7 +2988,10 @@ function UsersAdminTab({ isDark }) {
       setShowCreate(false)
       loadUsers()
     } catch (err) {
-      error(err.code === 'auth/email-already-in-use' ? 'Ese correo ya está registrado' : (err.message || 'Error al crear'))
+      const msg = err.code === 'auth/email-already-in-use'
+        ? `El correo "${form.email}" ya está registrado en Firebase Auth. Verificá que sea el que querés.`
+        : (err.message || 'Error al crear')
+      error(msg)
     } finally { setSaving(false) }
   }
 
@@ -3174,12 +3177,17 @@ function UsersAdminTab({ isDark }) {
       {showCreate && (
         <div style={{ background: isDark ? '#181f19' : '#f9fafb', border: `1px solid ${borderCol}`, borderRadius: 12, padding: 18 }}>
           <p style={{ fontSize: '0.82rem', fontWeight: 600, color: ink, marginBottom: 14 }}>Crear nuevo usuario</p>
+          {/* autocomplete=off + fake fields para evitar que el navegador autocomplete
+              el correo de la sesion en el campo Email */}
+          <form autoComplete="off" onSubmit={(e) => e.preventDefault()}>
+          <input type="text"     name="prevent-autofill" autoComplete="off" style={{ display: 'none' }} />
+          <input type="password" name="prevent-autofill" autoComplete="new-password" style={{ display: 'none' }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
             <UField label="Nombre completo *">
-              <input style={uInput(isDark)} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: toTitleCase(e.target.value) }))} placeholder="Ej: María García" />
+              <input style={uInput(isDark)} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: toTitleCase(e.target.value) }))} placeholder="Ej: María García" autoComplete="off" name="new-user-name" />
             </UField>
             <UField label="Correo *">
-              <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
+              <input style={uInput(isDark)} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value.trim().toLowerCase() }))} placeholder="correo@ejemplo.com" autoComplete="off" name="new-user-email-x" />
             </UField>
             <UField label="Contraseña temporal *">
               <div style={{ display: 'flex', gap: 6 }}>
@@ -3190,6 +3198,8 @@ function UsersAdminTab({ isDark }) {
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                     placeholder="Generar o escribir"
+                    autoComplete="new-password"
+                    name="new-user-pwd-x"
                   />
                   <button type="button" onClick={() => setShowPassword(v => !v)}
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af', fontSize: '1rem', padding: 2, lineHeight: 1 }}>
@@ -3219,6 +3229,7 @@ function UsersAdminTab({ isDark }) {
               {saving ? 'Creando...' : 'Crear usuario'}
             </Button>
           </div>
+          </form>
         </div>
       )}
 
