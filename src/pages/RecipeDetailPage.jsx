@@ -1408,8 +1408,8 @@ export default function RecipeDetailPage() {
         videoURL: data.videoURL || videoURL || null,
         yieldAmount: data.yieldAmount || null,
         yieldUnit: data.yieldUnit || null,
-        shelfLife: isSubRecipe ? (data.shelfLife?.trim() || null) : null,
-        storage: isSubRecipe ? (data.storage?.trim() || null) : null,
+        shelfLife: isSubRecipe ? (data.shelfLife?.trim().toUpperCase() || null) : null,
+        storage: isSubRecipe ? (data.storage?.trim().toUpperCase() || null) : null,
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
         useManualCost: useManualCostFlag,
         manualCost: manualCostVal,
@@ -1808,15 +1808,21 @@ export default function RecipeDetailPage() {
                       <div className="space-y-1.5">
                         <Label>Vida útil</Label>
                         <Input
-                          {...register('shelfLife')}
-                          placeholder="Ej: 5 días refrigerado"
+                          {...register('shelfLife', {
+                            onChange: (e) => setValue('shelfLife', (e.target.value || '').toUpperCase(), { shouldDirty: true }),
+                          })}
+                          placeholder="EJ: 5 DÍAS REFRIGERADO"
+                          style={{ textTransform: 'uppercase' }}
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Almacenamiento</Label>
                         <Input
-                          {...register('storage')}
-                          placeholder="Ej: Refrigerado en recipiente hermético"
+                          {...register('storage', {
+                            onChange: (e) => setValue('storage', (e.target.value || '').toUpperCase(), { shouldDirty: true }),
+                          })}
+                          placeholder="EJ: REFRIGERADO EN RECIPIENTE HERMÉTICO"
+                          style={{ textTransform: 'uppercase' }}
                         />
                       </div>
                     </div>

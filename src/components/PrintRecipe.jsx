@@ -106,12 +106,15 @@ export const PrintRecipe = ({ recipe, categories = [], restaurantName, forwardRe
 
           {recipe?.isSubRecipe && (recipe?.shelfLife || recipe?.storage) && (
             <div style={{
-              border: '1pt solid #111',
+              background: '#111',
+              color: '#fff',
               borderRadius: '4pt',
-              padding: '3mm 5mm',
+              padding: '4mm 6mm',
               margin: '0 0 6mm',
               fontSize: '9pt',
               lineHeight: 1.4,
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact',
             }}>
               {recipe?.shelfLife && (
                 <div style={{ display: 'flex', gap: '6pt', marginBottom: recipe?.storage ? '1.5mm' : 0 }}>
