@@ -815,6 +815,8 @@ const schema = z.object({
   videoURL: z.string().optional(),
   yieldAmount: z.coerce.number().min(0).optional(),
   yieldUnit: z.string().optional(),
+  shelfLife: z.string().optional(),
+  storage: z.string().optional(),
   sellingPrice: z.coerce.number().min(0).catch(0).default(0),
   ingredients: z.array(z.object({
     ingredientId: z.string().optional(),
@@ -890,7 +892,7 @@ export default function RecipeDetailPage() {
       isSubRecipe: typeFromUrl === 'subrecipe',
       useManualCost: false, manualCost: 0, recipeType: typeFromUrl,
       ingredients: [EMPTY_INGREDIENT],
-      preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '', sellingPrice: 0,
+      preparation: '', notes: '', pin: '', yieldAmount: 0, yieldUnit: '', shelfLife: '', storage: '', sellingPrice: 0,
     },
   })
 
@@ -989,6 +991,8 @@ export default function RecipeDetailPage() {
           )
           return matched?.abbreviation || raw
         })(),
+        shelfLife: r.shelfLife || '',
+        storage: r.storage || '',
         ingredients: [
           EMPTY_INGREDIENT,
           ...(r.ingredients || []).map((ing) => ({
@@ -1404,6 +1408,8 @@ export default function RecipeDetailPage() {
         videoURL: data.videoURL || videoURL || null,
         yieldAmount: data.yieldAmount || null,
         yieldUnit: data.yieldUnit || null,
+        shelfLife: isSubRecipe ? (data.shelfLife?.trim() || null) : null,
+        storage: isSubRecipe ? (data.storage?.trim() || null) : null,
         costPerYieldUnit: isSubRecipe && yieldAmt > 0 ? costPerYieldUnit : null,
         useManualCost: useManualCostFlag,
         manualCost: manualCostVal,
@@ -1462,7 +1468,7 @@ export default function RecipeDetailPage() {
         navigate(`/recipes/${docRef.id}`)
       } else {
         const fieldChanges = detectChanges(recipe || {}, safePayload, [
-          'name', 'sellingPrice', 'preparation', 'yieldAmount', 'yieldUnit',
+          'name', 'sellingPrice', 'preparation', 'yieldAmount', 'yieldUnit', 'shelfLife', 'storage',
         ])
         const ingChanges = detectIngredientChanges(
           recipe?.ingredients || [],
@@ -1797,6 +1803,23 @@ export default function RecipeDetailPage() {
                         </span>
                       </div>
                     )}
+                    {/* Vida útil | Almacenamiento */}
+                    <div className="grid-auto-lg">
+                      <div className="space-y-1.5">
+                        <Label>Vida útil</Label>
+                        <Input
+                          {...register('shelfLife')}
+                          placeholder="Ej: 5 días refrigerado"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Almacenamiento</Label>
+                        <Input
+                          {...register('storage')}
+                          placeholder="Ej: Refrigerado en recipiente hermético"
+                        />
+                      </div>
+                    </div>
                     {/* PIN */}
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> PIN de acceso (4 dígitos, opcional)</Label>

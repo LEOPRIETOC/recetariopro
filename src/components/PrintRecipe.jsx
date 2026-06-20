@@ -104,6 +104,30 @@ export const PrintRecipe = ({ recipe, categories = [], restaurantName, forwardRe
             </div>
           )}
 
+          {recipe?.isSubRecipe && (recipe?.shelfLife || recipe?.storage) && (
+            <div style={{
+              border: '1pt solid #111',
+              borderRadius: '4pt',
+              padding: '3mm 5mm',
+              margin: '0 0 6mm',
+              fontSize: '9pt',
+              lineHeight: 1.4,
+            }}>
+              {recipe?.shelfLife && (
+                <div style={{ display: 'flex', gap: '6pt', marginBottom: recipe?.storage ? '1.5mm' : 0 }}>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Vida útil:</span>
+                  <span>{recipe.shelfLife}</span>
+                </div>
+              )}
+              {recipe?.storage && (
+                <div style={{ display: 'flex', gap: '6pt' }}>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Almacenamiento:</span>
+                  <span>{recipe.storage}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <h2 className="print-section-title">Procedimiento</h2>
           {prepSteps.length > 0 ? (
             <ol className="print-prep-list">
